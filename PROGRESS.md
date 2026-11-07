@@ -17,7 +17,7 @@
 | `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
 | `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
 
-No migration, upgrade, or deployment work has been completed.
+No migration or deployment work has been completed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
 
 ## Verified source-code findings
 
@@ -60,7 +60,7 @@ Production persistence must not be tested destructively. Any disposal of product
 |---|---|
 | Database provider not selected | Blocks `DB-02` and downstream database work. `DB-01` can proceed. |
 | Authentication/session architecture not approved | Blocks `SEC-02`, `SEC-06`, and `OPT-02`. |
-| Upgrade targets not approved | Blocks `UPG-02`, `UPG-03`, and `UPG-04`. |
+| Broader upgrade targets not approved | Blocks completion of `UPG-02`, `UPG-03`, and `UPG-04`; the owner approved the limited Express 4 and compatible transitive refresh. |
 | Staging strategy not approved | Blocks `DB-06` and production validation. |
 | Public registration policy not finalized | No immediate blocker; registration remains unchanged until `PUB-01`. |
 | Render client-IP and proxy behavior unverified | Blocks a safe Render per-client IP limiter and full `SEC-03` acceptance; direct-peer IP limits are disabled by default. |
@@ -75,14 +75,16 @@ Production persistence must not be tested destructively. Any disposal of product
 - Tests use isolated temporary SQLite databases and synthetic data; their hash guards passed. Independent SHA-256 checks before and after SEC-04 validation confirmed `backend/library.db` was unchanged.
 - TEST-03 validation under Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 37/37, and `fnm exec --using 22 npm run test:security` passed 3/3. The filtered-list test passed unchanged and failed as expected when the owner predicate was removed in a temporary backend copy. This demonstrates one representative regression, not exhaustive security coverage. CI remains pending.
 - SEC-03 local validation under Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 41/41, and `fnm exec --using 22 npm run test:security` passed 3/3. Rate-limit tests cover thresholds, retry headers, known/unknown accounts, expiry, and ignored spoofed forwarding headers. Render IP behavior was not verified.
-- SEC-03 review: `npm audit --json` and `npm audit --omit=dev --json` each reported 13 affected packages in the production dependency tree: 2 critical, 10 high, and 1 moderate. Prioritize separate review of the JWT `jws` signature-verification and Express/body-parser denial-of-service advisories; actual exploitability was not verified. Critical `proxy-addr` and `tar` findings have configuration and installation-path considerations respectively. No audit fixes were applied.
+- Backend dependency refresh: `fnm exec --using 22 npm audit --omit=dev --json --no-update-notifier` initially reported 13 affected packages (2 critical, 10 high, 1 moderate). After the approved Express 4 and compatible transitive refresh, `fnm exec --using 22 npm audit --omit=dev` reports 4 (1 critical, 3 high): `tar` via `@mapbox/node-pre-gyp` and `bcrypt`, primarily an install-time risk, and `zod`, whose unbounded genre array may be exposed to authenticated requests. The practical Zod impact under the JSON body limit is unverified; bcrypt 6 and Zod 4 were not approved. The `jws` advisory explicitly excludes jsonwebtoken verification usage.
+- Dependency refresh validation on Node v22.23.4: `fnm exec --using 22 npm run build` passed; `fnm exec --using 22 npm test` passed 42/42, including a synthetic compressed JSON trailing-byte smoke test; `fnm exec --using 22 npm run test:security` passed 3/3. The smoke test does not control decoder scheduling or prove it detects the original vulnerability.
+- `sha256sum backend/library.db` matched before and after the dependency refresh and validation; `git diff --check` passed. Tests were not rerun after comment and documentation-only edits.
 - TEST-03 filter fixtures use partially overlapping attributes and distinct synthetic timestamps for deterministic pagination tests. Production pagination still has no tie-breaker when books share `createdAt`; this task does not change that behavior.
 - Production was not tested or accessed; no backup or recoverable production SQLite state is assumed.
 - No push, merge, deployment, or production access occurred.
 
 ## Files changed
 
-SEC-03 changes include `backend/package.json`, `backend/package-lock.json`, `backend/src/middlewares/auth-rate-limit.middleware.ts`, `backend/src/routes/user.route.ts`, `backend/tests/auth.rate-limit.test.ts`, `backend/tests/auth.ip-rate-limit.test.ts`, `README.md`, `PLAN.md`, and `PROGRESS.md`. The tracked database, production configuration, and frontend files were not modified.
+The dependency refresh changes `backend/package.json`, `backend/package-lock.json`, `backend/tests/compressed-json.test.ts`, `PLAN.md`, and `PROGRESS.md`. The tracked database, application logic, production configuration, and frontend files were not modified.
 
 ## Next recommended task
 

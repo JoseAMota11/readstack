@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "npx tsc",
-    "test": "node --import tsx --test tests/auth.test.ts tests/auth.rate-limit.test.ts tests/auth.ip-rate-limit.test.ts tests/books.ownership.test.ts tests/books.filters-pagination.test.ts tests/books.export.test.ts tests/reviews.ownership.test.ts",
+    "test": "node --import tsx --test tests/auth.test.ts tests/auth.rate-limit.test.ts tests/auth.ip-rate-limit.test.ts tests/books.ownership.test.ts tests/books.filters-pagination.test.ts tests/books.export.test.ts tests/reviews.ownership.test.ts tests/compressed-json.test.ts",
     "test:security": "node --import tsx --test tests/security/sec04-review-ownership.probes.test.ts"
   },
   "keywords": [],
@@ -16,7 +16,7 @@
     "bcrypt": "^5.1.1",
     "better-sqlite3": "^11.5.0",
     "cors": "^2.8.5",
-    "express": "^4.21.1",
+    "express": "^4.22.3",
     "express-rate-limit": "^8.7.3",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",

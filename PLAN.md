@@ -72,7 +72,7 @@ Verified through selective static review on 2026-11-06.
 | Area | Current state |
 |---|---|
 | Frontend | Next.js 14.2.18, React 18, TypeScript, App Router, Ant Design, Tailwind CSS. |
-| Backend | Express 4.21.x, TypeScript 5.7.x, layered architecture, Zod validation, raw SQL. |
+| Backend | Express 4.22.x, TypeScript 5.7.x, layered architecture, Zod validation, raw SQL. |
 | Data | `better-sqlite3` using relative path `library.db`; `backend/library.db` is tracked by Git. Tables are created at module load; no migrations exist. |
 | Authentication | bcrypt; six-hour JWT; token stored in a JavaScript-readable `token` cookie and sent as a Bearer token. |
 | Authorization | Book queries are generally scoped by `userId`. Review listing does not verify book ownership; review update trusts a client-supplied `bookId`. |
@@ -181,7 +181,7 @@ The approved approach starts with a fresh database. Existing demo records are no
 | ID | Task | P | Status | Depends on | Deliverable | Acceptance criteria |
 |---|---|---|---|---|---|---|
 | `UPG-01` | Build compatibility and support matrix | P1 | `[ ]` | `AUD-02`, `TEST-04` | Upgrade inventory and proposed order | Current versions, runtime requirements, peer conflicts, security advisories, breaking changes, and test gaps documented; targets proposed but not approved |
-| `UPG-02` | Upgrade backend dependencies and runtime | P1 | `[ ]` | `UPG-01`, `TEST-03` | Incremental backend upgrade | Build and regression tests pass; staged smoke passes; lockfile updated; behavior preserved; rollback documented |
+| `UPG-02` | Upgrade backend dependencies and runtime | P1 | `[ ]` | `UPG-01`, `TEST-03` | Incremental backend upgrade | Build and regression tests pass; staged smoke passes; lockfile updated; behavior preserved; rollback documented. Owner approved a limited Express 4 and compatible transitive security refresh; broader upgrade targets remain pending. Residual audit findings include Zod array-validation memory exhaustion and the bcrypt installer’s vulnerable tar chain. |
 | `UPG-03` | Upgrade frontend framework and dependencies | P1 | `[ ]` | `UPG-01`, `TEST-02`, `TEST-05` | Incremental frontend upgrade | Framework, React, TypeScript, and UI dependencies upgraded in reviewable steps; lint, build, tests, and auth/route smoke pass; no unresolved visual regression |
 | `UPG-04` | Align Node.js runtime | P1 | `[ ]` | `UPG-01`, `GOV-01` | Consistent supported runtime | Local, CI, Render, Vercel, and README use the same approved supported LTS version; build verified; owner confirms hosting setting |
 | `UPG-05` | Reduce type and lint debt in touched areas | P2 | `[ ]` | `UPG-02`, `UPG-03` | Cleaner type/lint baseline | No behavior change; no new lint/type errors; unsafe casts removed where practical; checks pass |
@@ -271,7 +271,7 @@ A push or merge to `main` is a production action because Vercel Production and R
 |---|---|---|---|
 | `D-015` | Database provider: Supabase, Neon, or another approved option | Pending | `DB-02` and downstream database work |
 | `D-016` | Authentication and session architecture, including cross-origin transport, CORS, SameSite, and CSRF | Pending | `SEC-02`, `SEC-06`, `OPT-02` |
-| `D-017` | Supported upgrade targets and order | Pending | `UPG-02`, `UPG-03`, `UPG-04` |
+| `D-017` | Supported upgrade targets and order | Pending | `UPG-02`, `UPG-03`, `UPG-04`; owner approved only the limited Express 4 and compatible transitive security refresh, not Zod 4 or bcrypt 6 |
 | `D-018` | Staging strategy and topology | Pending | `DB-06` and production validation |
 | `D-019` | Future public self-registration policy | Pending | `PUB-01`, and any later registration change |
 
