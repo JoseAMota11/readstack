@@ -103,3 +103,36 @@ test('allows the owner to read, update, export, and delete a book', async () => 
     .set(auth(alice.token))
     .expect(404);
 });
+
+test('uses the token identity when creating a book with a foreign userId', async () => {
+  const alice = await registerUser('book-spoof-a');
+  const bob = await registerUser('book-spoof-b');
+  const book = await createBook(alice.token, bob.userId, { title: 'Spoofed owner book' });
+
+  const owned = await request(app).get(`/api/v1/books/${book.id}`).set(auth(alice.token)).expect(200);
+  assert.equal(owned.body.userId, alice.userId);
+  await request(app).get(`/api/v1/books/${book.id}`).set(auth(bob.token)).expect(404);
+  const bobList = await request(app).get('/api/v1/books').set(auth(bob.token)).expect(200);
+  assert.equal(bobList.body.pagination.total, 0);
+});
+
+test('persists favorite toggles and denies another user changing them', async () => {
+  const alice = await registerUser('favorite-a');
+  const bob = await registerUser('favorite-b');
+  const book = await createBook(alice.token, alice.userId, { isFavorite: true });
+  const bobBook = await createBook(bob.token, bob.userId, { isFavorite: true });
+
+  const created = await request(app).get(`/api/v1/books/${book.id}`).set(auth(alice.token)).expect(200);
+  assert.equal(created.body.isFavorite, true);
+  await request(app).patch(`/api/v1/books/${book.id}`).set(auth(bob.token))
+    .send({ isFavorite: false }).expect(400);
+  const unchanged = await request(app).get(`/api/v1/books/${book.id}`).set(auth(alice.token)).expect(200);
+  assert.equal(unchanged.body.isFavorite, true);
+
+  await request(app).patch(`/api/v1/books/${book.id}`).set(auth(alice.token))
+    .send({ isFavorite: false }).expect(200);
+  const listed = await request(app).get('/api/v1/books').set(auth(alice.token)).expect(200);
+  assert.equal(listed.body.books.find((item: { id: string }) => item.id === book.id).isFavorite, false);
+  const stillBob = await request(app).get(`/api/v1/books/${bobBook.id}`).set(auth(bob.token)).expect(200);
+  assert.equal(stillBob.body.isFavorite, true);
+});

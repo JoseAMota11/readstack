@@ -141,7 +141,7 @@ Prerequisites:
 |---|---|---|---|---|---|---|
 | `TEST-01` | Add backend test harness | P0 | `[x]` | — | Test runner, scripts, and initial route/middleware tests | Runs locally without production services; authentication and one ownership route covered; isolated test database |
 | `TEST-02` | Add frontend test harness | P1 | `[ ]` | — | Component/route test setup and scripts | Runs in CI; cookie/token helpers and protected-route behavior covered |
-| `TEST-03` | Add authentication and isolation regression suite | P0 | `[ ]` | `TEST-01` | Automated multiuser regression suite | Registration, login, invalid/expired token, own-data CRUD, cross-user denial, reviews, favorites, filters, pagination, and CSV covered; suite fails on isolation regressions |
+| `TEST-03` | Add authentication and isolation regression suite | P0 | `[x]` | `TEST-01` | Automated multiuser regression suite | Registration, login, invalid/expired token, own-data CRUD, cross-user denial, reviews, favorites, filters, pagination, and CSV covered; suite fails on isolation regressions |
 | `TEST-04` | Add CI checks | P0 | `[ ]` | `TEST-01` | Pull-request workflow | Backend tests/build and frontend lint/build run on pull requests; frontend tests added when `TEST-02` lands; no deployment secrets exposed |
 | `TEST-05` | Create release smoke checklist | P1 | `[ ]` | `GOV-01`, `TEST-03` | Repeatable smoke procedure | Covers login/registration, CRUD, reviews, favorites, filters, CSV, and cross-user denial; executable with recorded evidence |
 
@@ -275,4 +275,4 @@ A push or merge to `main` is a production action because Vercel Production and R
 | `D-018` | Staging strategy and topology | Pending | `DB-06` and production validation |
 | `D-019` | Future public self-registration policy | Pending | `PUB-01`, and any later registration change |
 
-`DISC-01`, `AUD-01`, and `DOC-01` are complete. `AUD-02` remains pending. No implementation task is marked complete.
+`DISC-01`, `AUD-01`, `DOC-01`, `TEST-01`, `SEC-04`, and `TEST-03` are complete. `AUD-02` remains pending.

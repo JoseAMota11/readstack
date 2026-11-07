@@ -200,3 +200,25 @@ test('rejects substituting another owned book on an update', async () => {
     .expect(404);
   assert.equal((await listReviews(alice.token, book.id))[0].comment, comment);
 });
+
+test('returns the same denial for missing and foreign review mutations', async () => {
+  const { alice, bob, book, review, comment } = await setupOwnerReview('missing-review');
+  const missingId = '00000000-0000-4000-8000-000000000002';
+  const body = { bookId: book.id, userId: bob.userId, rating: 1, comment: 'Attempted change' };
+
+  const foreignUpdate = await request(app).put(`/api/v1/reviews/${review.id}`)
+    .set(auth(bob.token)).send(body).expect(404);
+  const missingUpdate = await request(app).put(`/api/v1/reviews/${missingId}`)
+    .set(auth(bob.token)).send(body).expect(404);
+  assert.deepEqual(foreignUpdate.body, missingUpdate.body);
+
+  const foreignDelete = await request(app).delete(`/api/v1/reviews/${review.id}`)
+    .set(auth(bob.token)).expect(404);
+  const missingDelete = await request(app).delete(`/api/v1/reviews/${missingId}`)
+    .set(auth(bob.token)).expect(404);
+  assert.deepEqual(foreignDelete.body, missingDelete.body);
+  const reviews = await listReviews(alice.token, book.id);
+  assert.equal(reviews.length, 1);
+  assert.equal(reviews[0].comment, comment);
+  assert.equal(reviews[0].rating, 4);
+});

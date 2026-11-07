@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-07
 **Current phase:** Phase 1 — Tests, CI, and repeatable validation
-**Active task:** None — `TEST-01` and `SEC-04` complete
+**Active task:** None — `TEST-03` complete locally
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -15,6 +15,7 @@
 | `DOC-01` | `AGENTS.md`, `PLAN.md`, and `PROGRESS.md` written and verified on 2026-11-07. |
 | `TEST-01` | Backend test harness and initial authentication and ownership tests implemented and locally validated. |
 | `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
+| `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
 
 No migration, upgrade, or deployment work has been completed.
 
@@ -70,17 +71,18 @@ Production persistence must not be tested destructively. Any disposal of product
 - Before SEC-04, the security probes reproduced cross-user listing (200), cross-user creation (201), and updating a review owned by the caller but attached to another user's book in a synthetic inconsistent state (200).
 - SEC-04 validation from `backend/` used Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 32/32 tests, and `fnm exec --using 22 npm run test:security` passed all 3 probes. Tests were not rerun after documentation and comment-only closeout edits.
 - Tests use isolated temporary SQLite databases and synthetic data; their hash guards passed. Independent SHA-256 checks before and after SEC-04 validation confirmed `backend/library.db` was unchanged.
-- `git diff --check` passed during SEC-04 validation. The full `TEST-03` isolation regression suite and CI remain pending; the focused tests do not establish that all isolation vulnerabilities have been discovered or fixed. Missing-review update/delete cases and exact 404 bodies are not independently asserted.
+- TEST-03 validation under Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 37/37, and `fnm exec --using 22 npm run test:security` passed 3/3. The filtered-list test passed unchanged and failed as expected when the owner predicate was removed in a temporary backend copy. This demonstrates one representative regression, not exhaustive security coverage. CI remains pending.
+- TEST-03 filter fixtures use partially overlapping attributes and distinct synthetic timestamps for deterministic pagination tests. Production pagination still has no tie-breaker when books share `createdAt`; this task does not change that behavior.
 - Production was not tested or accessed; no backup or recoverable production SQLite state is assumed.
 - No push, merge, deployment, or production access occurred.
 
 ## Files changed
 
-SEC-04 changes include `backend/src/models/review.model.ts`, `backend/src/controllers/review.controller.ts`, `backend/tests/reviews.ownership.test.ts`, `backend/tests/security/sec04-review-ownership.probes.test.ts`, `README.md`, `PLAN.md`, and `PROGRESS.md`. `backend/library.db`, production configuration, and frontend files were not modified.
+TEST-03 changes include `backend/package.json`, `backend/tests/books.ownership.test.ts`, `backend/tests/books.filters-pagination.test.ts`, `backend/tests/books.export.test.ts`, `backend/tests/reviews.ownership.test.ts`, `PLAN.md`, and `PROGRESS.md`. `backend/library.db`, application logic, production configuration, and frontend files were not modified.
 
 ## Next recommended task
 
-`TEST-03` — expand authentication and isolation regression coverage, subject to a new instruction. `TEST-04` remains pending; production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
+`TEST-04` — add CI checks, subject to a new instruction. Production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
 
 ## Session handoff checklist
 
