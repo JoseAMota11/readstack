@@ -132,6 +132,18 @@ git clone https://github.com/JoseAMota11/read-group-challenge.git
 
    Esto levantará el backend en `http://localhost:4000`.
 
+### 4. Run backend tests
+
+The automated suite uses synthetic users and a temporary SQLite database. It never reads or writes `backend/library.db`. Node.js 22 is required.
+
+```bash
+cd backend/
+npm test                 # passing regression suite
+npm run test:security    # SEC-04 probes; expected to fail until SEC-04
+```
+
+`npm run test:security` is expected to exit non-zero while the review ownership vulnerabilities remain unresolved.
+
 ## Estructura del proyecto
 
 ```plaintext

@@ -95,7 +95,7 @@ Verified through selective static review on 2026-11-06.
 - `AUD-01` — Static security audit: completed.
 - `AUD-02` — Runtime and production verification: pending.
 
-Only static findings are confirmed. Runtime behavior, hosting access, free-tier limits, dependency vulnerability status, and recovery procedures remain unverified.
+Initial findings were static; TEST-01 has since verified selected behavior locally with synthetic data. Production runtime behavior, hosting access, free-tier limits, dependency vulnerability status, and recovery procedures remain unverified.
 
 ## 4. Risks and prerequisites
 
@@ -108,7 +108,7 @@ Only static findings are confirmed. Runtime behavior, hosting access, free-tier 
 | No login rate limiting | Brute force and credential stuffing | `SEC-03` |
 | Incomplete frontend protection | Unauthenticated access to private screens | `SEC-05` |
 | Open CORS and inconsistent errors | Expanded attack surface, information leakage | `SEC-06`, `SEC-07` |
-| No tests or CI | Silent regressions during migration and upgrades | `TEST-01` through `TEST-04` |
+| Incomplete test coverage and no CI | Silent regressions during migration and upgrades | `TEST-02` through `TEST-04` |
 | Render Auto-Deploy from `main` | Accidental production release | `GOV-01`, `GOV-03` |
 | Free-tier limits or unexpected cost | Outage or budget breach | `DB-01`, `DB-02`, `DB-06` |
 | Legacy dependencies | Failed upgrades or security exposure | `UPG-01` through `UPG-05` |
@@ -139,7 +139,7 @@ Prerequisites:
 
 | ID | Task | P | Status | Depends on | Deliverable | Acceptance criteria |
 |---|---|---|---|---|---|---|
-| `TEST-01` | Add backend test harness | P0 | `[ ]` | — | Test runner, scripts, and initial route/middleware tests | Runs locally without production services; authentication and one ownership route covered; isolated test database |
+| `TEST-01` | Add backend test harness | P0 | `[x]` | — | Test runner, scripts, and initial route/middleware tests | Runs locally without production services; authentication and one ownership route covered; isolated test database |
 | `TEST-02` | Add frontend test harness | P1 | `[ ]` | — | Component/route test setup and scripts | Runs in CI; cookie/token helpers and protected-route behavior covered |
 | `TEST-03` | Add authentication and isolation regression suite | P0 | `[ ]` | `TEST-01` | Automated multiuser regression suite | Registration, login, invalid/expired token, own-data CRUD, cross-user denial, reviews, favorites, filters, pagination, and CSV covered; suite fails on isolation regressions |
 | `TEST-04` | Add CI checks | P0 | `[ ]` | `TEST-01` | Pull-request workflow | Backend tests/build and frontend lint/build run on pull requests; frontend tests added when `TEST-02` lands; no deployment secrets exposed |

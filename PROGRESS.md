@@ -1,8 +1,8 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-07
-**Current phase:** Phase 0 — Planning and baseline
-**Active task:** None — `DOC-01` complete; next task not started
+**Current phase:** Phase 1 — Tests, CI, and repeatable validation
+**Active task:** None — `TEST-01` complete; `SEC-04` not started
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -13,8 +13,9 @@
 | `DISC-01` | Initial project discovery completed through selective static review. |
 | `AUD-01` | Static security audit completed; findings mapped to remediation tasks. |
 | `DOC-01` | `AGENTS.md`, `PLAN.md`, and `PROGRESS.md` written and verified on 2026-11-07. |
+| `TEST-01` | Backend test harness and initial authentication and ownership tests implemented and locally validated. |
 
-No implementation, migration, upgrade, or deployment work has been completed.
+No migration, upgrade, or deployment work has been completed.
 
 ## Verified source-code findings
 
@@ -27,8 +28,8 @@ No implementation, migration, upgrade, or deployment work has been completed.
 - Review listing does not verify book ownership; review update trusts a client-supplied `bookId`.
 - CORS is open; no login rate limiting; error handling is inconsistent.
 - JWT configuration includes a hardcoded fallback secret.
-- No tests, test scripts, CI, or backup procedure were found.
-- README is partially stale.
+- Initial discovery found no tests, test scripts, CI, or backup procedure. Backend tests and scripts now exist; CI and a backup procedure remain absent.
+- Initial discovery found the README partially stale; TEST-01 added backend test instructions.
 
 ## Owner-confirmed deployment facts
 
@@ -62,28 +63,25 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
-- Read-only repository inspection and read-only Git commands only.
-- No install, build, lint, test, migration, or deployment commands were run.
-- No automated test suite exists; build and regression status is unknown.
-- No production service, database, secret, or hosting dashboard was accessed.
-- No backup or recoverable production SQLite state is assumed.
-- All three documentation files exist and are non-empty.
-- `git diff --check` passed with exit code 0.
-- Untracked-file whitespace checks for all three documents passed.
-- Repository status shows only `AGENTS.md`, `PLAN.md`, and `PROGRESS.md` as untracked; no application files changed.
+- Prior DOC-01 validation consisted of read-only inspection and Git checks; no build or tests were run then.
+- TEST-01 local validation used Node.js 22: `npm run build` passed and `npm test` passed all 26 tests, from `backend/`.
+- `npm run test:security`, from `backend/`, exited non-zero as expected: three probes reproduced existing authorization weaknesses. P1: cross-user review listing returned HTTP 200; P2: cross-user review creation returned HTTP 201; P3: updating a review associated with a foreign-owned book in a synthetically constructed inconsistent ownership state returned HTTP 200.
+- Tests use temporary SQLite databases and synthetic authentication data. Test helpers compute and compare SHA-256 hashes of `backend/library.db` during normal test execution; no independent pre-implementation hash was verified.
+- `git diff --check` passed during TEST-01 validation. The full isolation regression suite and CI remain pending; these probes do not establish that all isolation vulnerabilities have been discovered or fixed.
+- Production was not tested or accessed; no backup or recoverable production SQLite state is assumed.
+- No commit, push, merge, or deployment occurred.
 
 ## Files changed
 
-Created:
-- `AGENTS.md`
+Documentation closeout modified:
 - `PLAN.md`
 - `PROGRESS.md`
 
-No application source, package, dependency, or database files were modified.
+Pre-existing uncommitted TEST-01 changes include `README.md`, backend package files, backend source/configuration, and `backend/tests/`. This closeout does not modify those files, `AGENTS.md`, or the database.
 
 ## Next recommended task
 
-`DOC-01` is complete. Execute `AUD-02` with owner-authorized, non-destructive runtime verification. Follow with `GOV-01` to formalize production guardrails.
+`SEC-04` — enforce review and book ownership; `TEST-01` is complete. Do not begin without a new instruction. `TEST-03` and `TEST-04` remain pending; production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
 
 ## Session handoff checklist
 

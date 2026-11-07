@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "build": "npx tsc"
+    "build": "npx tsc",
+    "test": "node --import tsx --test tests/auth.test.ts tests/books.ownership.test.ts tests/reviews.ownership.test.ts",
+    "test:security": "node --import tsx --test tests/security/sec04-review-ownership.probes.test.ts"
   },
   "keywords": [],
   "author": "José Mota",
@@ -27,6 +29,9 @@
     "@types/json2csv": "^5.0.7",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.9.3",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2"
   }
 }
