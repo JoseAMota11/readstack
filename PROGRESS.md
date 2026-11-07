@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-07
 **Current phase:** Phase 1 — Tests, CI, and repeatable validation
-**Active task:** None — `TEST-03` complete locally
+**Active task:** `SEC-03` — partially implemented locally; Render IP strategy and existing registration enumeration remain unresolved
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -29,7 +29,7 @@ No migration, upgrade, or deployment work has been completed.
 - Middleware matches only `/` and `/login`; `/book/*` is unprotected.
 - Review listing requires book ownership and filters reviews by owner. Creation, update, and deletion use token-derived identity and enforce the stored book relationship; inaccessible resources return a generic 404.
 - Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
-- CORS is open; no login rate limiting; error handling is inconsistent.
+- CORS is open; authentication has local per-account rate limits and opt-in direct-peer IP limits; error handling is inconsistent.
 - JWT configuration includes a hardcoded fallback secret.
 - Initial discovery found no tests, test scripts, CI, or backup procedure. Backend tests and scripts now exist; CI and a backup procedure remain absent.
 - Initial discovery found the README partially stale; TEST-01 added backend test instructions.
@@ -63,6 +63,8 @@ Production persistence must not be tested destructively. Any disposal of product
 | Upgrade targets not approved | Blocks `UPG-02`, `UPG-03`, and `UPG-04`. |
 | Staging strategy not approved | Blocks `DB-06` and production validation. |
 | Public registration policy not finalized | No immediate blocker; registration remains unchanged until `PUB-01`. |
+| Render client-IP and proxy behavior unverified | Blocks a safe Render per-client IP limiter and full `SEC-03` acceptance; direct-peer IP limits are disabled by default. |
+| Duplicate registration returns 409 | Existing account-existence disclosure remains; resolving it requires a registration API contract decision. |
 
 ## Latest validation status
 
@@ -72,17 +74,19 @@ Production persistence must not be tested destructively. Any disposal of product
 - SEC-04 validation from `backend/` used Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 32/32 tests, and `fnm exec --using 22 npm run test:security` passed all 3 probes. Tests were not rerun after documentation and comment-only closeout edits.
 - Tests use isolated temporary SQLite databases and synthetic data; their hash guards passed. Independent SHA-256 checks before and after SEC-04 validation confirmed `backend/library.db` was unchanged.
 - TEST-03 validation under Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 37/37, and `fnm exec --using 22 npm run test:security` passed 3/3. The filtered-list test passed unchanged and failed as expected when the owner predicate was removed in a temporary backend copy. This demonstrates one representative regression, not exhaustive security coverage. CI remains pending.
+- SEC-03 local validation under Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 41/41, and `fnm exec --using 22 npm run test:security` passed 3/3. Rate-limit tests cover thresholds, retry headers, known/unknown accounts, expiry, and ignored spoofed forwarding headers. Render IP behavior was not verified.
+- SEC-03 review: `npm audit --json` and `npm audit --omit=dev --json` each reported 13 affected packages in the production dependency tree: 2 critical, 10 high, and 1 moderate. Prioritize separate review of the JWT `jws` signature-verification and Express/body-parser denial-of-service advisories; actual exploitability was not verified. Critical `proxy-addr` and `tar` findings have configuration and installation-path considerations respectively. No audit fixes were applied.
 - TEST-03 filter fixtures use partially overlapping attributes and distinct synthetic timestamps for deterministic pagination tests. Production pagination still has no tie-breaker when books share `createdAt`; this task does not change that behavior.
 - Production was not tested or accessed; no backup or recoverable production SQLite state is assumed.
 - No push, merge, deployment, or production access occurred.
 
 ## Files changed
 
-TEST-03 changes include `backend/package.json`, `backend/tests/books.ownership.test.ts`, `backend/tests/books.filters-pagination.test.ts`, `backend/tests/books.export.test.ts`, `backend/tests/reviews.ownership.test.ts`, `PLAN.md`, and `PROGRESS.md`. `backend/library.db`, application logic, production configuration, and frontend files were not modified.
+SEC-03 changes include `backend/package.json`, `backend/package-lock.json`, `backend/src/middlewares/auth-rate-limit.middleware.ts`, `backend/src/routes/user.route.ts`, `backend/tests/auth.rate-limit.test.ts`, `backend/tests/auth.ip-rate-limit.test.ts`, `README.md`, `PLAN.md`, and `PROGRESS.md`. The tracked database, production configuration, and frontend files were not modified.
 
 ## Next recommended task
 
-`TEST-04` — add CI checks, subject to a new instruction. Production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
+Resolve the Render client-IP prerequisite and the registration enumeration contract before claiming `SEC-03` complete. `TEST-04` remains a strong next task. Production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
 
 ## Session handoff checklist
 

@@ -144,6 +144,16 @@ npm run test:security    # SEC-04 ownership regression probes
 
 Review operations require ownership of both the review and its associated book. Foreign, missing, or inconsistent resources return HTTP 404; existing inconsistent reviews are not modified or deleted by these checks.
 
+### Authentication rate limits
+
+Login and registration are limited per normalized email, without storing the email itself in the limiter. By default, login allows 10 requests per account per 15 minutes and registration allows 5 per account per hour, including successful requests. Exceeding a limit returns HTTP 429 with `Retry-After`. Duplicate registration still returns 409 below the limit; it can reveal that an email is registered.
+
+Optional IP limits default to 30 login requests per 15 minutes and 10 registration requests per hour. They are **disabled by default**: set `AUTH_IP_RATE_LIMIT_ENABLED=true` only when the direct socket peer is verified to be the actual client. Express does not trust proxy headers, and this code does not configure a trusted proxy. Render's ingress and forwarded-header behavior are not verified; enabling the IP limiter behind a shared proxy could block unrelated users. Before using per-client IP limiting on Render, verify its ingress topology, header sanitization and direct-access paths, then implement and validate a narrowly trusted client-IP strategy. Do not blindly trust forwarded headers.
+
+Each endpoint's window and limits can be configured with positive integer environment variables: `AUTH_LOGIN_WINDOW_MS`, `AUTH_LOGIN_ACCOUNT_MAX`, `AUTH_LOGIN_IP_MAX`, `AUTH_REGISTER_WINDOW_MS`, `AUTH_REGISTER_ACCOUNT_MAX`, and `AUTH_REGISTER_IP_MAX`. Window values are milliseconds. Invalid values prevent startup.
+
+The default in-memory stores are process-local: counters reset on restart and are not shared across instances. Account limits can temporarily block a targeted user, and case variants share a limit even though existing authentication remains case-sensitive. IP limits are needed to help limit attempts across many accounts; until a safe Render client-IP strategy is verified, this protection is incomplete. The in-memory store is not capped against many distinct identifiers. No external service is required.
+
 ## Estructura del proyecto
 
 ```plaintext
