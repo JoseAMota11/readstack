@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-07
 **Current phase:** Phase 1 — Tests, CI, and repeatable validation
-**Active task:** `SEC-03` — partially implemented locally; Render IP strategy and existing registration enumeration remain unresolved
+**Active task:** `TEST-02` / `SEC-05` — authentication stability implemented locally; CI and browser-level validation remain pending. `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -26,7 +26,7 @@ No migration or deployment work has been completed. A limited backend dependency
 - SQLite uses relative path `library.db`; `backend/library.db` is tracked by Git.
 - Schema creation occurs at module load; no migrations exist.
 - Authentication uses a six-hour JWT in a JavaScript-readable `token` cookie, sent as a Bearer token.
-- Middleware matches only `/` and `/login`; `/book/*` is unprotected.
+- Middleware covers `/` and `/book/*`; public authentication routes remain accessible. JWT claims are decoded only for navigation and expiry; API verification remains authoritative.
 - Review listing requires book ownership and filters reviews by owner. Creation, update, and deletion use token-derived identity and enforce the stored book relationship; inaccessible resources return a generic 404.
 - Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
 - CORS is open; authentication has local per-account rate limits and opt-in direct-peer IP limits; error handling is inconsistent.
@@ -81,14 +81,16 @@ Production persistence must not be tested destructively. Any disposal of product
 - TEST-03 filter fixtures use partially overlapping attributes and distinct synthetic timestamps for deterministic pagination tests. Production pagination still has no tie-breaker when books share `createdAt`; this task does not change that behavior.
 - Production was not tested or accessed; no backup or recoverable production SQLite state is assumed.
 - No push, merge, deployment, or production access occurred.
+- Authentication stability validation with Node.js 22: frontend `npm test` passed 11/11; frontend `npm run lint -- --no-cache` and `npm run build` passed. Backend `npm run build`, `npm test` (42/42), and `npm run test:security` (3/3) passed. The tracked database hash matched before and after. Local HTTP smoke checks confirmed public forms render with POST, native POST does not redirect or reflect synthetic inputs, and private routes redirect without a cookie. Browser hydration, actual login, and draft restoration were not exercised end-to-end.
+- Review draft follow-up validation with Node.js v22.23.4: frontend `npm test` passed 13/13, `npm run lint -- --no-cache` and `npm run build` passed; backend `npm run build`, `npm test` (42/42), and `npm run test:security` (3/3) passed. Component-handler tests cover unrelated 401, restoration, and edits during a request using a lightweight hook harness, not a browser. Drafts expire after 24 hours of inactivity and are cleaned up on app startup and approximately hourly. The tracked database hash remained unchanged.
 
 ## Files changed
 
-The dependency refresh changes `backend/package.json`, `backend/package-lock.json`, `backend/tests/compressed-json.test.ts`, `PLAN.md`, and `PROGRESS.md`. The tracked database, application logic, production configuration, and frontend files were not modified.
+This handoff covers frontend authentication forms, middleware, cookie/session and API helpers, review draft handling, focused tests and test script, and `README.md`, `PLAN.md`, and `PROGRESS.md`. The backend source, tracked database, lockfiles, and production configuration were not modified.
 
 ## Next recommended task
 
-Resolve the Render client-IP prerequisite and the registration enumeration contract before claiming `SEC-03` complete. `TEST-04` remains a strong next task. Production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
+Complete browser-level authentication/deep-link/draft validation and integrate the frontend tests into CI under `TEST-04` before closing `TEST-02` and its dependent `SEC-05`. Resolve the Render client-IP prerequisite and registration enumeration contract before claiming `SEC-03` complete. Production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
 
 ## Session handoff checklist
 

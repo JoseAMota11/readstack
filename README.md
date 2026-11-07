@@ -144,6 +144,12 @@ npm run test:security    # SEC-04 ownership regression probes
 
 Review operations require ownership of both the review and its associated book. Foreign, missing, or inconsistent resources return HTTP 404; existing inconsistent reviews are not modified or deleted by these checks.
 
+### Frontend authentication checks
+
+With Node.js 22 and the existing frontend dependencies installed, run `npm test` from `frontend/`. The focused tests use Node's built-in test runner and the existing TypeScript compiler; they do not require a database or a live service. CI integration and browser-level coverage remain pending.
+
+The frontend protects library and book routes as a navigation aid; the API still verifies each token and enforces ownership. An expired or rejected session returns to login. Review edits are saved in browser session storage, scoped to the user and book, so they can be restored after login. A successful submission removes only the submitted version; later edits remain. Drafts expire after 24 hours without editing and are cleaned up when the app opens and approximately hourly while it remains open. If browser storage is unavailable, a draft cannot be restored after navigation.
+
 ### Authentication rate limits
 
 Login and registration are limited per normalized email, without storing the email itself in the limiter. By default, login allows 10 requests per account per 15 minutes and registration allows 5 per account per hour, including successful requests. Exceeding a limit returns HTTP 429 with `Retry-After`. Duplicate registration still returns 409 below the limit; it can reveal that an email is registered.

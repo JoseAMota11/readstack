@@ -3,7 +3,7 @@
 import { Filters } from '@/context/filters.context';
 import { Book } from '@/types/book.type';
 import { API_URL } from '@/utils/constants';
-import { getToken } from '@/utils/cookies-handlers';
+import { authenticatedFetch, responseError } from './authenticated-fetch';
 
 export type Response = {
   books: Book[];
@@ -26,30 +26,28 @@ export const getAllBooks = async (filters?: Filters) => {
     }
   }
 
-  const res = await fetch(url.toString(), {
+  const res = await authenticatedFetch(url.toString(), {
     method: 'GET',
     headers: {
       accept: 'application/json',
-      Authorization: 'Bearer ' + getToken(),
     },
   });
+  if (!res.ok) throw new Error(await responseError(res));
   const result = await res.json();
 
   return result as Response;
 };
 
 export const getOneBook = async (id: string) => {
-  const res = await fetch(`${API_URL}/books/${id}`, {
+  const res = await authenticatedFetch(`${API_URL}/books/${id}`, {
     method: 'GET',
     headers: {
       accept: 'application/json',
-      Authorization: 'Bearer ' + getToken(),
     },
   });
 
   if (!res.ok) {
-    const { error }: { error: string } = await res.json();
-    return [error, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const data = await res.json();
@@ -57,18 +55,16 @@ export const getOneBook = async (id: string) => {
 };
 
 export const createBook = async (body: Book) => {
-  const res = await fetch(`${API_URL}/books/`, {
+  const res = await authenticatedFetch(`${API_URL}/books/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + getToken(),
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const { error }: { error: string } = await res.json();
-    return [error, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const { message }: { message: string } = await res.json();
@@ -76,18 +72,16 @@ export const createBook = async (body: Book) => {
 };
 
 export const updateBook = async (id: string, body: Partial<Book>) => {
-  const res = await fetch(`${API_URL}/books/${id}`, {
+  const res = await authenticatedFetch(`${API_URL}/books/${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + getToken(),
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const { error }: { error: string } = await res.json();
-    return [error, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const { message }: { message: string } = await res.json();
@@ -95,17 +89,15 @@ export const updateBook = async (id: string, body: Partial<Book>) => {
 };
 
 export const deleteBook = async (id: string) => {
-  const res = await fetch(`${API_URL}/books/${id}`, {
+  const res = await authenticatedFetch(`${API_URL}/books/${id}`, {
     method: 'DELETE',
     headers: {
       accept: 'application/json',
-      Authorization: 'Bearer ' + getToken(),
     },
   });
 
   if (!res.ok) {
-    const { error }: { error: string } = await res.json();
-    return [error, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const { message }: { message: string } = await res.json();
@@ -113,17 +105,15 @@ export const deleteBook = async (id: string) => {
 };
 
 export const exportBookCSV = async (id: string) => {
-  const res = await fetch(`${API_URL}/books/${id}/export`, {
+  const res = await authenticatedFetch(`${API_URL}/books/${id}/export`, {
     method: 'GET',
     headers: {
       accept: 'application/json',
-      Authorization: 'Bearer ' + getToken(),
     },
   });
 
   if (!res.ok) {
-    const { error }: { error: string } = await res.json();
-    return [error, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const blob = await res.blob();

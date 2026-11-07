@@ -3,12 +3,18 @@
 import { TokenDecoded } from '@/types/token.type';
 import { decodeJwt } from 'jose';
 import Cookies from 'js-cookie';
+import { tokenExpiry } from './session';
+
+let sessionVersion = 0;
 
 export const setToken = (token: string) => {
-  const { exp }: TokenDecoded = decodeJwt(token);
-
-  Cookies.set('token', token, { expires: exp });
+  const expires = tokenExpiry(token);
+  if (!expires) throw new Error('Invalid or expired session');
+  Cookies.set('token', token, { expires });
+  sessionVersion += 1;
 };
+
+export const getSessionVersion = () => sessionVersion;
 
 export const getToken = () => {
   return Cookies.get('token');
@@ -17,10 +23,11 @@ export const getToken = () => {
 export const getTokenDecoded = (): TokenDecoded | null => {
   const token = Cookies.get('token');
 
-  return token ? decodeJwt(token) : null;
+  return tokenExpiry(token) && token ? decodeJwt(token) : null;
 };
 
 export const removeToken = () => {
+  sessionVersion += 1;
   return Cookies.remove('token');
 };
 

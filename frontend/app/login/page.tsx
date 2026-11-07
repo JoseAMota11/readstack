@@ -6,6 +6,7 @@ import { loginSchema } from '@/schemas/login.schema';
 import { loginUser } from '@/services/login.service';
 import { Login } from '@/types/login.type';
 import { setToken } from '@/utils/cookies-handlers';
+import { safeReturnPath } from '@/utils/session';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input } from 'antd';
@@ -42,7 +43,7 @@ function LoginPage() {
 
       if (token) {
         setToken(token);
-        router.push('/');
+        router.push(safeReturnPath(new URLSearchParams(window.location.search).get('returnTo')));
       }
     } catch (err) {
       console.error(err);
@@ -55,6 +56,7 @@ function LoginPage() {
   return (
     <div className="h-screen grid place-content-center">
       <form
+        method="post"
         onSubmit={handleSubmit(onValid)}
         className="w-[360px] bg-white p-4 rounded-lg shadow-lg flex flex-col gap-4 max-[400px]:w-full"
       >

@@ -3,10 +3,11 @@
 import { Review } from '@/types/review.type';
 import { getTokenDecoded } from '@/utils/cookies-handlers';
 import { Button, Input, Rate } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ReviewCard from './review-card';
 import { getAllReviews, postReview } from '@/services/review.service';
 import { useMessage } from '@/context/message.context';
+import { readReviewDraft, writeReviewDraft } from '@/utils/review-draft';
 
 function Reviews({ bookId }: { bookId: string }) {
   const [token] = useState(getTokenDecoded);
@@ -17,19 +18,43 @@ function Reviews({ bookId }: { bookId: string }) {
     rating: 0,
     comment: '',
   });
+  const reviewRef = useRef(review);
   const messageApi = useMessage();
+  const draftKey = token?.id ? `review-draft:${token.id}:${bookId}` : null;
+
+  useEffect(() => {
+    if (!draftKey) return;
+    const draft = readReviewDraft(draftKey);
+    if (draft) {
+      reviewRef.current = draft;
+      setReview(draft);
+    }
+  }, [draftKey]);
+
+  const updateDraft = (next: typeof review) => {
+    reviewRef.current = next;
+    if (draftKey) writeReviewDraft(draftKey, next);
+    setReview(next);
+  };
 
   const handlePostReview = async () => {
-    const data = { ...review, userId, bookId };
-
-    const [error, message] = await postReview(data as Review);
-
-    if (error) {
-      messageApi.error(error);
-    } else {
-      messageApi.success(message);
-      getReviews();
-      setReview({ rating: 0, comment: '' });
+    const submitted = reviewRef.current;
+    const data = { ...submitted, userId, bookId };
+    try {
+      const [error, message] = await postReview(data as Review);
+      if (error) {
+        messageApi.error(error);
+      } else {
+        if (reviewRef.current === submitted) {
+          if (draftKey) writeReviewDraft(draftKey, null);
+          reviewRef.current = { rating: 0, comment: '' };
+          setReview(reviewRef.current);
+        }
+        messageApi.success(message);
+        getReviews();
+      }
+    } catch {
+      messageApi.error('No se pudo publicar la reseña.');
     }
   };
 
@@ -62,20 +87,13 @@ function Reviews({ bookId }: { bookId: string }) {
           className="min-h-16 max-h-24 dark:bg-neutral-600 dark:placeholder:text-neutral-400"
           placeholder="¡Me encantó este libro!"
           value={review.comment}
-          onChange={(e) =>
-            setReview((prevReview) => ({
-              ...prevReview,
-              comment: e.target.value,
-            }))
-          }
+          onChange={(e) => updateDraft({ ...reviewRef.current, comment: e.target.value })}
         />
         <div className="flex justify-between items-center">
           <div className="p-1 rounded-md dark:bg-neutral-400">
             <Rate
               value={review.rating}
-              onChange={(value) =>
-                setReview((prevReview) => ({ ...prevReview, rating: value }))
-              }
+              onChange={(value) => updateDraft({ ...reviewRef.current, rating: value })}
             />
           </div>
           <Button

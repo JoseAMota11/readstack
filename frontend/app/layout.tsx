@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { MessageProvider } from '@/context/message.context';
+import ReviewDraftCleanup from '@/components/review-draft-cleanup';
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -31,6 +32,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-neutral-200 dark:bg-neutral-700 dark:text-neutral-100`}
       >
         <AntdRegistry>
+          <ReviewDraftCleanup />
           <MessageProvider>{children}</MessageProvider>
         </AntdRegistry>
       </body>

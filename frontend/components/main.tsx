@@ -10,14 +10,19 @@ import { Pagination } from 'antd';
 function Main() {
   const [books, setBooks] = useState<Book[]>([]);
   const [pagination, setPagination] = useState<Response['pagination']>();
+  const [loadError, setLoadError] = useState(false);
   const { filters, handleSetFilters, refresh } = useFilters();
 
   useEffect(() => {
     (async () => {
-      const { books, pagination } = await getAllBooks(filters);
-
-      setBooks(books);
-      setPagination(pagination);
+      try {
+        const { books, pagination } = await getAllBooks(filters);
+        setBooks(books);
+        setPagination(pagination);
+        setLoadError(false);
+      } catch {
+        setLoadError(true);
+      }
     })();
   }, [filters, refresh]);
 
@@ -28,6 +33,8 @@ function Main() {
   const handlePageSizeChange = (_: number, pageSize: number) => {
     handleSetFilters({ current: '1', size: String(pageSize) });
   };
+
+  if (loadError) return <p className="text-center">No se pudieron cargar los libros.</p>;
 
   if (books.length === 0 && Object.keys(filters).length > 0) {
     return (
