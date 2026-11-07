@@ -4,9 +4,13 @@ import { ReviewModel } from '../models/review.model';
 export class ReviewController {
   static getAllReviews(req: Request, res: Response) {
     const { bookId } = req.params;
-    const result = ReviewModel.findAll(bookId);
+    const result = ReviewModel.findAll(bookId, req.userId!);
 
-    res.status(200).json(result);
+    if (result) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).json({ error: 'Recurso no disponible.' });
+    }
   }
 
   static setReview(req: Request, res: Response) {
@@ -19,10 +23,7 @@ export class ReviewController {
       if (changes) {
         res.status(201).json({ message: 'Reseña creada exitosamente.' });
       } else {
-        res.status(400).json({
-          error:
-            'No se pudo guardar la reseña. Verifica los datos e inténtalo de nuevo.',
-        });
+        res.status(404).json({ error: 'Recurso no disponible.' });
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -43,10 +44,7 @@ export class ReviewController {
       if (changes) {
         res.status(200).json({ message: 'Reseña actualizada exitosamente.' });
       } else {
-        res.status(400).json({
-          error:
-            'No se pudo actualizar la reseña. Verifica los datos e inténtalo de nuevo.',
-        });
+        res.status(404).json({ error: 'Recurso no disponible.' });
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -63,10 +61,7 @@ export class ReviewController {
     if (changes) {
       res.status(200).json({ message: 'Reseña borrada exitosamente.' });
     } else {
-      res.status(400).json({
-        error:
-          'No se pudo borrar la reseña. Verifica los datos e inténtalo de nuevo.',
-      });
+      res.status(404).json({ error: 'Recurso no disponible.' });
     }
   }
 }

@@ -1,18 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import { app } from '../helpers/test-app';
+import { app, db } from '../helpers/test-app';
 import {
   auth,
   createBook,
   createReview,
   insertReviewDirectly,
-  listReviews,
   registerUser,
 } from '../helpers/fixtures';
 
-// SEC-04 probes. These encode the required behavior and are expected to fail
-// until SEC-04 enforces review and book ownership. Run with:
+// SEC-04 probes. Run with:
 //   npm run test:security
 function assertDenied(status: number, context: string) {
   assert.ok(
@@ -47,6 +45,9 @@ test('P2: cross-user review creation must be denied', async () => {
   });
 
   assertDenied(response.status, 'cross-user review creation');
+  const row = db.prepare('SELECT COUNT(*) AS total FROM Reviews WHERE bookId = ?')
+    .get(book.id) as { total: number };
+  assert.equal(row.total, 0);
 });
 
 test('P3: updating a review attached to a foreign book must be denied', async () => {
@@ -54,8 +55,8 @@ test('P3: updating a review attached to a foreign book must be denied', async ()
   const bob = await registerUser('p3-bob');
   const book = await createBook(alice.token, alice.userId);
 
-  // Reproduce the inconsistent state the current API can create (P2): a review
-  // whose userId matches the caller but whose book belongs to another user.
+  // Construct an inconsistent state directly in the isolated test database:
+  // the review belongs to the caller, but its book belongs to another user.
   const seededComment = 'Seeded inconsistent ownership review';
   const reviewId = insertReviewDirectly({
     bookId: book.id,
@@ -76,9 +77,10 @@ test('P3: updating a review attached to a foreign book must be denied', async ()
 
   assertDenied(response.status, 'foreign-book review update');
 
-  const reviews = await listReviews(alice.token, book.id);
-  const seeded = reviews.find((review) => review.id === reviewId);
+  const seeded = db.prepare('SELECT comment, rating FROM Reviews WHERE id = ?')
+    .get(reviewId) as { comment: string; rating: number } | undefined;
 
   assert.ok(seeded, 'seeded review should still exist');
   assert.equal(seeded.comment, seededComment);
+  assert.equal(seeded.rating, 3);
 });

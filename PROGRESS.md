@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-07
 **Current phase:** Phase 1 — Tests, CI, and repeatable validation
-**Active task:** None — `TEST-01` complete; `SEC-04` not started
+**Active task:** None — `TEST-01` and `SEC-04` complete
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -14,6 +14,7 @@
 | `AUD-01` | Static security audit completed; findings mapped to remediation tasks. |
 | `DOC-01` | `AGENTS.md`, `PLAN.md`, and `PROGRESS.md` written and verified on 2026-11-07. |
 | `TEST-01` | Backend test harness and initial authentication and ownership tests implemented and locally validated. |
+| `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
 
 No migration, upgrade, or deployment work has been completed.
 
@@ -25,7 +26,8 @@ No migration, upgrade, or deployment work has been completed.
 - Schema creation occurs at module load; no migrations exist.
 - Authentication uses a six-hour JWT in a JavaScript-readable `token` cookie, sent as a Bearer token.
 - Middleware matches only `/` and `/login`; `/book/*` is unprotected.
-- Review listing does not verify book ownership; review update trusts a client-supplied `bookId`.
+- Review listing requires book ownership and filters reviews by owner. Creation, update, and deletion use token-derived identity and enforce the stored book relationship; inaccessible resources return a generic 404.
+- Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
 - CORS is open; no login rate limiting; error handling is inconsistent.
 - JWT configuration includes a hardcoded fallback secret.
 - Initial discovery found no tests, test scripts, CI, or backup procedure. Backend tests and scripts now exist; CI and a backup procedure remain absent.
@@ -65,23 +67,20 @@ Production persistence must not be tested destructively. Any disposal of product
 
 - Prior DOC-01 validation consisted of read-only inspection and Git checks; no build or tests were run then.
 - TEST-01 local validation used Node.js 22: `npm run build` passed and `npm test` passed all 26 tests, from `backend/`.
-- `npm run test:security`, from `backend/`, exited non-zero as expected: three probes reproduced existing authorization weaknesses. P1: cross-user review listing returned HTTP 200; P2: cross-user review creation returned HTTP 201; P3: updating a review associated with a foreign-owned book in a synthetically constructed inconsistent ownership state returned HTTP 200.
-- Tests use temporary SQLite databases and synthetic authentication data. Test helpers compute and compare SHA-256 hashes of `backend/library.db` during normal test execution; no independent pre-implementation hash was verified.
-- `git diff --check` passed during TEST-01 validation. The full isolation regression suite and CI remain pending; these probes do not establish that all isolation vulnerabilities have been discovered or fixed.
+- Before SEC-04, the security probes reproduced cross-user listing (200), cross-user creation (201), and updating a review owned by the caller but attached to another user's book in a synthetic inconsistent state (200).
+- SEC-04 validation from `backend/` used Node.js v22.23.4: `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 32/32 tests, and `fnm exec --using 22 npm run test:security` passed all 3 probes. Tests were not rerun after documentation and comment-only closeout edits.
+- Tests use isolated temporary SQLite databases and synthetic data; their hash guards passed. Independent SHA-256 checks before and after SEC-04 validation confirmed `backend/library.db` was unchanged.
+- `git diff --check` passed during SEC-04 validation. The full `TEST-03` isolation regression suite and CI remain pending; the focused tests do not establish that all isolation vulnerabilities have been discovered or fixed. Missing-review update/delete cases and exact 404 bodies are not independently asserted.
 - Production was not tested or accessed; no backup or recoverable production SQLite state is assumed.
-- No commit, push, merge, or deployment occurred.
+- No push, merge, deployment, or production access occurred.
 
 ## Files changed
 
-Documentation closeout modified:
-- `PLAN.md`
-- `PROGRESS.md`
-
-Pre-existing uncommitted TEST-01 changes include `README.md`, backend package files, backend source/configuration, and `backend/tests/`. This closeout does not modify those files, `AGENTS.md`, or the database.
+SEC-04 changes include `backend/src/models/review.model.ts`, `backend/src/controllers/review.controller.ts`, `backend/tests/reviews.ownership.test.ts`, `backend/tests/security/sec04-review-ownership.probes.test.ts`, `README.md`, `PLAN.md`, and `PROGRESS.md`. `backend/library.db`, production configuration, and frontend files were not modified.
 
 ## Next recommended task
 
-`SEC-04` — enforce review and book ownership; `TEST-01` is complete. Do not begin without a new instruction. `TEST-03` and `TEST-04` remain pending; production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
+`TEST-03` — expand authentication and isolation regression coverage, subject to a new instruction. `TEST-04` remains pending; production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
 
 ## Session handoff checklist
 

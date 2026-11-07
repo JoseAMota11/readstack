@@ -2,7 +2,13 @@ import db from '../config/db';
 import { Review } from '../types/review.type';
 
 export class ReviewModel {
-  static findAll(bookId: string) {
+  static findAll(bookId: string, userId: string) {
+    const book = db
+      .prepare('SELECT 1 FROM Books WHERE id = ? AND userId = ?')
+      .get(bookId, userId);
+
+    if (!book) return undefined;
+
     const stmt = db.prepare(`
       SELECT 
         r.id,
@@ -12,31 +18,16 @@ export class ReviewModel {
         u.username AS reviewer
       FROM Reviews r
       JOIN Users u ON r.userId = u.id
-      WHERE r.bookId = ?
+      JOIN Books b ON b.id = r.bookId AND b.userId = r.userId
+      WHERE r.bookId = ? AND r.userId = ? AND b.userId = ?
       ORDER BY r.createdAt DESC
     `);
 
-    return stmt.all(bookId) as Review[];
+    return stmt.all(bookId, userId, userId) as Review[];
   }
 
   static create(review: Review) {
     const { bookId, userId, rating, comment } = review;
-
-    const bookExists = db
-      .prepare('SELECT 1 FROM Books WHERE id = ?')
-      .get(bookId);
-
-    if (!bookExists) {
-      throw new Error('El libro no existe.');
-    }
-
-    const userExists = db
-      .prepare('SELECT 1 FROM Users WHERE id = ?')
-      .get(userId);
-
-    if (!userExists) {
-      throw new Error('El usuario no existe.');
-    }
 
     const id = crypto.randomUUID();
     const stmt = db.prepare(
@@ -46,11 +37,11 @@ export class ReviewModel {
         userId,
         rating,
         comment
-      ) VALUES (?, ?, ?, ?, ?)`
+      ) SELECT ?, id, userId, ?, ? FROM Books WHERE id = ? AND userId = ?`
     );
 
     try {
-      const info = stmt.run(id, bookId, userId, rating, comment);
+      const info = stmt.run(id, rating, comment, bookId, userId);
 
       return { changes: Boolean(info.changes) };
     } catch (error) {
@@ -66,7 +57,11 @@ export class ReviewModel {
     const stmt = db.prepare(
       `UPDATE Reviews 
        SET rating = ?, comment = ? 
-       WHERE bookId = ? AND id = ? AND userId = ?`
+       WHERE bookId = ? AND id = ? AND userId = ?
+         AND EXISTS (
+           SELECT 1 FROM Books b
+           WHERE b.id = Reviews.bookId AND b.userId = Reviews.userId
+         )`
     );
 
     try {
@@ -81,7 +76,13 @@ export class ReviewModel {
   }
 
   static delete(id: string, userId: string) {
-    const stmt = db.prepare('DELETE FROM Reviews WHERE id = ? AND userId = ?');
+    const stmt = db.prepare(`
+      DELETE FROM Reviews WHERE id = ? AND userId = ?
+        AND EXISTS (
+          SELECT 1 FROM Books b
+          WHERE b.id = Reviews.bookId AND b.userId = Reviews.userId
+        )
+    `);
     const info = stmt.run(id, userId);
 
     return { changes: Boolean(info.changes) };

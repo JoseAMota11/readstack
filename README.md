@@ -134,15 +134,15 @@ git clone https://github.com/JoseAMota11/read-group-challenge.git
 
 ### 4. Run backend tests
 
-The automated suite uses synthetic users and a temporary SQLite database. It never reads or writes `backend/library.db`. Node.js 22 is required.
+The automated suite uses synthetic users and a temporary SQLite database. It checks that `backend/library.db` remains unchanged by comparing file hashes; application queries do not use that database. Node.js 22 is required.
 
 ```bash
 cd backend/
 npm test                 # passing regression suite
-npm run test:security    # SEC-04 probes; expected to fail until SEC-04
+npm run test:security    # SEC-04 ownership regression probes
 ```
 
-`npm run test:security` is expected to exit non-zero while the review ownership vulnerabilities remain unresolved.
+Review operations require ownership of both the review and its associated book. Foreign, missing, or inconsistent resources return HTTP 404; existing inconsistent reviews are not modified or deleted by these checks.
 
 ## Estructura del proyecto
 
