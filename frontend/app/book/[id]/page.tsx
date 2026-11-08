@@ -13,7 +13,7 @@ import {
   FileExcelOutlined,
   StarOutlined,
 } from '@ant-design/icons';
-import { Button, Tag, Tooltip } from 'antd';
+import { Button, Spin, Tag, Tooltip } from 'antd';
 import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import booksGenresOptions from '@/books-genres.json';
 import { useMessage } from '@/context/message.context';
@@ -26,16 +26,35 @@ type PageProps = {
 };
 
 function DetailsBookPage({ params }: PageProps) {
-  const { id } = params;
+  return <BookDetails key={params.id} id={params.id} />;
+}
+
+function BookDetails({ id }: { id: string }) {
   const [book, setBook] = useState<Book>();
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    let active = true;
     (async () => {
-      const [_error, book] = await getOneBook(id);
-
-      setBook(book);
+      try {
+        const [error, book] = await getOneBook(id);
+        if (!active) return;
+        if (error || !book) setLoadError(true);
+        else setBook(book);
+      } catch {
+        if (active) setLoadError(true);
+      }
     })();
-  }, [id]);
+    return () => { active = false; };
+  }, [id, retry]);
+
+  if (loadError) return <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div>;
+  if (!book) return <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div>;
+
+  const updateLoadedBook: Dispatch<SetStateAction<Book | undefined>> = (value) => {
+    setBook((previous) => (typeof value === 'function' ? value(previous) : value) ?? previous);
+  };
 
   if (book) {
     const { title, coverImage, author, genre } = book;
@@ -43,7 +62,7 @@ function DetailsBookPage({ params }: PageProps) {
     return (
       <div className="grid place-content-center py-4 max-[500px]:block">
         <div className="w-[400px] flex flex-col items-center gap-4 max-[500px]:w-full max-[500px]:px-4">
-          <ActionBar book={book} setBook={setBook} />
+          <ActionBar book={book} setBook={updateLoadedBook} />
           <Genres genre={genre} />
           <h3 className="text-xl text-center font-semibold max-[500px]:text-base">
             {title} &middot; {author}

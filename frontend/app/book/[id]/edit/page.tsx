@@ -5,9 +5,9 @@ import { bookSchema } from '@/schemas/book.shema';
 import { getOneBook, updateBook } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, Input, InputNumber, Select } from 'antd';
+import { Button, Checkbox, Input, InputNumber, Select, Spin } from 'antd';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Controller,
   FieldValues,
@@ -18,6 +18,10 @@ import booksGenresOptions from '@/books-genres.json';
 
 function EditBookPage() {
   const { id } = useParams();
+  return <EditBook key={id as string} id={id as string} />;
+}
+
+function EditBook({ id }: { id: string }) {
   const {
     control,
     handleSubmit,
@@ -28,6 +32,9 @@ function EditBookPage() {
   });
   const messageApi = useMessage();
   const router = useRouter();
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   const onValid: SubmitHandler<FieldValues> = async (values) => {
     const data = { ...values, userId: id };
@@ -43,14 +50,28 @@ function EditBookPage() {
   };
 
   useEffect(() => {
+    let active = true;
     (async () => {
-      const [_error, book] = await getOneBook(id as string);
-
-      for (const key in book) {
-        setValue(key, book[key as keyof Book]);
+      try {
+        const [error, book] = await getOneBook(id);
+        if (!active) return;
+        if (error || !book) {
+          setLoadError(true);
+          return;
+        }
+        for (const key in book) {
+          setValue(key, book[key as keyof Book]);
+        }
+        setLoaded(true);
+      } catch {
+        if (active) setLoadError(true);
       }
     })();
-  }, [id, setValue]);
+    return () => { active = false; };
+  }, [id, retry, setValue]);
+
+  if (loadError) return <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div>;
+  if (!loaded) return <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div>;
 
   return (
     <div className="h-screen grid place-content-center max-[500px]:block max-[500px]:p-4">

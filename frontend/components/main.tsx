@@ -5,26 +5,36 @@ import Card from './card';
 import { useEffect, useState } from 'react';
 import { Book } from '@/types/book.type';
 import { useFilters } from '@/context/filters.context';
-import { Pagination } from 'antd';
+import { Button, Pagination, Spin } from 'antd';
 
 function Main() {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [pagination, setPagination] = useState<Response['pagination']>();
-  const [loadError, setLoadError] = useState(false);
   const { filters, handleSetFilters, refresh } = useFilters();
+  const filterKey = JSON.stringify({
+    title: filters.title || undefined, author: filters.author || undefined,
+    year: filters.year || undefined, genre: filters.genre || undefined,
+    current: filters.current || undefined, size: filters.size || undefined,
+  });
+
+  return <BookList key={JSON.stringify([filterKey, refresh])} filterKey={filterKey} handleSetFilters={handleSetFilters} />;
+}
+
+function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSetFilters: ReturnType<typeof useFilters>['handleSetFilters'] }) {
+  const [result, setResult] = useState<{ books: Book[]; pagination: Response['pagination'] }>();
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
-        const { books, pagination } = await getAllBooks(filters);
-        setBooks(books);
-        setPagination(pagination);
-        setLoadError(false);
+        const { books, pagination } = await getAllBooks(JSON.parse(filterKey));
+        if (active) setResult({ books, pagination });
       } catch {
-        setLoadError(true);
+        if (active) setLoadError(true);
       }
     })();
-  }, [filters, refresh]);
+    return () => { active = false; };
+  }, [filterKey, retry]);
 
   const handlePageChange = (page: number, pageSize: number) => {
     handleSetFilters({ current: String(page), size: String(pageSize) });
@@ -34,9 +44,23 @@ function Main() {
     handleSetFilters({ current: '1', size: String(pageSize) });
   };
 
-  if (loadError) return <p className="text-center">No se pudieron cargar los libros.</p>;
+  if (loadError) return (
+    <div className="text-center" role="alert">
+      <p>No se pudieron cargar los libros.</p>
+      <Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button>
+    </div>
+  );
 
-  if (books.length === 0 && Object.keys(filters).length > 0) {
+  if (!result) return <div className="text-center" role="status" aria-label="Cargando libros"><Spin /> Cargando libros...</div>;
+
+  const { books, pagination } = result;
+  const filters = JSON.parse(filterKey);
+
+  if (books.length === 0 && pagination.total > 0) {
+    return <div className="text-center"><p>No hay libros en esta página.</p><Button onClick={() => handleSetFilters({ current: '1' })}>Volver a la primera página</Button></div>;
+  }
+
+  if (books.length === 0 && [filters.title, filters.author, filters.year, filters.genre].some(Boolean)) {
     return (
       <p className="text-center">
         ¡Uups! Parece que no hay resultados para esta búsqueda.
