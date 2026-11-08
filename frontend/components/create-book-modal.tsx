@@ -2,8 +2,8 @@
 
 import { bookSchema } from '@/schemas/book.shema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, Input, InputNumber, Modal, Select } from 'antd';
-import { Dispatch, SetStateAction } from 'react';
+import { Button, Checkbox, ConfigProvider, Input, InputNumber, Modal, Select } from 'antd';
+import { Dispatch, SetStateAction, useRef, useState } from 'react';
 import {
   Controller,
   FieldValues,
@@ -32,28 +32,43 @@ function CreateBookModal({
   } = useForm({ resolver: zodResolver(bookSchema) });
   const messageApi = useMessage();
   const { refreshData } = useFilters();
+  const submitting = useRef(false);
+  const [pending, setPending] = useState(false);
 
   const onValid: SubmitHandler<FieldValues> = async (values) => {
-    const data = { ...values };
-    const token = getTokenDecoded();
+    if (submitting.current) return;
+    submitting.current = true;
+    setPending(true);
+    try {
+      const data = { ...values };
+      const token = getTokenDecoded();
 
-    if (token) {
-      const { id } = token;
-      data['userId'] = id;
-    }
+      if (token) {
+        const { id } = token;
+        data['userId'] = id;
+      }
 
-    const [error, message] = await createBook(data as Book);
+      const [error, message] = await createBook(data as Book);
 
-    if (error) {
-      messageApi.error(error);
-    } else {
-      messageApi.success(message);
-      handleCancel();
+      if (error) {
+        messageApi.error(error);
+        return;
+      }
+      if (typeof message !== 'string') throw new Error('Invalid response');
+      messageApi.success(message.trim() ? message : 'Libro creado exitosamente.');
+      setOpen(false);
+      reset();
       refreshData();
+    } catch {
+      messageApi.error('No se pudo confirmar si se guardó el libro. Revisa tu biblioteca antes de volver a intentarlo.');
+    } finally {
+      submitting.current = false;
+      setPending(false);
     }
   };
 
   const handleCancel = () => {
+    if (submitting.current) return;
     setOpen(false);
     reset();
   };
@@ -62,10 +77,13 @@ function CreateBookModal({
     <Modal
       open={open}
       onCancel={handleCancel}
+      maskClosable={!pending}
+      keyboard={!pending}
       footer={false}
       closeIcon={false}
       className="w-fit dark:[&_.ant-modal-content]:bg-neutral-800"
     >
+      <ConfigProvider componentDisabled={pending}>
       <form
         onSubmit={handleSubmit(onValid, (errors) => console.log(errors))}
         className="dark:text-neutral-100 grid grid-cols-[auto,300px] gap-4 items-center max-[500px]:grid-cols-[auto,180px]"
@@ -167,11 +185,12 @@ function CreateBookModal({
           )}
         />
         <div className="col-span-full w-full flex justify-end">
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" loading={pending} disabled={pending}>
             Guardar
           </Button>
         </div>
       </form>
+      </ConfigProvider>
     </Modal>
   );
 }

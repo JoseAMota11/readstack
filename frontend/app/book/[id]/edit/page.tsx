@@ -5,9 +5,9 @@ import { bookSchema } from '@/schemas/book.shema';
 import { getOneBook, updateBook } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, Input, InputNumber, Select, Spin } from 'antd';
+import { Button, Checkbox, ConfigProvider, Input, InputNumber, Select, Spin } from 'antd';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Controller,
   FieldValues,
@@ -35,17 +35,41 @@ function EditBook({ id }: { id: string }) {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const submitting = useRef(false);
+  const mounted = useRef(false);
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const onValid: SubmitHandler<FieldValues> = async (values) => {
-    const data = { ...values, userId: id };
+    if (submitting.current) return;
+    submitting.current = true;
+    setPending(true);
+    let navigating = false;
+    try {
+      const data = { ...values, userId: id };
 
-    const [error, message] = await updateBook(id as string, data as Book);
+      const [error, message] = await updateBook(id as string, data as Book);
+      if (!mounted.current) return;
 
-    if (error) {
-      messageApi.error(error);
-    } else {
-      messageApi.success(message);
+      if (error) {
+        messageApi.error(error);
+        return;
+      }
+      if (typeof message !== 'string') throw new Error('Invalid response');
+      messageApi.success(message.trim() ? message : 'Libro actualizado exitosamente.');
       router.replace('/');
+      navigating = true;
+    } catch {
+      if (mounted.current) messageApi.error('No se pudo confirmar si se actualizó el libro. Revisa tu biblioteca antes de volver a intentarlo.');
+    } finally {
+      if (!navigating) {
+        submitting.current = false;
+        if (mounted.current) setPending(false);
+      }
     }
   };
 
@@ -75,6 +99,7 @@ function EditBook({ id }: { id: string }) {
 
   return (
     <div className="h-screen grid place-content-center max-[500px]:block max-[500px]:p-4">
+      <ConfigProvider componentDisabled={pending}>
       <form
         onSubmit={handleSubmit(onValid, (errors) => console.log(errors))}
         className="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-lg grid grid-cols-[auto,300px] gap-4 items-center max-[500px]:grid-cols-[auto,180px]"
@@ -176,11 +201,12 @@ function EditBook({ id }: { id: string }) {
           )}
         />
         <div className="col-span-full w-full flex justify-end">
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" loading={pending} disabled={pending}>
             Actualizar
           </Button>
         </div>
       </form>
+      </ConfigProvider>
     </div>
   );
 }

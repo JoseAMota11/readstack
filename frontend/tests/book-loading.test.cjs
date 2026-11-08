@@ -24,7 +24,7 @@ for (const extension of ['.ts', '.tsx']) {
 const original = { useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, load: Module._load };
 const Button = () => null;
 const Card = () => null;
-const ui = { Button, Spin: () => null, Pagination: () => null, Tag: () => null, Tooltip: () => null, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null };
+const ui = { Button, ConfigProvider: () => null, Spin: () => null, Pagination: () => null, Tag: () => null, Tooltip: () => null, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null };
 const requests = [];
 let filters = {};
 let refresh = false;
