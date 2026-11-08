@@ -1,7 +1,7 @@
 # Modernization Plan — Biblioteca Personal
 
 **Status:** Active
-**Last updated:** 2026-11-07
+**Last updated:** 2026-11-08
 **Owner:** Repository owner
 **Scope:** Incremental modernization of the existing Next.js/Express application.
 
@@ -67,7 +67,7 @@ Definition of done:
 
 ### Source-code findings
 
-Verified through selective static review on 2026-11-06.
+Historical baseline verified through selective static review on 2026-11-06; later changes and current validation are recorded in `PROGRESS.md`.
 
 | Area | Current state |
 |---|---|
@@ -204,6 +204,12 @@ All optional tasks require owner prioritization and $0 confirmation.
 | `OPT-02` | Add password reset and email verification | P2 | `[ ]` | `SEC-02`, `SEC-03`, `PUB-01` | Secure account-recovery flow | Single-use expiring tokens, rate limiting, no account enumeration, tests, and a separately approved email option that remains within $0 |
 | `OPT-03` | Add library-wide CSV export | P2 | `[ ]` | `SEC-04`, `SEC-07` | Export of the authenticated user's full library | Scoped to the authenticated user; existing per-book export preserved; CSV escaping handled; no cross-user data |
 | `OPT-04` | Conduct accessibility review | P2 | `[ ]` | `SEC-05` | Prioritized accessibility fixes | Keyboard navigation, labels, focus handling, contrast, and error announcements reviewed; critical issues fixed without scope expansion |
+
+### UX/UI handoff and follow-up
+
+Beginning UX/UI redesign is authorized, not production release or security approval. Direction: modern minimalist editorial personal library, strong book covers, responsive mobile-first experience, consistent navigation and forms, accessibility, and light/dark themes. Retain Ant Design 5 provisionally and evaluate token customization and selective replacement, not an automatic full migration. Preserve functionality, authentication, public registration, and multiuser isolation. A formal redesign task ID and any further owner decisions remain pending; no existing decision is replaced.
+
+CI, browser validation, session/security decisions and remediation, dependency advisories, the pagination timestamp tie-breaker, production persistence/recovery, and release verification remain follow-up work, not blockers to beginning design or waived release gates. After redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup instructions, and a demo; formal task assignment remains pending. The accuracy edits to README do not complete `DOC-02`.
 
 ## 6. Production safety and rollback
 

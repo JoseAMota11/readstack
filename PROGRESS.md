@@ -1,8 +1,8 @@
 # Progress — Biblioteca Personal
 
-**Last updated:** 2026-11-07
-**Current phase:** Phase 1 — Tests, CI, and repeatable validation
-**Active task:** `TEST-02` / `SEC-05` — authentication stability implemented locally; CI and browser-level validation remain pending. `SEC-03` remains partial.
+**Last updated:** 2026-11-08
+**Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
+**Active task:** Establish the UX/UI redesign scope; a formal roadmap task ID and any required owner decisions remain pending. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -18,6 +18,8 @@
 | `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
 
 No migration or deployment work has been completed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
+
+Functional modernization handoff: the locally committed FIX-02 work comprises A (public authentication API errors, `c58e2b7`), B1 (book loading and error states, `b7112d1`), B2 (book mutation failures, `09178af`), B3 (book actions and CSV error handling, `25ecbd4`), and C (review reliability and recovery, `3216355`). FIX-02 is a work label, not an existing formal PLAN task ID.
 
 ## Verified source-code findings
 
@@ -68,6 +70,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- Final integrated regression reported on Node 22: frontend tests 49/49, backend tests 42/42, security probes 3/3, frontend lint and TypeScript checks passed. Builds were not rerun in this final regression. Earlier build results below are separate evidence.
+- Focused manual browser checks were completed during prior work, but detailed evidence is not fully captured in repository documentation; comprehensive browser-level validation remains pending.
 - Prior DOC-01 validation consisted of read-only inspection and Git checks; no build or tests were run then.
 - TEST-01 local validation used Node.js 22: `npm run build` passed and `npm test` passed all 26 tests, from `backend/`.
 - Before SEC-04, the security probes reproduced cross-user listing (200), cross-user creation (201), and updating a review owned by the caller but attached to another user's book in a synthetic inconsistent state (200).
@@ -86,11 +90,13 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
-This handoff covers frontend authentication forms, middleware, cookie/session and API helpers, review draft handling, focused tests and test script, and `README.md`, `PLAN.md`, and `PROGRESS.md`. The backend source, tracked database, lockfiles, and production configuration were not modified.
+This documentation-only handoff changes `README.md`, `PLAN.md`, and `PROGRESS.md`. Application code, dependencies, configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
 
 ## Next recommended task
 
-Complete browser-level authentication/deep-link/draft validation and integrate the frontend tests into CI under `TEST-04` before closing `TEST-02` and its dependent `SEC-05`. Resolve the Render client-IP prerequisite and registration enumeration contract before claiming `SEC-03` complete. Production verification under `AUD-02` remains subject to authorization and non-destructive safeguards.
+Begin UX/UI redesign planning in the established direction: a modern minimalist editorial personal library with strong book covers, responsive mobile-first layouts, consistent navigation and forms, accessibility, and light/dark themes. Retain Ant Design 5 provisionally; evaluate token customization and selective replacement rather than an automatic full migration. Preserve all functional behavior, authentication, public registration, and multiuser isolation.
+
+Nonblocking for starting design, but still required as applicable: browser-level authentication/deep-link/draft validation (`TEST-02`, `SEC-05`), CI (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
 
 ## Session handoff checklist
 

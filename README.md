@@ -1,9 +1,9 @@
 
-# Sistema de Gestión de Biblioteca Personal
+# ReadStack — Sistema de Gestión de Biblioteca Personal
 
 ## Descripción
 
-Sistema de Gestión de Biblioteca Personal es un proyecto CRUD desarrollado completamente en TypeScript, con **Node.js** en el backend y **Next.js** en el frontend. Entre sus funciones se encuentran:
+ReadStack is a multiuser personal library application built with TypeScript, Next.js 14.2.18, React 18, Ant Design 5 and Tailwind CSS 3 on the frontend, and Node.js, Express 4 and SQLite on the backend. It supports public registration and private per-user collections. Modernization and release verification remain in progress.
 
 ### Frontend (React/Next.js)
 
@@ -11,7 +11,7 @@ Sistema de Gestión de Biblioteca Personal es un proyecto CRUD desarrollado comp
    - La aplicación se adapta a diferentes tamaños de pantalla (móviles, tabletas, escritorios).
 
 2. **Gestión de estado:**
-   - Uso de Context API o Redux para manejar el estado global de la aplicación.
+   - Uso de Context API para manejar el estado global de la aplicación.
 
 3. **Rutas protegidas:**
    - Implementación de autenticación en las rutas para restringir el acceso a usuarios no autenticados.
@@ -60,7 +60,7 @@ Sistema de Gestión de Biblioteca Personal es un proyecto CRUD desarrollado comp
    - Respuestas claras y detalladas en caso de errores (ejemplo: credenciales incorrectas, datos faltantes).
 
 5. **Exportación a CSV:**
-   - Endpoint para generar y descargar archivos CSV con la información de la biblioteca personal del usuario.
+   - Exportación CSV por libro. La exportación de toda la biblioteca aún no está implementada.
 
 ## Requisitos previos
 
@@ -80,6 +80,7 @@ Ejecuta el siguiente comando para clonar el repositorio en tu máquina local:
 
 ```bash
 git clone https://github.com/JoseAMota11/read-group-challenge.git
+cd read-group-challenge
 ```
 
 ### 2. Configurar el frontend
@@ -96,7 +97,7 @@ git clone https://github.com/JoseAMota11/read-group-challenge.git
    npm install
    ```
 
-3. Inicia el servidor de desarrollo:
+3. Crea `frontend/.env.local` con `NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1` y luego inicia el servidor de desarrollo:
 
    ```bash
    npm run dev
@@ -106,7 +107,7 @@ git clone https://github.com/JoseAMota11/read-group-challenge.git
 
 ### 3. Configurar el backend
 
-1. Accede al directorio del backend:
+1. En otra terminal, desde la raíz del repositorio, accede al directorio del backend:
 
    ```bash
    cd backend/
@@ -124,13 +125,13 @@ git clone https://github.com/JoseAMota11/read-group-challenge.git
    npm run build
    ```
 
-4. Inicia el servidor:
+4. Define una clave JWT local fuerte y arranca el servidor en el puerto 4000:
 
    ```bash
-   npm start
+   PORT=4000 SECRET_KEY="$(openssl rand -hex 32)" npm start
    ```
 
-   Esto levantará el backend en `http://localhost:4000`.
+   Esto levantará el backend en `http://localhost:4000`. El backend usa variables del entorno del proceso y no carga `.env` automáticamente. Sin `PORT`, usa el puerto 3000; sin `SECRET_KEY`, el código actual usa una clave de respaldo insegura. No uses esa clave de respaldo ni publiques claves. La base SQLite usa la ruta relativa `library.db`, por lo que debes iniciar el backend desde `backend/`.
 
 ### 4. Run backend tests
 
@@ -176,7 +177,6 @@ read-group-challenge/
     │   ├── types/              # Definiciones de tipos de TypeScript
     │   └── utils/              # Funciones de utilidad compartidas
     │   └── index.ts            # Punto de entrada principal del backend
-    ├── .env                    # Variables de entorno
     ├── .gitignore              # Archivos y carpetas ignorados por Git
     ├── library.db              # Archivo de base de datos SQLite
     ├── package-lock.json       # Archivo de bloqueo de dependencias
@@ -187,37 +187,28 @@ read-group-challenge/
     ├── app/                    # Carpetas relacionadas a rutas o páginas principales
     ├── components/             # Componentes reutilizables de React
     ├── context/                # Configuración de contextos globales
-    ├── hooks/                  # Custom hooks de React
     ├── schemas/                # Validaciones o esquemas de datos
     ├── services/               # Lógica de conexión con la API
     ├── types/                  # Definiciones de tipos de TypeScript
     ├── utils/                  # Funciones de utilidad
-    ├── App.tsx                 # Componente principal de la aplicación
-    ├── config.json             # Configuraciones específicas de la app
-    ├── index.css               # Estilos globales de la aplicación
-    ├── main.tsx                # Archivo principal de entrada de React
-    ├── nationalities.json      # Archivo JSON con datos de nacionalidades
-    ├── vite-env.d.ts           # Definiciones de ambiente para Vite
+    ├── middleware.ts           # Protección de rutas
     ├── .env.local              # Variables de entorno locales
-    ├── .eslint.config.js       # Configuración de ESLint
+    ├── .eslintrc.json           # Configuración de ESLint
     ├── .gitignore              # Archivos y carpetas ignorados por Git
-    ├── index.html              # Archivo HTML principal
     ├── package-lock.json       # Archivo de bloqueo de dependencias
     ├── package.json            # Archivo de configuración de dependencias
-    ├── postcss.config.js       # Configuración de PostCSS
-    ├── tailwind.config.js      # Configuración de Tailwind CSS
-    ├── tsconfig.app.json       # Configuración específica de TypeScript para la app
+    ├── postcss.config.mjs      # Configuración de PostCSS
+    ├── tailwind.config.ts      # Configuración de Tailwind CSS
     ├── tsconfig.json           # Configuración global de TypeScript
-    ├── tsconfig.node.json      # Configuración de TypeScript para Node.js
-    └── vite.config.ts          # Configuración de Vite
+    └── next.config.mjs         # Configuración de Next.js
 ```
 
 ## Env
 
-Backend: *.env*
+Backend: environment variables supplied to the process (see startup command above):
 
 ```env
-SECRET_KEY=READ_GROUP_CHALLENGE
+SECRET_KEY=<strong-local-secret>
 PORT=4000
 ```
 
@@ -229,7 +220,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 
 ## Recomendaciones
 
-Este proyecto ya está finalizado y listo para probarse. A continuación, se brindan algunas recomendaciones para garantizar una experiencia óptima durante la prueba:
+El proyecto sigue en modernización. Estas recomendaciones sirven para pruebas locales, no como aprobación de producción:
 
 1. **Probar el backend:**
    - Puedes probar la API RESTful utilizando herramientas como **Postman** o cualquier cliente HTTP de tu preferencia para verificar los endpoints y sus respuestas.
@@ -237,10 +228,8 @@ Este proyecto ya está finalizado y listo para probarse. A continuación, se bri
 2. **Probar el frontend:**
    - Para una experiencia más realista, se recomienda ejecutar el frontend (Next.js) en **modo producción** siguiendo los pasos indicados más abajo.
 
-3. **Credenciales de prueba:**
-   - Puedes iniciar sesión en la aplicación con las siguientes credenciales de prueba:
-     - **Correo:** `jama11@gmail.com`
-     - **Contraseña:** `123456`
+3. **Cuenta de prueba:**
+   - Registra una cuenta sintética para las pruebas locales; no uses datos de producción.
 
 ### Pasos para ejecutar el frontend (Next.js) en modo producción
 
