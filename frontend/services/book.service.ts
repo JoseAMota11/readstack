@@ -108,21 +108,39 @@ export const exportBookCSV = async (id: string) => {
   const res = await authenticatedFetch(`${API_URL}/books/${id}/export`, {
     method: 'GET',
     headers: {
-      accept: 'application/json',
+      accept: 'text/csv',
     },
   });
 
   if (!res.ok) {
-    return [await responseError(res), undefined] as const;
+    throw new Error(await responseError(res));
   }
 
+  if (res.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'text/csv') {
+    throw new Error('Invalid CSV response');
+  }
   const blob = await res.blob();
+  const text = (await blob.text()).replace(/^\uFEFF/, '');
+  const newline = text.indexOf('\n');
+  const header = text.slice(0, newline).replace(/\r$/, '');
+  const record = text.slice(newline + 1);
+  // One eleven-field record; quoted fields may contain commas, escaped quotes and newlines.
+  const validRecord = /^(?:"(?:[^"]|"")+"|[^",\r\n]+)(?:,(?:"(?:[^"]|"")*"|[^",\r\n]*)){10}(?:\r?\n)?(?![\s\S])/.test(record);
+  if (!blob.size || newline < 0 || !/^"id","title","author","year","genre","coverImage","rating","isFavorite","userId","createdAt","updatedAt"$/.test(header) || !validRecord) {
+    throw new Error('Invalid CSV response');
+  }
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `book-${id}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
+  try {
+    const a = document.createElement('a');
+    try {
+      a.href = url;
+      a.download = `book-${id}.csv`;
+      document.body.appendChild(a);
+      a.click();
+    } finally {
+      a.remove();
+    }
+  } finally {
+    window.URL.revokeObjectURL(url);
+  }
 };

@@ -196,7 +196,7 @@ test('protected book and review operations never report 401 as success', async (
   const operations = [
     () => books.getOneBook('123'), () => books.createBook({}),
     () => books.updateBook('123', {}), () => books.deleteBook('123'),
-    () => books.exportBookCSV('123'), () => reviews.getAllReviews('123'),
+    () => reviews.getAllReviews('123'),
     () => reviews.postReview({}), () => reviews.deleteReview('123'),
   ];
   global.fetch = async () => new Response(JSON.stringify({ message: 'expired' }), { status: 401 });
@@ -206,6 +206,8 @@ test('protected book and review operations never report 401 as success', async (
     assert.equal(error, 'expired');
     assert.equal(value, undefined);
   }
+  cookie = token(future());
+  await assert.rejects(books.exportBookCSV('123'), /expired/);
   cookie = token(future());
   await assert.rejects(books.getAllBooks(), /expired/);
 });

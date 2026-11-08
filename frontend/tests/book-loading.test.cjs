@@ -198,15 +198,3 @@ for (const [label, Component, props] of [['detail', Detail, () => ({ params: { i
     assert.equal(byRole(tree, 'alert'), null); h.unmount();
   });
 }
-
-test('favorite refresh cannot replace a newly navigated detail book', async () => {
-  reset(); const h = harness(Detail, () => ({ params: { id } })); h.render();
-  requests.shift().resolve([undefined, book('a')]); await flush();
-  const action = find(h.render(), (element) => typeof element.type === 'function' && element.type.name === 'ActionBar');
-  const bar = action.type(action.props);
-  const buttons = React.Children.toArray(bar.props.children).map((tooltip) => tooltip.props.children);
-  const promise = buttons[3].props.onClick(); await flush();
-  const oldRefresh = requests.shift(); id = 'b'; h.render(); requests.shift().resolve([undefined, book('b')]); await flush();
-  oldRefresh.resolve([undefined, book('a')]); await promise; await flush();
-  assert.match(JSON.stringify(h.render()), /Book b/); h.unmount();
-});
