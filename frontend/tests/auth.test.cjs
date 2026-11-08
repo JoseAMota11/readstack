@@ -81,6 +81,34 @@ test('hydrated login and registration preserve JSON POST success contracts', asy
   assert.deepEqual(await registerUser(payload), [undefined, 'ok']);
 });
 
+test('public authentication failures always return an error without affecting the session', async () => {
+  const payload = { email: 'synthetic@example.test', password: 'synthetic' };
+  const cases = [
+    [JSON.stringify({ error: 'error field' }), 'error field'],
+    [JSON.stringify({ message: 'message field' }), 'message field'],
+    [JSON.stringify({ error: '', message: 'message fallback' }), 'message fallback'],
+    [JSON.stringify({ error: 42, message: null }), 'Ocurrió un error inesperado.'],
+    [JSON.stringify({}), 'Ocurrió un error inesperado.'],
+    ['null', 'Ocurrió un error inesperado.'],
+    ['{invalid', 'Ocurrió un error inesperado.'],
+    ['not json', 'Ocurrió un error inesperado.'],
+    ['', 'Ocurrió un error inesperado.'],
+  ];
+  for (const operation of [loginUser, registerUser]) {
+    for (const status of [400, 401, 409, 429, 500]) {
+      for (const [body, expected] of cases) {
+        cookie = token(future());
+        const currentCookie = cookie;
+        global.fetch = async () => new Response(body, { status });
+        assert.deepEqual(await operation(payload), [expected, undefined]);
+        assert.equal(cookie, currentCookie);
+        assert.equal(removed, false);
+        assert.equal(redirected, undefined);
+      }
+    }
+  }
+});
+
 test('cookie expiration uses absolute JWT expiry and rejects invalid tokens', () => {
   const exp = future();
   let expires;

@@ -1,5 +1,6 @@
 import { Register } from '../types/register.type';
 import { API_URL } from '../utils/constants';
+import { responseError } from './authenticated-fetch';
 
 export const registerUser = async (body: Register) => {
   const res = await fetch(`${API_URL}/register`, {
@@ -11,8 +12,7 @@ export const registerUser = async (body: Register) => {
   });
 
   if (!res.ok) {
-    const { error }: { error: string } = await res.json();
-    return [error, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const { message }: { message: string } = await res.json();

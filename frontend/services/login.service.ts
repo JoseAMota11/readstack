@@ -1,5 +1,6 @@
 import { Login } from '@/types/login.type';
 import { API_URL } from '@/utils/constants';
+import { responseError } from './authenticated-fetch';
 
 export const loginUser = async (body: Login) => {
   const res = await fetch(`${API_URL}/login`, {
@@ -11,8 +12,7 @@ export const loginUser = async (body: Login) => {
   });
 
   if (!res.ok) {
-    const { message }: { message: string } = await res.json();
-    return [message, undefined] as const;
+    return [await responseError(res), undefined] as const;
   }
 
   const { token }: { token: string } = await res.json();
