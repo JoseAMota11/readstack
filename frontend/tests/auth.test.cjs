@@ -22,11 +22,13 @@ require.extensions['.ts'] = (module, filename) => {
 const Cookies = require('js-cookie');
 const { tokenExpiry, safeReturnPath } = require('../utils/session.ts');
 const { setToken, getTokenDecoded } = require('../utils/cookies-handlers.ts');
-const { middleware, config } = require('../middleware.ts');
+const { proxy, config } = require('../proxy.ts');
 const { NextRequest } = require('next/server');
+const { unstable_doesMiddlewareMatch } = require('next/experimental/testing/server');
 const { authenticatedFetch, responseError } = require('../services/authenticated-fetch.ts');
 const { readReviewDraft, writeReviewDraft, cleanupReviewDrafts } = require('../utils/review-draft.ts');
 process.env.NEXT_PUBLIC_API_URL = 'http://localhost:4000/api/v1';
+const { verifyLoginSession } = require('../services/login-session.ts');
 const books = require('../services/book.service.ts');
 const reviews = require('../services/review.service.ts');
 const { loginUser } = require('../services/login.service.ts');
@@ -124,24 +126,100 @@ test('cookie expiration uses absolute JWT expiry and rejects invalid tokens', ()
   }
 });
 
-test('middleware protects private routes but public pages are not matched', () => {
+test('framework matcher covers private routes and excludes public routes and assets', () => {
   assert.deepEqual(config.matcher, ['/', '/book/:path*']);
+  for (const url of ['/', '/book', '/book/', '/book/123', '/book/123/edit?tab=x']) {
+    assert.equal(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }), true, url);
+  }
+  for (const url of ['/login', '/register', '/books', '/_next/static/example.js', '/favicon.ico']) {
+    assert.equal(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }), false, url);
+  }
+});
+
+test('proxy protects private routes and permits valid sessions', () => {
   for (const value of [undefined, 'bad', token(1)]) {
     const headers = value ? { cookie: `token=${value}` } : {};
-    for (const route of ['/', '/book/123', '/book/123/edit']) {
-      const response = middleware(new NextRequest(`http://localhost:3000${route}`, { headers }));
+    for (const route of ['/', '/book', '/book/123', '/book/123/edit']) {
+      const response = proxy(new NextRequest(`http://localhost:3000${route}`, { headers }));
       assert.equal(response.status, 307);
       assert.equal(new URL(response.headers.get('location')).pathname, '/login');
     }
   }
-  const response = middleware(new NextRequest('http://localhost:3000/book/123?tab=x', { headers: { cookie: `token=${token(future())}` } }));
-  assert.equal(response.headers.get('x-middleware-next'), '1');
-  for (const route of ['/login', '/register']) assert.equal(middleware(new NextRequest(`http://localhost:3000${route}`)).headers.get('x-middleware-next'), '1');
+  for (const route of ['/', '/book', '/book/123?tab=x', '/book/123/edit']) {
+    const response = proxy(new NextRequest(`http://localhost:3000${route}`, { headers: { cookie: `token=${token(future())}` } }));
+    assert.equal(response.headers.get('x-middleware-next'), '1');
+  }
+  for (const route of ['/login', '/register']) assert.equal(proxy(new NextRequest(`http://localhost:3000${route}`)).headers.get('x-middleware-next'), '1');
+});
+
+test('proxy preserves current deep-link redirect destinations', () => {
+  for (const [route, expected] of [
+    ['/', '/login'],
+    ['/book', '/login'],
+    ['/book/123/edit?tab=reviews&view=all', '/login?returnTo=%2Fbook%2F123%2Fedit%3Ftab%3Dreviews%26view%3Dall'],
+    ['/?page=2', '/login?returnTo=%2F%3Fpage%3D2'],
+  ]) {
+    const response = proxy(new NextRequest(`http://localhost:3000${route}`));
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get('location'), `http://localhost:3000${expected}`);
+  }
 });
 
 test('return destinations are restricted to local private routes', () => {
   assert.equal(safeReturnPath('/book/123/edit?tab=x'), '/book/123/edit?tab=x');
-  for (const value of ['//evil.test', '/\\evil.test', 'https://evil.test', '/login', '/register', '/book/../login']) assert.equal(safeReturnPath(value), '/');
+  assert.equal(safeReturnPath('/?page=2#ignored'), '/?page=2');
+  for (const value of [null, '', '/book', '//evil.test', '/\\evil.test', 'https://evil.test', '/login', '/register', '/book/../login']) assert.equal(safeReturnPath(value), '/');
+});
+
+test('login session verification requires a backend success and ignores response bodies', async () => {
+  for (const value of [undefined, 'bad', token(1)]) {
+    cookie = value;
+    global.fetch = () => { throw new Error('unexpected request'); };
+    assert.equal(await verifyLoginSession(new AbortController().signal), 'anonymous');
+  }
+  cookie = token(future());
+  global.fetch = async (url, init) => {
+    assert.equal(url, 'http://localhost:4000/api/v1/books?size=1');
+    assert.equal(init.headers.Authorization, `Bearer ${cookie}`);
+    assert.equal(init.cache, 'no-store');
+    assert.equal(init.redirect, 'error');
+    return { ok: true, status: 200, get body() { throw new Error('body must not be read'); } };
+  };
+  assert.equal(await verifyLoginSession(new AbortController().signal), 'authenticated');
+});
+
+test('login session verification rejects 401 without disturbing newer sessions', async () => {
+  cookie = token(future());
+  global.fetch = async () => new Response(null, { status: 401 });
+  assert.equal(await verifyLoginSession(new AbortController().signal), 'anonymous');
+  assert.equal(removed, true);
+  removed = false;
+  cookie = token(future());
+  global.fetch = async () => { cookie = token(future() + 1); return new Response(null, { status: 401 }); };
+  assert.equal(await verifyLoginSession(new AbortController().signal), 'stale');
+  assert.equal(removed, false);
+  const sameToken = token(future());
+  cookie = sameToken;
+  global.fetch = async () => { setToken(sameToken); return new Response(null, { status: 401 }); };
+  assert.equal(await verifyLoginSession(new AbortController().signal), 'stale');
+  assert.equal(removed, false);
+});
+
+test('login session verification preserves sessions on failures and ignores cancelled or stale successes', async () => {
+  cookie = token(future());
+  for (const status of [403, 404, 500]) {
+    global.fetch = async () => new Response(null, { status });
+    assert.equal(await verifyLoginSession(new AbortController().signal), 'unavailable');
+    assert.equal(removed, false);
+  }
+  global.fetch = async () => { throw new Error('offline'); };
+  assert.equal(await verifyLoginSession(new AbortController().signal), 'unavailable');
+  const controller = new AbortController();
+  global.fetch = async () => { controller.abort(); return new Response(null, { status: 401 }); };
+  assert.equal(await verifyLoginSession(controller.signal), 'stale');
+  assert.equal(removed, false);
+  global.fetch = async () => { cookie = token(future() + 1); return new Response(null, { status: 200 }); };
+  assert.equal(await verifyLoginSession(new AbortController().signal), 'stale');
 });
 
 test('401 clears only the rejected session and returns a failure', async () => {
