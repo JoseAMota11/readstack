@@ -157,7 +157,7 @@ function Reviews({ bookId }: { bookId: string }) {
           <div className="p-1 rounded-md dark:bg-neutral-400">
             <Rate value={review.rating} onChange={(value) => updateDraft({ ...reviewRef.current, rating: value })} />
           </div>
-          <Button type="primary" className="dark:text-neutral-100" disabled={!review.comment || !review.rating || !!pending || uncertain} loading={pending === 'create'} onClick={() => mutate('create')}>
+          <Button type="primary" disabled={!review.comment || !review.rating || !!pending || uncertain} loading={pending === 'create'} onClick={() => mutate('create')}>
             Publicar reseña
           </Button>
         </div>

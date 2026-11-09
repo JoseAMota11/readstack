@@ -36,6 +36,7 @@ ReadStack is a multiuser personal library application built with TypeScript, Nex
 
 8. **Dark/Light mode:**
    - Alternancia entre tema claro y oscuro para personalizar la experiencia del usuario.
+   - The frontend stores the selected theme in `localStorage` and otherwise uses the initial system preference. A shared provider synchronizes the Tailwind dark class and Ant Design theme; first-paint and overlay behavior still require browser validation.
 
 ### Backend (Node.js/Express)
 

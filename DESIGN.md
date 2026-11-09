@@ -15,7 +15,7 @@ omitted:
 
 ReadStack is a multiuser personal library for cataloging and reviewing books, not an ebook reader. The owner approved the general **Archival Modern** visual direction after reviewing light and dark library prototypes. This document consolidates that direction into an initial design reference; individual colors, type sizes, component treatments, and implementation details remain candidates until validated. It is not approval to change product behavior or release to production.
 
-The token blocks follow the [Google DESIGN.md alpha specification](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md). Tokens are provisional design inputs, not evidence of implemented or validated UI.
+The token blocks follow the [Google DESIGN.md alpha specification](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md). Tokens are provisional design inputs; the initial theme foundation implements a subset for Ant Design and semantic CSS, but browser validation and individual screen adoption remain pending.
 
 - **Editorial warmth, modern restraint:** evoke a carefully kept collection through typography, breathing room, and warm neutrals rather than visual clutter.
 - **Covers first:** let book artwork carry visual interest; preserve the entire image rather than cropping it to fill a frame.
@@ -81,6 +81,8 @@ Previously reported contrast checks for these candidate pairs are: primary text/
 - **Display:** Newsreader is the preferred editorial serif for page titles and selected headings, subject to license, availability, loading, fallback, performance, and rendering verification. Use a suitable system serif fallback until verified; adding a font dependency or service needs separate approval.
 - **UI and body:** existing locally loaded Geist Sans, with a system sans-serif fallback. Use for controls, forms, body copy, metadata, and dense information.
 - **Metadata only:** Geist Mono may be used sparingly when alignment or distinction actually improves readability; it is not the default for book details.
+
+Newsreader is available from [Google Fonts](https://github.com/google/fonts/tree/main/ofl/newsreader) under the SIL Open Font License 1.1, which permits bundling with its copyright notice and license. It is not installed in this increment: a local asset choice, license packaging, loading/performance and rendering review are still needed; a hosted font service or font dependency also requires separate approval. The system serif remains the fallback for future display use.
 
 Candidate responsive type scale, using CSS `rem` with a nominal 16px browser default; respect user font settings and zoom:
 
@@ -151,7 +153,7 @@ Use restrained surfaces, persistent visible labels, clear grouping, and inline v
 
 ### Ant Design and theme synchronization
 
-Retain Ant Design 5 provisionally. Map semantic colors, typography, borders, and component states into Ant Design theme tokens and component overrides; validate modals, dropdowns, portals, notifications, inputs, and disabled states in both modes. A shared theme provider should synchronize the Ant Design algorithm/tokens with the document's Tailwind dark class and existing theme preference, including initial rendering and theme changes. Avoid a flash of mismatched themes and hydration inconsistencies. The current app uses a local theme switcher and class-based dark mode, not a shared Ant Design theme provider; this is a future implementation requirement, not current behavior.
+Retain Ant Design 5 provisionally. The initial shared provider synchronizes its algorithm and selected tokens with the document's Tailwind dark class and existing preference, with a pre-hydration bootstrap and a fail-open visibility guard. Ant Design color seeds are literal values mirrored from CSS because its algorithms derive palettes from them. Validate modals, dropdowns, portals, notifications, inputs, disabled states, first paint and hydration in both modes; existing page-specific colors remain for later increments.
 
 ### Accessibility and responsive behavior
 

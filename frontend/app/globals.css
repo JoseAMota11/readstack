@@ -2,12 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --canvas: #f8f5ee;
+  --surface: #fffcf7;
+  --surface-raised: #ffffff;
+  --surface-muted: #eeeae1;
+  --text-primary: #191816;
+  --text-secondary: #5c5852;
+  --text-on-accent: #ffffff;
+  --border-subtle: #c6bfb3; /* Decorative, not a control boundary. */
+  --border-functional: #5c5852;
+  --accent: #1f3a5f;
+  --accent-hover: #304f78;
+  --accent-active: #152c4b;
+  --accent-subtle: #e3eaf2;
+  --gold: #b8860b; /* Decorative; not normal text on light surfaces. */
+  --error: #a32d27;
+  --warning: #805600;
+  --success: #28613c;
+  --focus: #1f3a5f;
+  --disabled-text: #6d6861;
+  --disabled-surface: #e8e4dc;
+  color-scheme: light;
+}
+
+html.dark {
+  --canvas: #121316;
+  --surface: #1a1c21;
+  --surface-raised: #242730;
+  --surface-muted: #22242a;
+  --text-primary: #ece8e0;
+  --text-secondary: #b8b3aa;
+  --text-on-accent: #121316;
+  --border-subtle: #6a6c73;
+  --border-functional: #b8b3aa;
+  --accent: #7597c4;
+  --accent-hover: #9ab7db;
+  --accent-active: #b3cae5;
+  --accent-subtle: #27384d;
+  --gold: #e0ac43;
+  --error: #ff938b;
+  --warning: #e0ac43;
+  --success: #8bcf9f;
+  --focus: #9ab7db;
+  --disabled-text: #aaa69e;
+  --disabled-surface: #303239;
+  color-scheme: dark;
+}
+
 html {
   scroll-behavior: smooth;
+  background: var(--canvas);
+}
+
+/* Avoid showing server-rendered light Ant Design styles in a dark session. */
+html[data-theme-pending] body {
+  visibility: hidden;
 }
 
 body {
+  background: var(--canvas);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
   transition: background-color 0.3s, color 0.3s;
+}
+
+.theme-switcher:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .card {
@@ -16,4 +78,10 @@ body {
 
 .card:hover {
   transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  body, .card { transition: none; }
+  .card:hover { transform: none; }
 }

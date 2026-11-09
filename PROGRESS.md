@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-08
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** Establish the UX/UI redesign scope; a formal roadmap task ID and any required owner decisions remain pending. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** UI-01 theme foundation implemented and owner-validated in a browser; rating-star contrast is deferred to UI-02. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -70,6 +70,10 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- Theme foundation: semantic CSS tokens and a shared Ant Design/Tailwind provider preserve the existing local preference and initial system fallback. A pre-paint script and fail-open hydration guard mitigate theme flash. Newsreader is available under SIL OFL 1.1 but not bundled pending local asset/license packaging and loading/rendering review. Existing page-specific colors are not yet migrated.
+- UI-01 manual browser validation, as reported by the owner: light/dark switching, persistence after reload, initial rendering without visible theme flash, hydration console, login/registration forms, book forms, dropdowns, buttons, tested overlays, and keyboard navigation worked in both themes. This is not a comprehensive accessibility assessment.
+- UI-02 accessibility/visual QA follow-up: review rating stars are extremely low-contrast in both themes. In light mode the rating background blends into the surface; in dark mode the gray background is visible but the stars remain faint. Defer redesign to UI-02 and verify contrast and usability for both display and interactive rating states in both themes; do not claim accessibility compliance without further assessment.
+- Theme increment validation on Node 22: from `frontend/`, `fnm exec --using 22 npm run lint -- --no-cache`, `fnm exec --using 22 npx tsc --noEmit --incremental false`, and `fnm exec --using 22 npm test` passed (52 tests); `fnm exec --using 22 npm run build` passed in a temporary copy with linked dependencies and isolated `.next`. From `backend/`, `fnm exec --using 22 npm run build`, `fnm exec --using 22 npm test` (42 tests), and `fnm exec --using 22 npm run test:security` (3 probes) passed. New tests exercise the bootstrap and provider handler with a lightweight harness, not a browser. The pre-existing database modification remained unchanged by SHA-256 during implementation; the owner reports it may have changed during subsequent manual browser validation and its current contents must be preserved.
 - Final integrated regression reported on Node 22: frontend tests 49/49, backend tests 42/42, security probes 3/3, frontend lint and TypeScript checks passed. Builds were not rerun in this final regression. Earlier build results below are separate evidence.
 - Focused manual browser checks were completed during prior work, but detailed evidence is not fully captured in repository documentation; comprehensive browser-level validation remains pending.
 - Prior DOC-01 validation consisted of read-only inspection and Git checks; no build or tests were run then.
@@ -90,11 +94,11 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
-This documentation-only handoff changes `README.md`, `PLAN.md`, and `PROGRESS.md`. Application code, dependencies, configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
+The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/app/globals.css`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/register/page.tsx`, `frontend/components/reviews.tsx`, `frontend/components/theme-switcher.tsx`, `frontend/context/theme.context.tsx`, `frontend/tailwind.config.ts`, and `frontend/tests/theme.test.cjs`. Backend code, dependencies, production configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
 
 ## Next recommended task
 
-Begin UX/UI redesign planning in the established direction: a modern minimalist editorial personal library with strong book covers, responsive mobile-first layouts, consistent navigation and forms, accessibility, and light/dark themes. Retain Ant Design 5 provisionally; evaluate token customization and selective replacement rather than an automatic full migration. Preserve all functional behavior, authentication, public registration, and multiuser isolation.
+Plan the UI-02 navigation and library increment, including the deferred rating-star accessibility/visual QA follow-up. Retain Ant Design 5 provisionally. Preserve all functional behavior, authentication, public registration, and multiuser isolation.
 
 Nonblocking for starting design, but still required as applicable: browser-level authentication/deep-link/draft validation (`TEST-02`, `SEC-05`), CI (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
 

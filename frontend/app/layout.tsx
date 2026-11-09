@@ -4,6 +4,10 @@ import './globals.css';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { MessageProvider } from '@/context/message.context';
 import ReviewDraftCleanup from '@/components/review-draft-cleanup';
+import { ThemeProvider } from '@/context/theme.context';
+
+// Runs before paint. If hydration fails, reveal the page rather than hiding it indefinitely.
+const themeBootstrap = `(function(){var root=document.documentElement;var stored;try{stored=localStorage.getItem('theme')}catch(e){}var dark=stored==='dark'||(!stored&&window.matchMedia('(prefers-color-scheme: dark)').matches);root.classList.toggle('dark',dark);root.setAttribute('data-theme-pending','');setTimeout(function(){root.removeAttribute('data-theme-pending')},3000)})()`;
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -27,13 +31,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /></head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-neutral-200 dark:bg-neutral-700 dark:text-neutral-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AntdRegistry>
-          <ReviewDraftCleanup />
-          <MessageProvider>{children}</MessageProvider>
+          <ThemeProvider>
+            <ReviewDraftCleanup />
+            <MessageProvider>{children}</MessageProvider>
+          </ThemeProvider>
         </AntdRegistry>
       </body>
     </html>

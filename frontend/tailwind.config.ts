@@ -9,8 +9,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
+        background: 'var(--canvas)',
+        foreground: 'var(--text-primary)',
+        surface: 'var(--surface)',
+        'surface-raised': 'var(--surface-raised)',
+        'surface-muted': 'var(--surface-muted)',
+        accent: 'var(--accent)',
+        'text-secondary': 'var(--text-secondary)',
+        'border-subtle': 'var(--border-subtle)',
+        'border-functional': 'var(--border-functional)',
+        focus: 'var(--focus)',
       },
     },
   },
