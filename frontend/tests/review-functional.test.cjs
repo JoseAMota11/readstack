@@ -84,6 +84,20 @@ test('delete confirmation exposes cancel and invokes deletion only on confirmati
   assert.equal(calls.length, 1);
 });
 
+test('review textarea has a persistent associated label and example placeholder', () => {
+  setup();
+  const h = harness();
+  try {
+    const tree = h.render();
+    const label = findAll(tree, 'label').find((item) => text(item).includes('Tu reseña'));
+    assert.ok(label);
+    const textarea = findAll(label, TextArea)[0];
+    assert.ok(textarea);
+    assert.equal(textarea.props.placeholder, '¡Me encantó este libro!');
+    h.unmount();
+  } finally { teardown(); }
+});
+
 test('rating names the group and stars, reports the actual value and preserves draft updates', async () => {
   const store = setup();
   const h = harness();

@@ -147,12 +147,15 @@ function Reviews({ bookId }: { bookId: string }) {
   return (
     <div className="w-full bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-lg">
       <div className="flex flex-col gap-2">
-        <Input.TextArea
-          className="min-h-16 max-h-24 dark:bg-neutral-600 dark:placeholder:text-neutral-400"
-          placeholder="¡Me encantó este libro!"
-          value={review.comment}
-          onChange={(e) => updateDraft({ ...reviewRef.current, comment: e.target.value })}
-        />
+        <label className="flex flex-col gap-2 text-foreground">
+          <span className="review-rating-label">Tu reseña</span>
+          <Input.TextArea
+            className="min-h-16 max-h-24 dark:bg-neutral-600 dark:placeholder:text-neutral-400"
+            placeholder="¡Me encantó este libro!"
+            value={review.comment}
+            onChange={(e) => updateDraft({ ...reviewRef.current, comment: e.target.value })}
+          />
+        </label>
         <div className="review-rating-row">
           <div className="review-rating">
             <span className="review-rating-label">Calificación de tu reseña</span>
