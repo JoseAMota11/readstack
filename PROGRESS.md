@@ -1,6 +1,6 @@
 # Progress — Biblioteca Personal
 
-**Last updated:** 2026-11-08
+**Last updated:** 2026-11-09
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
 **Active task:** UI-03.1 completed and owner-validated within the checks recorded below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
@@ -17,18 +17,18 @@
 | `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
 | `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
 
-No migration or deployment work has been completed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
+Frontend migration work is locally committed: Next.js 16 / React 19 (`78699d1`), the Ant Design `destroyOnHidden` correction (`639b590`), the middleware-to-Proxy convention migration (`cee9e10`), and authenticated-login navigation and recovery (`9a3a17a`). These increments do not complete `UPG-03`; no deployment or database migration was performed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
 
 Functional modernization handoff: the locally committed FIX-02 work comprises A (public authentication API errors, `c58e2b7`), B1 (book loading and error states, `b7112d1`), B2 (book mutation failures, `09178af`), B3 (book actions and CSV error handling, `25ecbd4`), and C (review reliability and recovery, `3216355`). FIX-02 is a work label, not an existing formal PLAN task ID.
 
 ## Verified source-code findings
 
-- Frontend: Next.js 14.2.18, React 18, TypeScript, App Router, Ant Design, Tailwind CSS.
+- Frontend: Next.js 16.4.6, React 19.3.1, TypeScript, App Router, Ant Design 5.29.3, Tailwind CSS.
 - Backend: Express 4, TypeScript, Zod, bcrypt, JWT, and `better-sqlite3`.
 - SQLite uses relative path `library.db`; `backend/library.db` is tracked by Git.
 - Schema creation occurs at module load; no migrations exist.
 - Authentication uses a six-hour JWT in a JavaScript-readable `token` cookie, sent as a Bearer token.
-- Middleware covers `/` and `/book/*`; public authentication routes remain accessible. JWT claims are decoded only for navigation and expiry; API verification remains authoritative.
+- Proxy covers `/` and `/book/*`; public authentication routes remain accessible. JWT claims are decoded only for navigation and expiry; API verification remains authoritative. The login page checks a plausible session with an authenticated API read and uses safe `replace` navigation after verification or login; verification failure offers recovery without deleting a valid session.
 - Review listing requires book ownership and filters reviews by owner. Creation, update, and deletion use token-derived identity and enforce the stored book relationship; inaccessible resources return a generic 404.
 - Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
 - CORS is open; authentication has local per-account rate limits and opt-in direct-peer IP limits; error handling is inconsistent.
@@ -70,6 +70,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- Frontend migration and login UX: on Node 22, `fnm exec --using 22 npm test` passed 87/87; `fnm exec --using 22 npm run lint` passed with 10 existing warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. The build did not report the middleware deprecation warning. After a test-only addition, the focused login component tests passed 2/2. These checks were not rerun during this documentation update.
+- Owner-reported browser checks: catalog-to-detail navigation and Back returned to the catalog; unauthenticated access to protected routes was denied; disconnecting the local backend displayed the session-verification recovery UI. Before the login correction, an authenticated user could visit `/login`, Back could return there, and `/` remained accessible with the existing session. These observations do not establish the corrected login flow end-to-end. Cross-tab changes, hydration failure, JavaScript-disabled behavior, deep-link and Back/Forward recovery, and comprehensive authentication and cross-user security remain unverified.
 - Published-review follow-up (2026-11-09): removed a duplicate decorative separator for unsupported dates and corrected review presentation assertions; valid UTC dates and raw unsupported values remain covered. On Node 22, focused review tests passed 22/22, frontend tests passed 79/79, lint and TypeScript checks passed, and the production build passed with the existing outdated Browserslist warning. No browser validation was performed.
 - Catalog presentation batch (2026-11-09): aligned the existing filter form with the catalog, added restrained card/disclosure hover feedback and consistent catalog state styling without changing handlers. Node 22 frontend lint, TypeScript, and production build passed; build warned that Browserslist data is outdated. `npm test` reported 77/79 passing; two unrelated review presentation assertions failed in untouched `review-functional.test.cjs`. The focused catalog, filter, and loading test command passed 22/22. Browser validation, including contrast, zoom, touch, and recovery states, remains pending. The pre-existing database modification and untracked `frontend/tests/book-action-presentation.test.cjs` were not edited.
 - UI-03.1 owner-led browser validation: desktop detail layout worked in light and dark themes; at 390px the cover and information stacked without observed horizontal scrolling or clipping. The tested book's cover was complete and uncropped, and title, author, genres, actions and reviews were legible and accessible in the tested layouts. At 200% zoom, content and controls remained usable. Favorite toggle, edit navigation, export, delete confirmation/cancel, review draft entry and browser Back worked. Varied cover ratios, failed/missing cover fallbacks, screen-reader behavior, 400% zoom and comprehensive accessibility were not established by these checks.
@@ -104,6 +106,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
+The migration commits listed above are already committed. This handoff changes only `PROGRESS.md`; the pre-existing local modification to `backend/library.db` remains intentionally untouched.
+
 The published-review follow-up changes `frontend/components/review-card.tsx`, `frontend/tests/review-functional.test.cjs`, and this handoff; pre-existing catalog work remains uncommitted.
 The catalog presentation batch changes `frontend/app/globals.css`, `frontend/components/main.tsx`, `frontend/tests/library-card.test.cjs`, `frontend/tests/book-loading.test.cjs`, and this handoff. No backend files were changed by the batch.
 UI-03.1 changes `frontend/app/book/[id]/page.tsx`, `frontend/app/globals.css`, and `frontend/tests/book-loading.test.cjs`; this closeout updates `PROGRESS.md`. Loading, error and retry flows, action handlers, review logic and API contracts remain unchanged. The pre-existing local modification to `backend/library.db` remains intentionally untouched.
@@ -118,9 +122,15 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
+Consider a separate local, cover-only View Transitions proof of concept using synthetic data and an isolated backend, with a non-animated fallback and unchanged authentication/navigation semantics. View Transitions have not been implemented or tested. Complete the pending login and isolation browser checks before treating the authentication work as fully validated.
+
+Independent follow-ups: evaluate ESLint 10 compatibility and the existing lint warnings; address remaining dependency security advisories; investigate optional cover/rating null-versus-undefined validation; and plan the login/register Archival Modern redesign with integrated recovery UI. These are separate from the cover-only proof of concept.
+
 Review UI-03.2 with the owner: accessible naming refinements for icon-only actions, missing/failed/changed cover fallback behavior beyond the existing behavior, and additional action or error-state presentation refinements were deferred from UI-03.1. The shared debounce's rapid-cross-filter limitation remains a separately scoped issue. Later visual refinement should revisit card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
 
 Nonblocking for starting design, but still required as applicable: browser-level authentication/deep-link/draft validation (`TEST-02`, `SEC-05`), CI (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
+
+`UPG-03` remains open: its `UPG-01`, `TEST-02`, and `TEST-05` prerequisites, auth/route smoke evidence, and visual-regression acceptance remain incomplete; broader upgrade and release decisions are not implied by the local commits.
 
 ## Session handoff checklist
 
