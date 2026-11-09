@@ -1,6 +1,7 @@
 'use client';
 
 import { Review } from '@/types/review.type';
+import { formatReviewDate } from '@/utils/review-date';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Popconfirm } from 'antd';
 
@@ -12,10 +13,16 @@ function ReviewCard({
   pending,
   disabled,
 }: Review & { onDelete: () => void; pending: boolean; disabled: boolean }) {
+  const date = formatReviewDate(createdAt);
+
   return (
     <div className="review-card">
       <div className="review-card-header">
-        <p className="review-card-date">{createdAt}</p>
+        {date ? (
+          <time className="review-card-date" dateTime={date.dateTime}>{date.text}</time>
+        ) : (
+          <p className="review-card-date">{createdAt}</p>
+        )}
         <Popconfirm
           title="¿Borrar esta reseña?"
           description="Esta acción no se puede deshacer."

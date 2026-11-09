@@ -34,6 +34,7 @@ Module._load = function (request, parent, ...args) {
 };
 const Reviews = require('../components/reviews.tsx').default;
 const ReviewCard = require('../components/review-card.tsx').default;
+const { formatReviewDate } = require('../utils/review-date.ts');
 const service = require('../services/review.service.ts');
 const originalHooks = { useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, useCallback: React.useCallback };
 const originalWindow = global.window, originalStorage = global.sessionStorage, originalFetch = global.fetch;
@@ -82,6 +83,61 @@ test('published review presents raw date, comment and numeric rating in order', 
   assert.equal(text(children[1]), item.comment);
   assert.equal(children[2].props.className, 'review-card-rating');
   assert.match(text(children[2]), /Calificación:\s*4\/5/);
+});
+
+test('valid SQLite dates render as semantic UTC times in the existing metadata row', () => {
+  const tree = ReviewCard({ ...item, createdAt: '2026-11-09 12:34:56', onDelete() {}, pending: false, disabled: false });
+  const time = findAll(tree, 'time')[0];
+  assert.equal(time.props.className, 'review-card-date');
+  assert.equal(time.props.dateTime, '2026-11-09T12:34:56.000Z');
+  assert.equal(text(time), new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn' }).format(new Date('2026-11-09T12:34:56Z')));
+});
+
+test('strict review dates accept Gregorian leap days and preserve years below 100', () => {
+  for (const [value, iso] of [
+    ['2024-02-29 12:30:45', '2024-02-29T12:30:45.000Z'],
+    ['2000-02-29 00:00:00', '2000-02-29T00:00:00.000Z'],
+    ['0001-01-01 00:00:00', '0001-01-01T00:00:00.000Z'],
+    ['0099-12-31 23:59:59', '0099-12-31T23:59:59.000Z'],
+    ['9999-12-31 23:59:59', '9999-12-31T23:59:59.000Z'],
+  ]) assert.equal(formatReviewDate(value)?.dateTime, iso, value);
+});
+
+test('invalid and unsupported timestamps remain unchanged without time semantics', () => {
+  for (const value of [
+    '', 'today', '2026-1-09 12:34:56', '2026-11-09 12:34:5',
+    ' 2026-11-09 12:34:56', '2026-11-09 12:34:56 ', '2026-11-09 12:34:56\n',
+    '2026-11-09T12:34:56Z', '2026-11-09 12:34:56+00:00',
+    '0000-01-01 00:00:00', '2026-00-01 00:00:00', '2026-13-01 00:00:00',
+    '2026-01-00 00:00:00', '2026-04-31 00:00:00', '2026-01-32 00:00:00',
+    '2023-02-29 00:00:00', '1900-02-29 00:00:00', '2026-01-01 24:00:00',
+    '2026-01-01 00:60:00', '2026-01-01 00:00:60',
+  ]) {
+    assert.equal(formatReviewDate(value), null, value);
+    const tree = ReviewCard({ ...item, createdAt: value, onDelete() {}, pending: false, disabled: false });
+    assert.equal(findAll(tree, 'time').length, 0, value);
+    const date = findAll(tree, 'p').find((element) => element.props.className === 'review-card-date');
+    assert.equal(date.props.children, value);
+    assert.equal(date.props.dateTime, undefined);
+  }
+});
+
+test('review date formatting uses UTC across midnight and year boundaries', () => {
+  const original = process.env.TZ;
+  try {
+    const values = ['2026-12-31 23:59:59', '2027-01-01 00:00:00'];
+    process.env.TZ = 'Pacific/Kiritimati';
+    const east = values.map(formatReviewDate);
+    process.env.TZ = 'America/Los_Angeles';
+    const west = values.map(formatReviewDate);
+    assert.deepEqual(east, west);
+    assert.equal(east[0].dateTime, '2026-12-31T23:59:59.000Z');
+    assert.equal(east[1].dateTime, '2027-01-01T00:00:00.000Z');
+    assert.notEqual(east[0].text, east[1].text);
+  } finally {
+    if (original === undefined) delete process.env.TZ;
+    else process.env.TZ = original;
+  }
 });
 
 test('delete confirmation exposes cancel and invokes deletion only on confirmation', () => {
