@@ -13,9 +13,9 @@ function ReviewCard({
   disabled,
 }: Review & { onDelete: () => void; pending: boolean; disabled: boolean }) {
   return (
-    <div className="bg-neutral-50 dark:bg-neutral-800 p-2 flex flex-col rounded-lg">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-400">{createdAt}</p>
+    <div className="review-card">
+      <div className="review-card-header">
+        <p className="text-sm text-text-secondary">{createdAt}</p>
         <Popconfirm
           title="¿Borrar esta reseña?"
           description="Esta acción no se puede deshacer."
@@ -27,7 +27,7 @@ function ReviewCard({
           <Button
             type="text"
             aria-label="Borrar reseña"
-            className="text-neutral-400 hover:text-red-500 dark:hover:bg-white/10"
+            className="review-card-delete"
             icon={<DeleteOutlined className="text-sm" />}
             loading={pending}
             disabled={disabled}

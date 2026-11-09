@@ -145,12 +145,14 @@ function Reviews({ bookId }: { bookId: string }) {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-lg">
+    <div className="review-section">
+      <h2 className="review-heading">Reseñas</h2>
       <div className="flex flex-col gap-2">
+        <p className="review-composer-user">{token?.username}</p>
         <label className="flex flex-col gap-2 text-foreground">
           <span className="review-rating-label">Tu reseña</span>
           <Input.TextArea
-            className="min-h-16 max-h-24 dark:bg-neutral-600 dark:placeholder:text-neutral-400"
+            className="min-h-16 max-h-24"
             placeholder="¡Me encantó este libro!"
             value={review.comment}
             onChange={(e) => updateDraft({ ...reviewRef.current, comment: e.target.value })}
@@ -177,16 +179,15 @@ function Reviews({ bookId }: { bookId: string }) {
             Publicar reseña
           </Button>
         </div>
-        <h3 className="font-semibold">{token?.username}</h3>
       </div>
-      <div className="py-4">
+      <div className="review-published">
         {uncertain && <div><p role="alert">No se pudo confirmar el resultado: puede que el cambio ya se haya aplicado. Actualiza y revisa las reseñas antes de volver a intentarlo manualmente. Si editaste el borrador durante el envío, puede ser distinto de lo enviado.</p><Button loading={refreshing} disabled={refreshing} onClick={() => void refreshForInspection()}>Actualizar reseñas</Button>{refreshing && <span role="status"> Actualizando reseñas...</span>}{inspected && !refreshing && <Button onClick={acknowledge}>Ya revisé las reseñas</Button>}</div>}
         {listState === 'loading' && <p role="status">Cargando reseñas...</p>}
         {(listState === 'error' || listState === 'stale') && <div role={uncertain ? undefined : 'alert'}><p>{listState === 'stale' ? 'Las reseñas mostradas podrían no estar actualizadas.' : 'No se pudieron cargar las reseñas.'}</p>{!uncertain && <Button onClick={() => void getReviews()}>Reintentar</Button>}</div>}
         {hasLoaded.current && (reviews.length === 0 ? (
-          listState === 'loaded' && <p className="text-neutral-400 text-center">No has reseñado este libro. Expresa lo que piensas de él.</p>
+          listState === 'loaded' && <p className="review-empty">No has reseñado este libro. Expresa lo que piensas de él.</p>
         ) : (
-          <div className="space-y-2 bg-neutral-200 dark:bg-neutral-600 p-2 rounded-lg">
+          <div className="review-list">
             {reviews.map((item) => <ReviewCard key={item.id} {...item} onDelete={() => mutate(item.id)} pending={pending === item.id} disabled={!!pending || uncertain} />)}
           </div>
         ))}

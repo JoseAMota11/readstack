@@ -98,6 +98,21 @@ test('review textarea has a persistent associated label and example placeholder'
   } finally { teardown(); }
 });
 
+test('review heading introduces the composer and published empty state', async () => {
+  setup();
+  const h = harness();
+  try {
+    h.render(); await flush();
+    const tree = h.render();
+    assert.equal(text(findAll(tree, 'h2')[0]), 'Reseñas');
+    const children = React.Children.toArray(tree.props.children);
+    assert.equal(children[0].type, 'h2');
+    assert.ok(findAll(children[1], TextArea).length);
+    assert.match(text(tree), /No has reseñado este libro/);
+    h.unmount();
+  } finally { teardown(); }
+});
+
 test('rating names the group and stars, reports the actual value and preserves draft updates', async () => {
   const store = setup();
   const h = harness();
