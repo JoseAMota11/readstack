@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-08
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** UI-02.1 library shell and cards implemented and owner-validated; UI-02.2 mobile filters and UI-02.3 rating-star contrast/accessibility remain deferred. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** UI-02.1 and UI-02.2 implemented and owner-validated; UI-02.3 rating-star contrast/accessibility remains deferred. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -70,6 +70,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- UI-02.2 owner-led browser validation: at 390px title search remained visible and secondary filters were accessible through “Más filtros”; author filtering applied, remained active while collapsed, retained its displayed value on reopening, and cleared; the active indication reflected applied filters. Genre selection, clearing, keyboard navigation and dismissal worked. Genre Select uses `virtual={false}` to avoid the virtual list touch handler implicated in scroll interference; with it, a continuous scroll gesture moved the dropdown without moving the page and the previous touchmove intervention warnings disappeared in Edge mobile emulation. A separate gesture at a list boundary may scroll the page; the owner accepted this without overscroll CSS. Desktop secondary filters worked in light and dark themes. Physical touch devices, screen readers and zoom were not validated for this increment; this is not a comprehensive accessibility assessment.
+- UI-02.2 implementation checks on Node 22: `fnm exec --using 22 npm run lint -- --no-cache`, `fnm exec --using 22 npx tsc --noEmit --incremental false`, and `fnm exec --using 22 npm test` passed in `frontend/` (61 tests); frontend build and backend build/tests passed in isolated copies (42 backend tests). The filter tests use a lightweight harness, not browser automation. Checks were not rerun during closeout. The shared 400ms debounce is unchanged; its rapid-cross-filter limitation remains separate.
 - UI-02.1 owner-led browser validation: desktop light and dark presentation was satisfactory; at 390px the two-column grid was usable without horizontal overflow; card navigation and browser Back worked; at 200% zoom content was readable without horizontal overflow; keyboard Tab focus was visible and Enter opened the selected card. This is not a comprehensive accessibility assessment. Synthetic failure states were not browser-validated.
 - UI-02.1 implementation checks on Node 22.23.4: from `frontend/`, `fnm exec --using 22 npm run lint -- --no-cache`, `fnm exec --using 22 npx tsc --noEmit --incremental false`, and `fnm exec --using 22 npm test` passed (55 tests); `fnm exec --using 22 npm run build` passed in an isolated copy. Backend build and tests passed in an isolated copy (42 tests). Card tests include a lightweight handler harness, not browser automation. Checks were not rerun during closeout.
 - Theme foundation: semantic CSS tokens and a shared Ant Design/Tailwind provider preserve the existing local preference and initial system fallback. A pre-paint script and fail-open hydration guard mitigate theme flash. Newsreader is available under SIL OFL 1.1 but not bundled pending local asset/license packaging and loading/rendering review. Existing page-specific colors are not yet migrated.
@@ -96,13 +98,15 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
+UI-02.2 changes `frontend/components/filters.tsx`, `frontend/app/globals.css`, and `frontend/tests/library-filters.test.cjs`; this closeout updates `PROGRESS.md`. The filter context and backend are untouched.
+
 UI-02.1 changes `frontend/app/globals.css`, `frontend/components/card.tsx`, `frontend/components/home.tsx`, `frontend/components/main.tsx`, `frontend/components/navbar.tsx`, and `frontend/tests/library-card.test.cjs`; this closeout updates `PROGRESS.md`. The shared detail placeholder and backend are untouched.
 
 The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/app/globals.css`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/register/page.tsx`, `frontend/components/reviews.tsx`, `frontend/components/theme-switcher.tsx`, `frontend/context/theme.context.tsx`, `frontend/tailwind.config.ts`, and `frontend/tests/theme.test.cjs`. Backend code, dependencies, production configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
 
 ## Next recommended task
 
-UI-02.2: mobile filter layout; UI-02.3: rating-star contrast and accessibility in light and dark themes. Later visual refinement should revisit consistent 2:3 cover surfaces with object-contain and card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
+UI-02.3: rating-star contrast and accessibility in light and dark themes. The shared debounce's rapid-cross-filter limitation remains a separately scoped issue. Later visual refinement should revisit consistent 2:3 cover surfaces with object-contain and card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
 
 Nonblocking for starting design, but still required as applicable: browser-level authentication/deep-link/draft validation (`TEST-02`, `SEC-05`), CI (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
 
