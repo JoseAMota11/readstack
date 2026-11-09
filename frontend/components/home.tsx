@@ -12,11 +12,14 @@ function HomePage() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="library-shell">
       <FiltersProvider>
         <Navbar />
-        <Filters setOpen={setOpen} />
-        <Main />
+        <main className="library-content">
+          <h1 className="library-heading">Mi biblioteca</h1>
+          <Filters setOpen={setOpen} />
+          <Main />
+        </main>
         <Footer />
         <CreateBookModal open={open} setOpen={setOpen} />
       </FiltersProvider>

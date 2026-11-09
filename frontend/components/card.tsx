@@ -1,29 +1,41 @@
 'use client';
 
 import { Book } from '@/types/book.type';
-import { useRouter } from 'next/navigation';
-import React from 'react';
-import ImagePlaceholder from './image-placeholder';
+import Link from 'next/link';
+import { useState } from 'react';
 
-function Card({ id, title, coverImage }: Book) {
-  const router = useRouter();
+function Cover({ src }: { src?: string }) {
+  const [failed, setFailed] = useState(false);
 
   return (
-    <div
-      onClick={() => router.push(`book/${id}`)}
-      className="bg-white dark:bg-neutral-800 flex flex-col items-center gap-2 p-2 rounded-xl shadow-xl cursor-pointer card select-none"
-    >
-      {coverImage ? (
-        <img
-          src={coverImage}
-          alt={title}
-          className="w-full object-cover aspect-[9/16] rounded-lg"
-        />
+    <div className="library-cover">
+      {src && !failed ? (
+        // The title is already present in the link; the cover is decorative here.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" onError={() => setFailed(true)} />
       ) : (
-        <ImagePlaceholder />
+        <span className="library-cover-placeholder">Sin portada</span>
       )}
-      <h2 className="text-center font-medium max-[500px]:text-sm">{title}</h2>
     </div>
+  );
+}
+
+function Card({ id, title, author, year, coverImage, rating, isFavorite }: Book) {
+  return (
+    <Link href={`/book/${id}`} className="library-card">
+      <Cover key={coverImage} src={coverImage} />
+      <div className="library-card-content">
+        <h2 className="library-card-title">{title}</h2>
+        <p className="library-card-author">{author}</p>
+        <p className="library-card-year">{year}</p>
+        {(rating != null || isFavorite) && (
+          <div className="library-card-details">
+            {rating != null && <span>Calificación del libro: {rating}/5</span>}
+            {isFavorite && <span><span aria-hidden="true">★ </span>Favorito</span>}
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }
 

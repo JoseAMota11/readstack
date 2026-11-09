@@ -77,8 +77,8 @@ function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSe
   }
 
   return (
-    <main className="flex flex-col items-center gap-4">
-      <div className="w-[800px] grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4 max-[800px]:w-full">
+    <div className="library-results">
+      <div className="library-grid">
         {books.map((book) => (
           <Card key={book.id} {...book} />
         ))}
@@ -92,7 +92,7 @@ function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSe
         pageSizeOptions={[2, 5, 10]}
         showSizeChanger
       />
-    </main>
+    </div>
   );
 }
 

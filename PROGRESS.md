@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-08
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** UI-01 theme foundation implemented and owner-validated in a browser; rating-star contrast is deferred to UI-02. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** UI-02.1 library shell and cards implemented and owner-validated; UI-02.2 mobile filters and UI-02.3 rating-star contrast/accessibility remain deferred. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -70,6 +70,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- UI-02.1 owner-led browser validation: desktop light and dark presentation was satisfactory; at 390px the two-column grid was usable without horizontal overflow; card navigation and browser Back worked; at 200% zoom content was readable without horizontal overflow; keyboard Tab focus was visible and Enter opened the selected card. This is not a comprehensive accessibility assessment. Synthetic failure states were not browser-validated.
+- UI-02.1 implementation checks on Node 22.23.4: from `frontend/`, `fnm exec --using 22 npm run lint -- --no-cache`, `fnm exec --using 22 npx tsc --noEmit --incremental false`, and `fnm exec --using 22 npm test` passed (55 tests); `fnm exec --using 22 npm run build` passed in an isolated copy. Backend build and tests passed in an isolated copy (42 tests). Card tests include a lightweight handler harness, not browser automation. Checks were not rerun during closeout.
 - Theme foundation: semantic CSS tokens and a shared Ant Design/Tailwind provider preserve the existing local preference and initial system fallback. A pre-paint script and fail-open hydration guard mitigate theme flash. Newsreader is available under SIL OFL 1.1 but not bundled pending local asset/license packaging and loading/rendering review. Existing page-specific colors are not yet migrated.
 - UI-01 manual browser validation, as reported by the owner: light/dark switching, persistence after reload, initial rendering without visible theme flash, hydration console, login/registration forms, book forms, dropdowns, buttons, tested overlays, and keyboard navigation worked in both themes. This is not a comprehensive accessibility assessment.
 - UI-02 accessibility/visual QA follow-up: review rating stars are extremely low-contrast in both themes. In light mode the rating background blends into the surface; in dark mode the gray background is visible but the stars remain faint. Defer redesign to UI-02 and verify contrast and usability for both display and interactive rating states in both themes; do not claim accessibility compliance without further assessment.
@@ -94,11 +96,13 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
+UI-02.1 changes `frontend/app/globals.css`, `frontend/components/card.tsx`, `frontend/components/home.tsx`, `frontend/components/main.tsx`, `frontend/components/navbar.tsx`, and `frontend/tests/library-card.test.cjs`; this closeout updates `PROGRESS.md`. The shared detail placeholder and backend are untouched.
+
 The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/app/globals.css`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/register/page.tsx`, `frontend/components/reviews.tsx`, `frontend/components/theme-switcher.tsx`, `frontend/context/theme.context.tsx`, `frontend/tailwind.config.ts`, and `frontend/tests/theme.test.cjs`. Backend code, dependencies, production configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
 
 ## Next recommended task
 
-Plan the UI-02 navigation and library increment, including the deferred rating-star accessibility/visual QA follow-up. Retain Ant Design 5 provisionally. Preserve all functional behavior, authentication, public registration, and multiuser isolation.
+UI-02.2: mobile filter layout; UI-02.3: rating-star contrast and accessibility in light and dark themes. Later visual refinement should revisit consistent 2:3 cover surfaces with object-contain and card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
 
 Nonblocking for starting design, but still required as applicable: browser-level authentication/deep-link/draft validation (`TEST-02`, `SEC-05`), CI (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
 

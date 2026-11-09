@@ -72,16 +72,145 @@ body {
   outline-offset: 2px;
 }
 
-.card {
-  transition: transform 0.3s ease;
+.library-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 0 clamp(1rem, 4vw, 3rem) 2rem;
 }
 
-.card:hover {
-  transform: scale(0.97);
+.library-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.library-brand {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.library-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.library-content {
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-width: 0;
+}
+
+.library-heading {
+  color: var(--text-primary);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.15;
+  font-weight: 400;
+}
+
+.library-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  min-width: 0;
+}
+
+.library-results .ant-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.library-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(9rem, 16vw, 13rem)), 1fr));
+  gap: clamp(1rem, 2.5vw, 2rem);
+}
+
+.library-card {
+  display: block;
+  min-width: 0;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.library-card:hover {
+  color: var(--text-primary);
+}
+
+.library-card:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.library-cover {
+  aspect-ratio: 2 / 3;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.library-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.library-cover-placeholder {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.library-card-content {
+  padding-top: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.library-card-title {
+  font-size: 1.125rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.library-card-author,
+.library-card-year,
+.library-card-details {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.library-card-author {
+  margin-top: 0.25rem;
+}
+
+.library-card-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.5rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  body, .card { transition: none; }
-  .card:hover { transform: none; }
+  body { transition: none; }
 }
