@@ -84,7 +84,7 @@ test('delete opens a named modal, cancels without deleting, and supports dismiss
   a.delete.props.onClick(); a = actions(h.render());
   assert.equal(a.confirm.props.open, true); assert.equal(a.confirm.props.title, '¿Borrar este libro?');
   assert.equal(a.confirm.props.cancelButtonProps.autoFocus, true);
-  assert.equal(a.confirm.props.destroyOnClose, true);
+  assert.equal(a.confirm.props.destroyOnHidden, true);
   assert.equal(a.confirm.props.focusTriggerAfterClose, true);
   assert.equal(calls.length, 0);
   // Ant Design routes Cancel, Escape and mask dismissal through onCancel.

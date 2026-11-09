@@ -294,7 +294,7 @@ function ActionBar({
         okButtonProps={{ disabled: pending, danger: true }}
         cancelButtonProps={{ autoFocus: true }}
         focusTriggerAfterClose={!pending}
-        destroyOnClose
+        destroyOnHidden
         closable={false}
       >
         <p>Esta acción no se puede deshacer.</p>
