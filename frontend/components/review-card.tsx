@@ -14,6 +14,7 @@ function ReviewCard({
   disabled,
 }: Review & { onDelete: () => void; pending: boolean; disabled: boolean }) {
   const date = formatReviewDate(createdAt);
+  const showStars = Number.isInteger(rating) && rating >= 0 && rating <= 5;
 
   return (
     <div className="review-card">
@@ -43,7 +44,16 @@ function ReviewCard({
       </div>
       <p className="review-card-comment">{comment}</p>
       <p className="review-card-rating">
-        Calificación: {`${rating}/5`}
+        {showStars && (
+          <span className="review-card-stars" aria-hidden="true">
+            {Array.from({ length: 5 }, (_, index) => (
+              <span key={index} className={index < rating ? 'review-card-star-filled' : 'review-card-star-empty'}>
+                {index < rating ? '★' : '☆'}
+              </span>
+            ))}
+          </span>
+        )}
+        <span>Calificación: {`${rating}/5`}</span>
       </p>
     </div>
   );

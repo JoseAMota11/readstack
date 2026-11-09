@@ -139,6 +139,27 @@ body {
   line-height: 1.6;
 }
 
+.review-card-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.review-card-stars {
+  display: inline-flex;
+  gap: 0.125rem;
+  line-height: 1;
+}
+
+.review-card-star-filled {
+  color: var(--gold);
+}
+
+.review-card-star-empty {
+  color: var(--text-secondary);
+}
+
 .review-card .review-card-delete {
   margin-left: auto;
 }

@@ -85,6 +85,39 @@ test('published review presents raw date, comment and numeric rating in order', 
   assert.match(text(children[2]), /Calificación:\s*4\/5/);
 });
 
+test('published ratings use five decorative static stars and one readable numeric label', () => {
+  for (const rating of [0, 1, 4, 5]) {
+    const tree = ReviewCard({ ...item, rating, onDelete() {}, pending: false, disabled: false });
+    const row = findAll(tree, 'p').find((element) => element.props.className === 'review-card-rating');
+    const spans = findAll(row, 'span');
+    const stars = spans.find((element) => element.props.className === 'review-card-stars');
+    assert.equal(stars.props['aria-hidden'], 'true');
+    const characters = React.Children.toArray(stars.props.children);
+    assert.equal(characters.length, 5);
+    assert.equal(characters.filter((star) => star.props.children === '★' && star.props.className === 'review-card-star-filled').length, rating);
+    assert.equal(characters.filter((star) => star.props.children === '☆' && star.props.className === 'review-card-star-empty').length, 5 - rating);
+    for (const element of [stars, ...characters]) {
+      assert.equal(element.type, 'span');
+      assert.equal(element.props.tabIndex, undefined);
+      assert.equal(element.props.onClick, undefined);
+      assert.equal(element.props.role, undefined);
+    }
+    const label = spans.find((element) => text(element) === `Calificación:  ${rating}/5` || text(element) === `Calificación: ${rating}/5`);
+    assert.ok(label);
+    assert.equal(label.props['aria-hidden'], undefined);
+    assert.equal(row.props['aria-label'], undefined);
+  }
+});
+
+test('unexpected ratings remain visible without a misleading star graphic', () => {
+  for (const rating of [-1, 6, 2.5, NaN, Infinity]) {
+    const tree = ReviewCard({ ...item, rating, onDelete() {}, pending: false, disabled: false });
+    const row = findAll(tree, 'p').find((element) => element.props.className === 'review-card-rating');
+    assert.equal(findAll(row, 'span').some((element) => element.props.className === 'review-card-stars'), false);
+    assert.match(text(row), new RegExp(`Calificación:\\s*${String(rating).replace('.', '\\.')}\/5`));
+  }
+});
+
 test('valid SQLite dates render as semantic UTC times in the existing metadata row', () => {
   const tree = ReviewCard({ ...item, createdAt: '2026-11-09 12:34:56', onDelete() {}, pending: false, disabled: false });
   const time = findAll(tree, 'time')[0];
