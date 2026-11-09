@@ -66,3 +66,12 @@ test('missing and failed covers fall back, and a changed URL resets the cover st
     React.useState = originalUseState;
   }
 });
+
+test('catalog card presentation preserves contained covers, distinct focus and reduced motion', () => {
+  const css = fs.readFileSync(require('node:path').join(__dirname, '../app/globals.css'), 'utf8');
+  assert.match(css, /\.library-cover\s*\{[^}]*aspect-ratio:\s*2\s*\/\s*3/);
+  assert.match(css, /\.library-cover img\s*\{[^}]*object-fit:\s*contain/);
+  assert.match(css, /\.library-card:hover \.library-cover\s*\{[^}]*outline-color:\s*var\(--accent\)/);
+  assert.match(css, /\.library-card:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus\)/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.library-cover,[\s\S]*?\.library-card-title\s*\{\s*transition:\s*none/);
+});

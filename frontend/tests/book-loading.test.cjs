@@ -153,18 +153,18 @@ test('detail cover handles missing and failed images and resets on URL changes',
 
 test('library loading, empty, populated, failure and retry use current filters', async () => {
   reset(); const h = harness(Main);
-  assert.ok(byRole(h.render(), 'status'));
+  assert.match(byRole(h.render(), 'status').props.className, /library-state/);
   requests.shift().resolve(list([])); await flush();
-  assert.match(JSON.stringify(h.render()), /Aún no tienes/);
+  assert.match(JSON.stringify(h.render()), /library-state.*Aún no tienes/);
   filters = { title: 'missing' };
   assert.ok(byRole(h.render(), 'status'));
   requests.shift().resolve(list([])); await flush();
-  assert.match(JSON.stringify(h.render()), /no hay resultados/);
+  assert.match(JSON.stringify(h.render()), /library-state.*no hay resultados/);
   filters = { current: '2' };
   h.render(); requests.shift().resolve(list([book('a')])); await flush();
   assert.ok(byType(h.render(), Card));
   refresh = true; h.render(); requests.shift().reject(new Error('private details')); await flush();
-  const tree = h.render(); assert.ok(byRole(tree, 'alert')); assert.doesNotMatch(JSON.stringify(tree), /private details/);
+  const tree = h.render(); assert.match(byRole(tree, 'alert').props.className, /library-state-error/); assert.doesNotMatch(JSON.stringify(tree), /private details/);
   byType(tree, Button).props.onClick(); assert.ok(byRole(h.render(), 'status'));
   assert.deepEqual(requests[0].arg, { current: '2' });
   requests.shift().resolve(list([book('b')])); await flush();
@@ -177,6 +177,7 @@ test('empty page with matching books offers recovery without claiming the librar
   reset(); filters = { current: '3', title: 'x' }; const h = harness(Main); h.render();
   requests.shift().resolve({ books: [], pagination: { current: 3, total: 2, totalPages: 1, size: 10 } }); await flush();
   const tree = h.render();
+  assert.match(tree.props.className, /library-state/);
   assert.match(JSON.stringify(tree), /No hay libros en esta página/);
   assert.doesNotMatch(JSON.stringify(tree), /Aún no tienes|no hay resultados/);
   byType(tree, Button).props.onClick();

@@ -45,24 +45,24 @@ function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSe
   };
 
   if (loadError) return (
-    <div className="text-center" role="alert">
+    <div className="library-state library-state-error" role="alert">
       <p>No se pudieron cargar los libros.</p>
       <Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button>
     </div>
   );
 
-  if (!result) return <div className="text-center" role="status" aria-label="Cargando libros"><Spin /> Cargando libros...</div>;
+  if (!result) return <div className="library-state" role="status" aria-label="Cargando libros"><Spin /> Cargando libros...</div>;
 
   const { books, pagination } = result;
   const filters = JSON.parse(filterKey);
 
   if (books.length === 0 && pagination.total > 0) {
-    return <div className="text-center"><p>No hay libros en esta página.</p><Button onClick={() => handleSetFilters({ current: '1' })}>Volver a la primera página</Button></div>;
+    return <div className="library-state"><p>No hay libros en esta página.</p><Button onClick={() => handleSetFilters({ current: '1' })}>Volver a la primera página</Button></div>;
   }
 
   if (books.length === 0 && [filters.title, filters.author, filters.year, filters.genre].some(Boolean)) {
     return (
-      <p className="text-center">
+      <p className="library-state">
         ¡Uups! Parece que no hay resultados para esta búsqueda.
       </p>
     );
@@ -70,7 +70,7 @@ function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSe
 
   if (books.length === 0) {
     return (
-      <p className="text-center">
+      <p className="library-state">
         Aún no tienes ningún libro guardado. ¡Empieza a guardar tus libros! ✨
       </p>
     );

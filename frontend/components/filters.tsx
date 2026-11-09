@@ -79,7 +79,7 @@ function Filters({ setOpen }: { setOpen: Dispatch<SetStateAction<boolean>> }) {
             />
           </div>
         </div>
-        <div className="library-filters-action">
+        <div>
           <Button type="primary" size="large" onClick={() => setOpen(true)}>
             Añadir libro
           </Button>
