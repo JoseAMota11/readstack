@@ -74,15 +74,20 @@ function setup() {
 function teardown() { Object.assign(React, originalHooks); global.window = originalWindow; global.sessionStorage = originalStorage; global.fetch = originalFetch; }
 const item = { id: 'review-a', comment: 'synthetic', rating: 4, createdAt: 'today' };
 
-test('published review presents raw date, comment and numeric rating in order', () => {
+test('published review groups rating, date and delete before the comment', () => {
   const tree = ReviewCard({ ...item, onDelete() {}, pending: false, disabled: false });
   const children = React.Children.toArray(tree.props.children);
   assert.equal(children[0].props.className, 'review-card-header');
-  assert.equal(text(findAll(children[0], 'p')[0]), item.createdAt);
+  const metadata = React.Children.toArray(children[0].props.children);
+  assert.equal(metadata[0].props.className, 'review-card-rating');
+  assert.match(text(metadata[0]), /Calificación:\s*4\/5/);
+  assert.equal(metadata[1].props.className, 'review-card-date');
+  assert.match(text(metadata[1]), /^·\s+today$/);
+  assert.equal(findAll(metadata[1], 'span')[0].props['aria-hidden'], 'true');
+  assert.equal(metadata[2].type, Popconfirm);
   assert.equal(children[1].props.className, 'review-card-comment');
   assert.equal(text(children[1]), item.comment);
-  assert.equal(children[2].props.className, 'review-card-rating');
-  assert.match(text(children[2]), /Calificación:\s*4\/5/);
+  assert.equal(children.length, 2);
 });
 
 test('published ratings use five decorative static stars and one readable numeric label', () => {
@@ -104,6 +109,9 @@ test('published ratings use five decorative static stars and one readable numeri
     }
     const label = spans.find((element) => text(element) === `Calificación:  ${rating}/5` || text(element) === `Calificación: ${rating}/5`);
     assert.ok(label);
+    const prefix = spans.find((element) => element.props.className === 'sr-only');
+    assert.equal(text(prefix).trim(), 'Calificación:');
+    assert.equal(React.Children.toArray(label.props.children).filter((child) => typeof child === 'string').join(''), `${rating}/5`);
     assert.equal(label.props['aria-hidden'], undefined);
     assert.equal(row.props['aria-label'], undefined);
   }
@@ -123,7 +131,7 @@ test('valid SQLite dates render as semantic UTC times in the existing metadata r
   const time = findAll(tree, 'time')[0];
   assert.equal(time.props.className, 'review-card-date');
   assert.equal(time.props.dateTime, '2026-11-09T12:34:56.000Z');
-  assert.equal(text(time), new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn' }).format(new Date('2026-11-09T12:34:56Z')));
+  assert.equal(time.props.children[1], new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn' }).format(new Date('2026-11-09T12:34:56Z')));
 });
 
 test('strict review dates accept Gregorian leap days and preserve years below 100', () => {
@@ -150,7 +158,7 @@ test('invalid and unsupported timestamps remain unchanged without time semantics
     const tree = ReviewCard({ ...item, createdAt: value, onDelete() {}, pending: false, disabled: false });
     assert.equal(findAll(tree, 'time').length, 0, value);
     const date = findAll(tree, 'p').find((element) => element.props.className === 'review-card-date');
-    assert.equal(date.props.children, value);
+    assert.equal(date.props.children[1], value);
     assert.equal(date.props.dateTime, undefined);
   }
 });
@@ -195,6 +203,7 @@ test('review textarea has a persistent associated label and example placeholder'
   const h = harness();
   try {
     const tree = h.render();
+    assert.doesNotMatch(text(tree), /synthetic/);
     const label = findAll(tree, 'label').find((item) => text(item).includes('Tu reseña'));
     assert.ok(label);
     const textarea = findAll(label, TextArea)[0];

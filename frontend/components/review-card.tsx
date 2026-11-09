@@ -19,10 +19,23 @@ function ReviewCard({
   return (
     <div className="review-card">
       <div className="review-card-header">
+        <p className="review-card-rating">
+          {showStars && (
+            <span className="review-card-stars" aria-hidden="true">
+              {Array.from({ length: 5 }, (_, index) => (
+                <span key={index} className={index < rating ? 'review-card-star-filled' : 'review-card-star-empty'}>
+                  {index < rating ? '★' : '☆'}
+                </span>
+              ))}
+            </span>
+          )}
+          <span><span className="sr-only">Calificación: </span>{`${rating}/5`}</span>
+        </p>
+        <span aria-hidden="true">·</span>
         {date ? (
           <time className="review-card-date" dateTime={date.dateTime}>{date.text}</time>
         ) : (
-          <p className="review-card-date">{createdAt}</p>
+          <p className="review-card-date"><span aria-hidden="true">· </span>{createdAt}</p>
         )}
         <Popconfirm
           title="¿Borrar esta reseña?"
@@ -43,18 +56,6 @@ function ReviewCard({
         </Popconfirm>
       </div>
       <p className="review-card-comment">{comment}</p>
-      <p className="review-card-rating">
-        {showStars && (
-          <span className="review-card-stars" aria-hidden="true">
-            {Array.from({ length: 5 }, (_, index) => (
-              <span key={index} className={index < rating ? 'review-card-star-filled' : 'review-card-star-empty'}>
-                {index < rating ? '★' : '☆'}
-              </span>
-            ))}
-          </span>
-        )}
-        <span>Calificación: {`${rating}/5`}</span>
-      </p>
     </div>
   );
 }

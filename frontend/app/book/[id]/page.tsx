@@ -11,9 +11,10 @@ import {
   DeleteOutlined,
   EditOutlined,
   FileExcelOutlined,
+  StarFilled,
   StarOutlined,
 } from '@ant-design/icons';
-import { Button, Modal, Spin, Tag, Tooltip } from 'antd';
+import { Button, Modal, Spin, Tag } from 'antd';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import booksGenresOptions from '@/books-genres.json';
 import { useMessage } from '@/context/message.context';
@@ -62,12 +63,12 @@ function BookDetails({ id }: { id: string }) {
       <div className="book-detail">
         <DetailCover key={coverImage} src={coverImage} title={title} />
         <div className="book-detail-content">
-          <ActionBar book={book} setBook={updateLoadedBook} />
           <div className="book-detail-heading">
             <h1>{title}</h1>
             <p>{author}</p>
           </div>
           <Genres genre={genre} />
+          <ActionBar book={book} setBook={updateLoadedBook} />
           <Reviews bookId={book.id} />
         </div>
       </div>
@@ -104,7 +105,7 @@ function Genres({ genre }: { genre: string[] }) {
   return (
     <div className="book-detail-genres">
       {transformedGenre.map((value) => (
-        <Tag key={value} className="text-lg max-[500px]:text-base">
+        <Tag key={value}>
           {value}
         </Tag>
       ))}
@@ -257,37 +258,31 @@ function ActionBar({
   };
 
   return (
-    <div className="w-full flex flex-wrap items-center justify-end gap-2">
-      <Tooltip title="Exportar" color="#22c55e">
+    <div className="book-detail-actions">
         <Button
           type="text"
           aria-label="Exportar libro"
-          className="hover:text-green-500 dark:text-neutral-100 dark:hover:text-green-500"
-          icon={<FileExcelOutlined className="text-xl" />}
+          className="book-detail-action book-detail-action-export"
+          icon={<FileExcelOutlined />}
           onClick={handleExportCSV}
           disabled={pending}
-        />
-      </Tooltip>
-      <Tooltip title="Editar" color="#3b82f6">
+        ><span className="book-detail-action-label">Exportar</span></Button>
         <Button
           type="text"
           aria-label="Editar libro"
-          className="hover:text-blue-500 dark:text-neutral-100 dark:hover:text-blue-500"
-          icon={<EditOutlined className="text-xl" />}
+          className="book-detail-action"
+          icon={<EditOutlined />}
           onClick={handleEdit}
           disabled={pending}
-        />
-      </Tooltip>
-      <Tooltip title="Borrar" color="#ef4444">
+        ><span className="book-detail-action-label">Editar</span></Button>
         <Button
           type="text"
           aria-label="Borrar libro"
-          className="hover:text-red-500 dark:text-neutral-100 dark:hover:text-red-500"
-          icon={<DeleteOutlined className="text-xl" />}
+          className="book-detail-action book-detail-action-delete"
+          icon={<DeleteOutlined />}
           onClick={openDeleteDialog}
           disabled={pending}
-        />
-      </Tooltip>
+        ><span className="book-detail-action-label">Borrar</span></Button>
       <Modal
         title="¿Borrar este libro?"
         open={deleteOpen}
@@ -303,25 +298,16 @@ function ActionBar({
       >
         <p>Esta acción no se puede deshacer.</p>
       </Modal>
-      <Tooltip
-        title={favoriteUncertain ? 'Estado de favoritos sin confirmar' : book.isFavorite ? 'Borrar de favoritos' : 'Añadir a favoritos'}
-        color="#eab308"
-      >
         <Button
           type="text"
           aria-label="Favorito"
           aria-pressed={favoriteUncertain ? undefined : book.isFavorite}
-          className={
-            book.isFavorite && !favoriteUncertain
-              ? 'text-yellow-500'
-              : 'hover:text-yellow-500 dark:text-neutral-100 dark:hover:text-yellow-500'
-          }
-          icon={<StarOutlined className="text-xl" />}
+          className="book-detail-action book-detail-action-favorite"
+          icon={book.isFavorite && !favoriteUncertain ? <StarFilled /> : <StarOutlined />}
           onClick={handleFavorite}
           disabled={pending || favoriteUncertain}
-        />
-      </Tooltip>
-      <span className="book-detail-favorite-status">{favoriteUncertain ? 'Estado sin confirmar' : book.isFavorite ? 'Favorito' : 'No favorito'}</span>
+        ><span className="book-detail-action-label">{favoriteUncertain ? 'Favorito' : book.isFavorite ? 'Favorito' : 'No favorito'}</span></Button>
+      {favoriteUncertain && <span className="book-detail-favorite-status">Estado sin confirmar</span>}
       {favoriteUncertain && <><span className="sr-only" role="status">No se pudo confirmar el cambio de favoritos. Recarga el estado para comprobarlo.</span><Button onClick={handleFavoriteRecovery} disabled={pending}>Recargar estado</Button></>}
     </div>
   );

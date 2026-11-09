@@ -147,8 +147,7 @@ function Reviews({ bookId }: { bookId: string }) {
   return (
     <div className="review-section">
       <h2 className="review-heading">Reseñas</h2>
-      <div className="flex flex-col gap-2">
-        <p className="review-composer-user">{token?.username}</p>
+      <div className="review-composer">
         <label className="flex flex-col gap-2 text-foreground">
           <span className="review-rating-label">Tu reseña</span>
           <Input.TextArea

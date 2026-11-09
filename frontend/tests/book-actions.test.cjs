@@ -60,10 +60,11 @@ function harness() {
 }
 function actions(tree) {
   const children = React.Children.toArray(tree.props.children);
-  return { export: children[0].props.children, edit: children[1].props.children, delete: children[2].props.children, confirm: children.find((child) => child.type === Modal), favorite: children[4].props.children };
+  return { export: children[0], edit: children[1], delete: children[2], confirm: children.find((child) => child.type === Modal), favorite: children[4] };
 }
 
-const favoriteStatus = (tree) => React.Children.toArray(tree.props.children).find((child) => child.props?.className === 'book-detail-favorite-status').props.children;
+const favoriteStatus = (tree) => React.Children.toArray(tree.props.children).find((child) => child.props?.className === 'book-detail-favorite-status')?.props.children;
+const favoriteLabel = (tree) => actions(tree).favorite.props.children.props.children;
 
 test('book actions have explicit names and edit preserves navigation', () => {
   const h = harness(); const a = actions(h.render());
@@ -72,7 +73,8 @@ test('book actions have explicit names and edit preserves navigation', () => {
   assert.equal(a.delete.props['aria-label'], 'Borrar libro');
   assert.equal(a.favorite.props['aria-label'], 'Favorito');
   assert.equal(a.favorite.props['aria-pressed'], false);
-  assert.equal(favoriteStatus(h.render()), 'No favorito');
+  assert.equal(favoriteStatus(h.render()), undefined);
+  assert.equal(favoriteLabel(h.render()), 'No favorito');
   a.edit.props.onClick(); assert.deepEqual(navigations, ['/book/a/edit']); h.unmount();
 });
 
@@ -142,7 +144,8 @@ test('favorite toggles confirmed state, blocks concurrent actions and locks unce
   assert.equal(calls.length, 1); assert.equal(actions(h.render()).favorite.props.disabled, true);
   finish.resolve([undefined, 'ok']); await p; assert.equal(book.isFavorite, true);
   assert.equal(actions(h.render()).favorite.props['aria-pressed'], true);
-  assert.equal(favoriteStatus(h.render()), 'Favorito');
+  assert.equal(favoriteStatus(h.render()), undefined);
+  assert.equal(favoriteLabel(h.render()), 'Favorito');
   const q = actions(h.render()).favorite.props.onClick(); assert.equal(calls.at(-1)[2].isFavorite, false);
   finish.reject(new Error('network')); await q;
   assert.equal(book.isFavorite, true); assert.match(messages.at(-1)[1], /Recarga/);
@@ -150,6 +153,7 @@ test('favorite toggles confirmed state, blocks concurrent actions and locks unce
   assert.equal(actions(uncertain).favorite.props.disabled, true);
   assert.equal(actions(uncertain).favorite.props['aria-label'], 'Favorito');
   assert.equal(actions(uncertain).favorite.props['aria-pressed'], undefined);
+  assert.equal(favoriteLabel(uncertain), 'Favorito');
   assert.equal(favoriteStatus(uncertain), 'Estado sin confirmar');
   const status = React.Children.toArray(uncertain.props.children).find((child) => child.type === React.Fragment).props.children[0];
   assert.equal(status.props.role, 'status'); assert.match(status.props.children, /No se pudo confirmar.*Recarga/);
@@ -195,7 +199,8 @@ test('favorite recovery retries only GET after failure and synchronizes confirme
   finish.resolve([undefined, refreshed]); await retry;
   assert.deepEqual(book, refreshed); assert.equal(actions(h.render()).favorite.props.disabled, false);
   assert.equal(actions(h.render()).favorite.props['aria-pressed'], true);
-  assert.equal(favoriteStatus(h.render()), 'Favorito');
+  assert.equal(favoriteStatus(h.render()), undefined);
+  assert.equal(favoriteLabel(h.render()), 'Favorito');
   assert.equal(calls.filter(([kind]) => kind === 'favorite').length, 1);
   assert.equal(reloads, 0); assert.deepEqual(navigations, []); h.unmount();
 });
