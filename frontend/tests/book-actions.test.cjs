@@ -16,7 +16,7 @@ for (const extension of ['.ts', '.tsx']) require.extensions[extension] = (module
   module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX } }).outputText, filename);
 };
 const Button = () => null;
-const Popconfirm = () => null;
+const Modal = () => null;
 const messages = [];
 const navigations = [];
 let calls = [];
@@ -26,7 +26,7 @@ let response;
 const deferred = (kind, ...args) => { calls.push([kind, ...args]); return new Promise((resolve, reject) => { finish = { resolve, reject }; }); };
 const service = { getOneBook: (...args) => deferred('get', ...args), updateBook: (...args) => deferred('favorite', ...args), deleteBook: (...args) => deferred('delete', ...args), exportBookCSV: (...args) => deferred('export', ...args) };
 Module._load = function (request, parent, ...args) {
-  if (request === 'antd') return { Button, Popconfirm, Spin: () => null, Tag: () => null, Tooltip: () => null };
+  if (request === 'antd') return { Button, Modal, Spin: () => null, Tag: () => null, Tooltip: () => null };
   if (request === '@/services/book.service') return service;
   if (request === '@/context/message.context') return { useMessage: () => ({ error: (s) => messages.push(['error', s]), success: (s) => messages.push(['success', s]), info: (s) => messages.push(['info', s]) }) };
   if (request === 'next/navigation') return { usePathname: () => '/book/a', useRouter: () => ({ push: (s) => navigations.push(s), replace: (s) => navigations.push(s) }) };
@@ -59,29 +59,81 @@ function harness() {
   };
 }
 function actions(tree) {
-  const children = React.Children.toArray(tree.props.children).map((tooltip) => tooltip.props.children);
-  return { export: children[0], edit: children[1], confirm: children[2], favorite: children[3] };
+  const children = React.Children.toArray(tree.props.children);
+  return { export: children[0].props.children, edit: children[1].props.children, delete: children[2].props.children, confirm: children.find((child) => child.type === Modal), favorite: children[4].props.children };
 }
 
-test('delete requires confirmation, blocks duplicates, and navigates only on confirmed success', async () => {
+const favoriteStatus = (tree) => React.Children.toArray(tree.props.children).find((child) => child.props?.className === 'book-detail-favorite-status').props.children;
+
+test('book actions have explicit names and edit preserves navigation', () => {
+  const h = harness(); const a = actions(h.render());
+  assert.equal(a.export.props['aria-label'], 'Exportar libro');
+  assert.equal(a.edit.props['aria-label'], 'Editar libro');
+  assert.equal(a.delete.props['aria-label'], 'Borrar libro');
+  assert.equal(a.favorite.props['aria-label'], 'Favorito');
+  assert.equal(a.favorite.props['aria-pressed'], false);
+  assert.equal(favoriteStatus(h.render()), 'No favorito');
+  a.edit.props.onClick(); assert.deepEqual(navigations, ['/book/a/edit']); h.unmount();
+});
+
+test('delete opens a named modal, cancels without deleting, and supports dismissals', () => {
   const h = harness(); let a = actions(h.render());
-  assert.equal(a.confirm.type, Popconfirm); assert.equal(calls.length, 0); // Cancellation does not call onConfirm.
-  const first = a.confirm.props.onConfirm(); await a.confirm.props.onConfirm();
-  assert.equal(calls.length, 1); assert.equal(actions(h.render()).confirm.props.children.props.disabled, true);
+  assert.equal(a.confirm.type, Modal); assert.equal(a.confirm.props.open, false);
+  a.delete.props.onClick(); a = actions(h.render());
+  assert.equal(a.confirm.props.open, true); assert.equal(a.confirm.props.title, '¿Borrar este libro?');
+  assert.equal(a.confirm.props.cancelButtonProps.autoFocus, true);
+  assert.equal(a.confirm.props.destroyOnClose, true);
+  assert.equal(a.confirm.props.focusTriggerAfterClose, true);
+  assert.equal(calls.length, 0);
+  // Ant Design routes Cancel, Escape and mask dismissal through onCancel.
+  for (const dismissal of ['cancel', 'escape', 'mask']) {
+    a.confirm.props.onCancel({ type: dismissal });
+    assert.equal(actions(h.render()).confirm.props.open, false);
+    assert.equal(calls.length, 0);
+    actions(h.render()).delete.props.onClick(); a = actions(h.render());
+    assert.equal(a.confirm.props.open, true);
+  }
+  h.unmount();
+});
+
+test('delete requires confirmation, blocks duplicates, and navigates only on confirmed success', async () => {
+  const h = harness(); actions(h.render()).delete.props.onClick(); let a = actions(h.render());
+  const first = a.confirm.props.onOk(); await a.confirm.props.onOk();
+  assert.equal(calls.length, 1); assert.equal(actions(h.render()).delete.props.disabled, true);
+  assert.equal(actions(h.render()).confirm.props.okButtonProps.disabled, true);
+  assert.equal(actions(h.render()).confirm.props.focusTriggerAfterClose, false);
   finish.resolve([undefined, 'Deleted']); await first;
   assert.deepEqual(navigations, ['/']); assert.deepEqual(messages.at(-1), ['success', 'Deleted']);
-  await actions(h.render()).confirm.props.onConfirm(); assert.equal(calls.length, 1); h.unmount();
+  assert.equal(actions(h.render()).confirm.props.open, false);
+  await actions(h.render()).confirm.props.onOk(); assert.equal(calls.length, 1); h.unmount();
 });
 
 test('delete reports HTTP, malformed and network uncertainty, and never redirects after departure', async () => {
   const h = harness();
   for (const value of [['error', undefined], [undefined, undefined], new Error('network')]) {
-    const p = actions(h.render()).confirm.props.onConfirm();
+    actions(h.render()).delete.props.onClick();
+    const p = actions(h.render()).confirm.props.onOk();
     if (value instanceof Error) finish.reject(value); else finish.resolve(value);
     await p; assert.match(messages.at(-1)[1], /No se pudo confirmar/); assert.deepEqual(navigations, []);
+    assert.equal(actions(h.render()).confirm.props.open, false);
   }
-  const p = actions(h.render()).confirm.props.onConfirm(); global.window.location.pathname = '/other'; h.unmount();
+  actions(h.render()).delete.props.onClick();
+  const p = actions(h.render()).confirm.props.onOk(); global.window.location.pathname = '/other'; h.unmount();
   finish.resolve([undefined, 'Deleted']); await p; assert.deepEqual(navigations, []);
+});
+
+test('pending dismissal does not abort deletion or close a later opening', async () => {
+  const h = harness(); actions(h.render()).delete.props.onClick();
+  const p = actions(h.render()).confirm.props.onOk();
+  actions(h.render()).confirm.props.onCancel();
+  assert.equal(actions(h.render()).confirm.props.open, false);
+  actions(h.render()).delete.props.onClick();
+  assert.equal(actions(h.render()).confirm.props.open, false);
+  assert.equal(calls.length, 1);
+  finish.reject(new Error('network')); await p;
+  assert.match(messages.at(-1)[1], /No se pudo confirmar/);
+  actions(h.render()).delete.props.onClick();
+  assert.equal(actions(h.render()).confirm.props.open, true); h.unmount();
 });
 
 test('favorite toggles confirmed state, blocks concurrent actions and locks uncertain state', async () => {
@@ -89,11 +141,16 @@ test('favorite toggles confirmed state, blocks concurrent actions and locks unce
   const p = a.favorite.props.onClick(); await a.favorite.props.onClick();
   assert.equal(calls.length, 1); assert.equal(actions(h.render()).favorite.props.disabled, true);
   finish.resolve([undefined, 'ok']); await p; assert.equal(book.isFavorite, true);
+  assert.equal(actions(h.render()).favorite.props['aria-pressed'], true);
+  assert.equal(favoriteStatus(h.render()), 'Favorito');
   const q = actions(h.render()).favorite.props.onClick(); assert.equal(calls.at(-1)[2].isFavorite, false);
   finish.reject(new Error('network')); await q;
   assert.equal(book.isFavorite, true); assert.match(messages.at(-1)[1], /Recarga/);
   const uncertain = h.render();
   assert.equal(actions(uncertain).favorite.props.disabled, true);
+  assert.equal(actions(uncertain).favorite.props['aria-label'], 'Favorito');
+  assert.equal(actions(uncertain).favorite.props['aria-pressed'], undefined);
+  assert.equal(favoriteStatus(uncertain), 'Estado sin confirmar');
   const status = React.Children.toArray(uncertain.props.children).find((child) => child.type === React.Fragment).props.children[0];
   assert.equal(status.props.role, 'status'); assert.match(status.props.children, /No se pudo confirmar.*Recarga/);
   h.unmount();
@@ -137,6 +194,8 @@ test('favorite recovery retries only GET after failure and synchronizes confirme
   const refreshed = { id: 'a', title: 'Updated', author: 'Synthetic', year: 2000, genre: ['A'], coverImage: null, rating: null, isFavorite: true, userId: 'u', createdAt: 'date', updatedAt: 'date' };
   finish.resolve([undefined, refreshed]); await retry;
   assert.deepEqual(book, refreshed); assert.equal(actions(h.render()).favorite.props.disabled, false);
+  assert.equal(actions(h.render()).favorite.props['aria-pressed'], true);
+  assert.equal(favoriteStatus(h.render()), 'Favorito');
   assert.equal(calls.filter(([kind]) => kind === 'favorite').length, 1);
   assert.equal(reloads, 0); assert.deepEqual(navigations, []); h.unmount();
 });

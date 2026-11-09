@@ -370,6 +370,21 @@ body {
   object-fit: contain;
 }
 
+.book-detail-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.book-detail-favorite-status {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 .book-detail-content {
   display: flex;
   flex-direction: column;

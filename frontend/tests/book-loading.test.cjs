@@ -111,12 +111,43 @@ test('loaded detail presents the full title, author, cover and review section', 
   requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', coverImage: 'https://example.test/cover.png' }]); await flush();
   const tree = h.render();
   const heading = byType(tree, 'h1');
-  const cover = find(tree, (element) => element.props?.className === 'book-detail-cover');
+  const cover = find(tree, (element) => element.props?.src === 'https://example.test/cover.png');
   assert.equal(heading.props.children, title);
   assert.match(JSON.stringify(tree), /Autora de prueba/);
-  assert.equal(byType(cover, 'img').props.src, 'https://example.test/cover.png');
-  assert.equal(byType(cover, 'img').props.alt, title);
+  assert.equal(cover.props.src, 'https://example.test/cover.png');
+  assert.equal(cover.props.title, title);
   assert.ok(find(tree, (element) => element.props?.bookId === 'a'));
+  h.unmount();
+});
+
+test('detail cover handles missing and failed images and resets on URL changes', async () => {
+  reset(); const h = harness(Detail, () => ({ params: { id } })); h.render();
+  requests.shift().resolve([undefined, book('a')]); await flush();
+  let tree = h.render();
+  const actionBar = find(tree, (element) => typeof element.props?.setBook === 'function');
+  const reviews = find(tree, (element) => element.props?.bookId === 'a');
+  let key; let failed = false;
+  function cover() {
+    tree = h.render();
+    const element = React.Children.toArray(tree.props.children)[0];
+    if (element.key !== key) { key = element.key; failed = false; }
+    const useState = React.useState;
+    React.useState = () => [failed, (value) => { failed = value; }];
+    try { return element.type(element.props); } finally { React.useState = useState; }
+  }
+  const changeUrl = (url) => actionBar.props.setBook((previous) => ({ ...previous, coverImage: url }));
+  assert.equal(cover().props.children.props.children, 'Sin portada');
+  changeUrl(''); assert.equal(cover().props.children.props.children, 'Sin portada');
+  changeUrl('https://example.test/first.png');
+  let image = cover().props.children;
+  assert.equal(image.type, 'img'); assert.equal(image.props.alt, 'Book a');
+  image.props.onError(); assert.equal(cover().props.children.props.children, 'Sin portada');
+  changeUrl('https://example.test/second.png');
+  image = cover().props.children;
+  assert.equal(image.type, 'img'); assert.equal(image.props.src, 'https://example.test/second.png');
+  changeUrl('https://example.test/first.png'); assert.equal(cover().props.children.type, 'img');
+  const nextReviews = find(tree, (element) => element.props?.bookId === 'a');
+  assert.equal(nextReviews.type, reviews.type); assert.equal(nextReviews.key, reviews.key);
   h.unmount();
 });
 

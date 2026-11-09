@@ -13,13 +13,12 @@ import {
   FileExcelOutlined,
   StarOutlined,
 } from '@ant-design/icons';
-import { Button, Popconfirm, Spin, Tag, Tooltip } from 'antd';
+import { Button, Modal, Spin, Tag, Tooltip } from 'antd';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import booksGenresOptions from '@/books-genres.json';
 import { useMessage } from '@/context/message.context';
 import { usePathname, useRouter } from 'next/navigation';
 import Reviews from '@/components/reviews';
-import ImagePlaceholder from '@/components/image-placeholder';
 
 type PageProps = {
   params: { id: string };
@@ -61,16 +60,7 @@ function BookDetails({ id }: { id: string }) {
 
     return (
       <div className="book-detail">
-        <div className="book-detail-cover">
-          {coverImage ? (
-            <img
-              src={coverImage}
-              alt={title}
-            />
-          ) : (
-            <ImagePlaceholder />
-          )}
-        </div>
+        <DetailCover key={coverImage} src={coverImage} title={title} />
         <div className="book-detail-content">
           <ActionBar book={book} setBook={updateLoadedBook} />
           <div className="book-detail-heading">
@@ -86,6 +76,21 @@ function BookDetails({ id }: { id: string }) {
 }
 
 export default DetailsBookPage;
+
+function DetailCover({ src, title }: { src?: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className="book-detail-cover">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={title} onError={() => setFailed(true)} />
+      ) : (
+        <div className="book-detail-cover-placeholder">Sin portada</div>
+      )}
+    </div>
+  );
+}
 
 function Genres({ genre }: { genre: string[] }) {
   const transformedGenre: string[] = [];
@@ -120,8 +125,11 @@ function ActionBar({
   const mounted = useRef(false);
   const busy = useRef(false);
   const favoriteBlocked = useRef(false);
+  const deleteDialogOpen = useRef(false);
+  const deleteDialogVersion = useRef(0);
   const [pending, setPending] = useState(false);
   const [favoriteUncertain, setFavoriteUncertain] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -153,6 +161,31 @@ function ActionBar({
         busy.current = false;
         if (active()) setPending(false);
       }
+    }
+  };
+
+  const openDeleteDialog = () => {
+    if (!active() || busy.current || deleteDialogOpen.current) return;
+    deleteDialogVersion.current++;
+    deleteDialogOpen.current = true;
+    setDeleteOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    if (!active()) return;
+    // Dismissal never aborts an in-flight deletion.
+    deleteDialogVersion.current++;
+    deleteDialogOpen.current = false;
+    setDeleteOpen(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!active() || !deleteDialogOpen.current || busy.current) return;
+    const version = deleteDialogVersion.current;
+    await handleDelete();
+    if (active() && deleteDialogVersion.current === version) {
+      deleteDialogOpen.current = false;
+      setDeleteOpen(false);
     }
   };
 
@@ -224,10 +257,11 @@ function ActionBar({
   };
 
   return (
-    <div className="w-full flex items-center justify-end gap-2">
+    <div className="w-full flex flex-wrap items-center justify-end gap-2">
       <Tooltip title="Exportar" color="#22c55e">
         <Button
           type="text"
+          aria-label="Exportar libro"
           className="hover:text-green-500 dark:text-neutral-100 dark:hover:text-green-500"
           icon={<FileExcelOutlined className="text-xl" />}
           onClick={handleExportCSV}
@@ -237,6 +271,7 @@ function ActionBar({
       <Tooltip title="Editar" color="#3b82f6">
         <Button
           type="text"
+          aria-label="Editar libro"
           className="hover:text-blue-500 dark:text-neutral-100 dark:hover:text-blue-500"
           icon={<EditOutlined className="text-xl" />}
           onClick={handleEdit}
@@ -244,21 +279,38 @@ function ActionBar({
         />
       </Tooltip>
       <Tooltip title="Borrar" color="#ef4444">
-        <Popconfirm title="¿Borrar este libro?" description="Esta acción no se puede deshacer." okText="Borrar" cancelText="Cancelar" onConfirm={handleDelete} okButtonProps={{ disabled: pending }}>
         <Button
           type="text"
+          aria-label="Borrar libro"
           className="hover:text-red-500 dark:text-neutral-100 dark:hover:text-red-500"
           icon={<DeleteOutlined className="text-xl" />}
+          onClick={openDeleteDialog}
           disabled={pending}
         />
-        </Popconfirm>
       </Tooltip>
+      <Modal
+        title="¿Borrar este libro?"
+        open={deleteOpen}
+        onOk={confirmDelete}
+        onCancel={closeDeleteDialog}
+        okText="Borrar"
+        cancelText="Cancelar"
+        okButtonProps={{ disabled: pending, danger: true }}
+        cancelButtonProps={{ autoFocus: true }}
+        focusTriggerAfterClose={!pending}
+        destroyOnClose
+        closable={false}
+      >
+        <p>Esta acción no se puede deshacer.</p>
+      </Modal>
       <Tooltip
         title={favoriteUncertain ? 'Estado de favoritos sin confirmar' : book.isFavorite ? 'Borrar de favoritos' : 'Añadir a favoritos'}
         color="#eab308"
       >
         <Button
           type="text"
+          aria-label="Favorito"
+          aria-pressed={favoriteUncertain ? undefined : book.isFavorite}
           className={
             book.isFavorite && !favoriteUncertain
               ? 'text-yellow-500'
@@ -269,6 +321,7 @@ function ActionBar({
           disabled={pending || favoriteUncertain}
         />
       </Tooltip>
+      <span className="book-detail-favorite-status">{favoriteUncertain ? 'Estado sin confirmar' : book.isFavorite ? 'Favorito' : 'No favorito'}</span>
       {favoriteUncertain && <><span className="sr-only" role="status">No se pudo confirmar el cambio de favoritos. Recarga el estado para comprobarlo.</span><Button onClick={handleFavoriteRecovery} disabled={pending}>Recargar estado</Button></>}
     </div>
   );
