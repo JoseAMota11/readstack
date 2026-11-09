@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-08
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** UI-02.1–UI-02.3 implemented and owner-validated within the checks recorded below. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** UI-03.1 completed and owner-validated within the checks recorded below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -70,6 +70,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- UI-03.1 owner-led browser validation: desktop detail layout worked in light and dark themes; at 390px the cover and information stacked without observed horizontal scrolling or clipping. The tested book's cover was complete and uncropped, and title, author, genres, actions and reviews were legible and accessible in the tested layouts. At 200% zoom, content and controls remained usable. Favorite toggle, edit navigation, export, delete confirmation/cancel, review draft entry and browser Back worked. Varied cover ratios, failed/missing cover fallbacks, screen-reader behavior, 400% zoom and comprehensive accessibility were not established by these checks.
+- UI-03.1 implementation checks on Node 22: frontend `fnm exec --using 22 npm run lint -- --no-cache`, `fnm exec --using 22 npx tsc --noEmit --incremental false`, and `fnm exec --using 22 npm test` passed (64 tests); an isolated frontend `fnm exec --using 22 npm run build` passed with an outdated Browserslist data warning. In an isolated backend copy without the tracked database, `fnm exec --using 22 npm run build`, `fnm exec --using 22 npm test` (42 tests), and `fnm exec --using 22 npm run test:security` (3 probes) passed. The new presentation test uses a lightweight component harness, not browser automation. Checks were not rerun during documentation-only closeout.
 - UI-02.3 owner-led browser validation: in light mode selected and unselected stars were distinguishable and rating text was correct; in dark mode selected, unselected and hover states were distinguishable and rating text was correct. Enter selected the focused star and updated its value; Tab reached the enabled publish button without trapping focus. Unsent review text and a three-star rating survived navigation away and back. Screen-reader, physical-touch and uncertain-result recovery behavior were not manually verified in this increment; this is not a comprehensive WCAG assessment.
 - UI-02.3 implementation checks on Node 22: frontend `fnm exec --using 22 npm run lint -- --no-cache`, `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm test` passed (63 tests); frontend and backend builds and backend tests passed in isolated copies (42 backend tests). Rating tests exercise a lightweight harness and server-rendered markup, not browser automation. Checks were not rerun during closeout.
 - UI-02.2 owner-led browser validation: at 390px title search remained visible and secondary filters were accessible through “Más filtros”; author filtering applied, remained active while collapsed, retained its displayed value on reopening, and cleared; the active indication reflected applied filters. Genre selection, clearing, keyboard navigation and dismissal worked. Genre Select uses `virtual={false}` to avoid the virtual list touch handler implicated in scroll interference; with it, a continuous scroll gesture moved the dropdown without moving the page and the previous touchmove intervention warnings disappeared in Edge mobile emulation. A separate gesture at a list boundary may scroll the page; the owner accepted this without overscroll CSS. Desktop secondary filters worked in light and dark themes. Physical touch devices, screen readers and zoom were not validated for this increment; this is not a comprehensive accessibility assessment.
@@ -100,6 +102,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
+UI-03.1 changes `frontend/app/book/[id]/page.tsx`, `frontend/app/globals.css`, and `frontend/tests/book-loading.test.cjs`; this closeout updates `PROGRESS.md`. Loading, error and retry flows, action handlers, review logic and API contracts remain unchanged. The pre-existing local modification to `backend/library.db` remains intentionally untouched.
+
 UI-02.3 changes `frontend/components/reviews.tsx`, `frontend/components/review-card.tsx`, `frontend/app/globals.css`, and `frontend/tests/review-functional.test.cjs`; this closeout updates `PROGRESS.md`. Draft persistence, submission and recovery handlers and API contracts are untouched.
 
 UI-02.2 changes `frontend/components/filters.tsx`, `frontend/app/globals.css`, and `frontend/tests/library-filters.test.cjs`; this closeout updates `PROGRESS.md`. The filter context and backend are untouched.
@@ -110,7 +114,7 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
-Review the next UI increment with the owner. The shared debounce's rapid-cross-filter limitation remains a separately scoped issue. Later visual refinement should revisit consistent 2:3 cover surfaces with object-contain and card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
+Review UI-03.2 with the owner: accessible naming refinements for icon-only actions, missing/failed/changed cover fallback behavior beyond the existing behavior, and additional action or error-state presentation refinements were deferred from UI-03.1. The shared debounce's rapid-cross-filter limitation remains a separately scoped issue. Later visual refinement should revisit card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
 
 Nonblocking for starting design, but still required as applicable: browser-level authentication/deep-link/draft validation (`TEST-02`, `SEC-05`), CI (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
 

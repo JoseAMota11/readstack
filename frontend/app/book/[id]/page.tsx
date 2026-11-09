@@ -60,22 +60,24 @@ function BookDetails({ id }: { id: string }) {
     const { title, coverImage, author, genre } = book;
 
     return (
-      <div className="grid place-content-center py-4 max-[500px]:block">
-        <div className="w-[400px] flex flex-col items-center gap-4 max-[500px]:w-full max-[500px]:px-4">
-          <ActionBar book={book} setBook={updateLoadedBook} />
-          <Genres genre={genre} />
-          <h3 className="text-xl text-center font-semibold max-[500px]:text-base">
-            {title} &middot; {author}
-          </h3>
+      <div className="book-detail">
+        <div className="book-detail-cover">
           {coverImage ? (
             <img
               src={coverImage}
               alt={title}
-              className="w-full object-cover aspect-[9/16] rounded-lg"
             />
           ) : (
             <ImagePlaceholder />
           )}
+        </div>
+        <div className="book-detail-content">
+          <ActionBar book={book} setBook={updateLoadedBook} />
+          <div className="book-detail-heading">
+            <h1>{title}</h1>
+            <p>{author}</p>
+          </div>
+          <Genres genre={genre} />
           <Reviews bookId={book.id} />
         </div>
       </div>
@@ -95,7 +97,7 @@ function Genres({ genre }: { genre: string[] }) {
   });
 
   return (
-    <div className="w-full">
+    <div className="book-detail-genres">
       {transformedGenre.map((value) => (
         <Tag key={value} className="text-lg max-[500px]:text-base">
           {value}

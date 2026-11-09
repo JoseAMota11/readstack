@@ -105,6 +105,21 @@ const book = (id) => ({ id, title: `Book ${id}`, author: 'Synthetic', genre: [],
 const list = (books) => ({ books, pagination: { current: 1, total: books.length, totalPages: 1, size: 10 } });
 function reset() { requests.length = 0; filters = {}; refresh = false; id = 'a'; filterUpdates = []; for (const key of Object.keys(fields)) delete fields[key]; }
 
+test('loaded detail presents the full title, author, cover and review section', async () => {
+  reset(); const h = harness(Detail, () => ({ params: { id } })); h.render();
+  const title = 'Título largo '.repeat(30);
+  requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', coverImage: 'https://example.test/cover.png' }]); await flush();
+  const tree = h.render();
+  const heading = byType(tree, 'h1');
+  const cover = find(tree, (element) => element.props?.className === 'book-detail-cover');
+  assert.equal(heading.props.children, title);
+  assert.match(JSON.stringify(tree), /Autora de prueba/);
+  assert.equal(byType(cover, 'img').props.src, 'https://example.test/cover.png');
+  assert.equal(byType(cover, 'img').props.alt, title);
+  assert.ok(find(tree, (element) => element.props?.bookId === 'a'));
+  h.unmount();
+});
+
 test('library loading, empty, populated, failure and retry use current filters', async () => {
   reset(); const h = harness(Main);
   assert.ok(byRole(h.render(), 'status'));
