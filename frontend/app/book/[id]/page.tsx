@@ -15,18 +15,19 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { Button, Modal, Spin, Tag } from 'antd';
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import { Dispatch, SetStateAction, use, useEffect, useRef, useState } from 'react';
 import booksGenresOptions from '@/books-genres.json';
 import { useMessage } from '@/context/message.context';
 import { usePathname, useRouter } from 'next/navigation';
 import Reviews from '@/components/reviews';
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 function DetailsBookPage({ params }: PageProps) {
-  return <BookDetails key={params.id} id={params.id} />;
+  const { id } = use(params);
+  return <BookDetails key={id} id={id} />;
 }
 
 function BookDetails({ id }: { id: string }) {

@@ -5,6 +5,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { MessageProvider } from '@/context/message.context';
 import ReviewDraftCleanup from '@/components/review-draft-cleanup';
 import { ThemeProvider } from '@/context/theme.context';
+import AntdReact19Patch from '@/components/antd-react19-patch';
 
 // Runs before paint. If hydration fails, reveal the page rather than hiding it indefinitely.
 const themeBootstrap = `(function(){var root=document.documentElement;var stored;try{stored=localStorage.getItem('theme')}catch(e){}var dark=stored==='dark'||(!stored&&window.matchMedia('(prefers-color-scheme: dark)').matches);root.classList.toggle('dark',dark);root.setAttribute('data-theme-pending','');setTimeout(function(){root.removeAttribute('data-theme-pending')},3000)})()`;
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <AntdReact19Patch />
         <AntdRegistry>
           <ThemeProvider>
             <ReviewDraftCleanup />

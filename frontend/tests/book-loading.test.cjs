@@ -21,7 +21,7 @@ for (const extension of ['.ts', '.tsx']) {
     module._compile(outputText, filename);
   };
 }
-const original = { useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, load: Module._load };
+const original = { use: React.use, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, load: Module._load };
 const Button = () => null;
 const Card = () => null;
 const ui = { Button, ConfigProvider: () => null, Spin: () => null, Pagination: () => null, Tag: () => null, Tooltip: () => null, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null };
@@ -53,7 +53,7 @@ Module._load = function (request, parent, ...args) {
 const Main = require('../components/main.tsx').default;
 const Detail = require('../app/book/[id]/page.tsx').default;
 const Edit = require('../app/book/[id]/edit/page.tsx').default;
-after(() => { Object.assign(React, { useState: original.useState, useRef: original.useRef, useEffect: original.useEffect }); Module._load = original.load; Module._resolveFilename = resolve; });
+after(() => { Object.assign(React, { use: original.use, useState: original.useState, useRef: original.useRef, useEffect: original.useEffect }); Module._load = original.load; Module._resolveFilename = resolve; });
 
 // Approximate keyed remounts and effect cleanup; this is not a React renderer.
 function harness(Component, props = () => ({})) {
@@ -61,6 +61,7 @@ function harness(Component, props = () => ({})) {
   let cursor = 0;
   let pending = [];
   let childKey;
+  React.use = (promise) => { assert.ok(promise instanceof Promise); return promise.testValue; };
   React.useState = (initial) => {
     const i = cursor++;
     const store = slots;
@@ -102,11 +103,19 @@ const byRole = (tree, role) => find(tree, (element) => element.props?.role === r
 const byType = (tree, type) => find(tree, (element) => element.type === type);
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
 const book = (id) => ({ id, title: `Book ${id}`, author: 'Synthetic', genre: [], isFavorite: false });
+const detailProps = () => ({ params: Object.assign(Promise.resolve({ id }), { testValue: { id } }) });
 const list = (books) => ({ books, pagination: { current: 1, total: books.length, totalPages: 1, size: 10 } });
 function reset() { requests.length = 0; filters = {}; refresh = false; id = 'a'; filterUpdates = []; for (const key of Object.keys(fields)) delete fields[key]; }
 
+test('detail unwraps promised params with the React server renderer', async () => {
+  const { renderToReadableStream } = require('react-dom/server');
+  const stream = await renderToReadableStream(React.createElement(Detail, { params: Promise.resolve({ id: 'a' }) }));
+  const html = await new Response(stream).text();
+  assert.match(html, /Cargando libro/);
+});
+
 test('loaded detail presents the full title, author, cover and review section', async () => {
-  reset(); const h = harness(Detail, () => ({ params: { id } })); h.render();
+  reset(); const h = harness(Detail, detailProps); h.render();
   const title = 'Título largo '.repeat(30);
   requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', coverImage: 'https://example.test/cover.png' }]); await flush();
   const tree = h.render();
@@ -121,7 +130,7 @@ test('loaded detail presents the full title, author, cover and review section', 
 });
 
 test('detail cover handles missing and failed images and resets on URL changes', async () => {
-  reset(); const h = harness(Detail, () => ({ params: { id } })); h.render();
+  reset(); const h = harness(Detail, detailProps); h.render();
   requests.shift().resolve([undefined, book('a')]); await flush();
   let tree = h.render();
   const actionBar = find(tree, (element) => typeof element.props?.setBook === 'function');
@@ -184,7 +193,7 @@ test('empty page with matching books offers recovery without claiming the librar
   assert.deepEqual(filterUpdates, [{ current: '1' }]); h.unmount();
 });
 
-for (const [label, Component, props] of [['library', Main, () => ({})], ['detail', Detail, () => ({ params: { id } })], ['edit', Edit, () => ({})]]) {
+for (const [label, Component, props] of [['library', Main, () => ({})], ['detail', Detail, detailProps], ['edit', Edit, () => ({})]]) {
   test(`${label} effect cleanup ignores the first request when effects are replayed`, async () => {
     reset(); const h = harness(Component, props); h.render(); const first = requests.shift();
     h.replayEffects(); const second = requests.shift();
@@ -209,7 +218,7 @@ test('library ignores obsolete success and failure on filters, pages, refresh an
   refresh = false; h.render(); const e = requests.shift(); h.unmount(); e.reject(new Error('late')); await flush();
 });
 
-for (const [label, Component, props] of [['detail', Detail, () => ({ params: { id } })], ['edit', Edit, () => ({})]]) {
+for (const [label, Component, props] of [['detail', Detail, detailProps], ['edit', Edit, () => ({})]]) {
   test(`${label} gates content, retries generic failures, and ignores obsolete requests`, async () => {
     reset(); const h = harness(Component, props);
     assert.ok(byRole(h.render(), 'status')); const a = requests.shift();
@@ -231,7 +240,7 @@ for (const [label, Component, props] of [['detail', Detail, () => ({ params: { i
   });
 }
 
-for (const [label, Component, props] of [['detail', Detail, () => ({ params: { id } })], ['edit', Edit, () => ({})]]) {
+for (const [label, Component, props] of [['detail', Detail, detailProps], ['edit', Edit, () => ({})]]) {
   test(`${label} reloads a previously visited id and ignores the earlier response`, async () => {
     reset(); const h = harness(Component, props); h.render(); const oldA = requests.shift();
     id = 'b'; h.render(); const oldB = requests.shift();
