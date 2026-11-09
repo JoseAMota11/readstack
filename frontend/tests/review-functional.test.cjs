@@ -74,20 +74,32 @@ function setup() {
 function teardown() { Object.assign(React, originalHooks); global.window = originalWindow; global.sessionStorage = originalStorage; global.fetch = originalFetch; }
 const item = { id: 'review-a', comment: 'synthetic', rating: 4, createdAt: 'today' };
 
-test('published review groups rating, date and delete before the comment', () => {
-  const tree = ReviewCard({ ...item, onDelete() {}, pending: false, disabled: false });
-  const children = React.Children.toArray(tree.props.children);
-  assert.equal(children[0].props.className, 'review-card-header');
-  const metadata = React.Children.toArray(children[0].props.children);
-  assert.equal(metadata[0].props.className, 'review-card-rating');
-  assert.match(text(metadata[0]), /Calificación:\s*4\/5/);
-  assert.equal(metadata[1].props.className, 'review-card-date');
-  assert.match(text(metadata[1]), /^·\s+today$/);
-  assert.equal(findAll(metadata[1], 'span')[0].props['aria-hidden'], 'true');
-  assert.equal(metadata[2].type, Popconfirm);
-  assert.equal(children[1].props.className, 'review-card-comment');
-  assert.equal(text(children[1]), item.comment);
-  assert.equal(children.length, 2);
+test('published review groups rating, separator, date and delete before the comment', () => {
+  for (const [createdAt, dateType] of [['today', 'p'], ['2026-11-09 12:34:56', 'time']]) {
+    const tree = ReviewCard({ ...item, createdAt, onDelete() {}, pending: false, disabled: false });
+    const children = React.Children.toArray(tree.props.children);
+    const header = children.find((element) => element.props.className === 'review-card-header');
+    const comment = children.find((element) => element.props.className === 'review-card-comment');
+    assert.ok(header && comment);
+    assert.ok(children.indexOf(header) < children.indexOf(comment));
+    assert.equal(text(comment), item.comment);
+    const metadata = React.Children.toArray(header.props.children);
+    const rating = metadata.find((element) => element.type === 'p' && element.props.className === 'review-card-rating');
+    const separators = findAll(header, 'span').filter((element) => text(element).trim() === '·');
+    const separatorIndex = metadata.findIndex((element) => element.type === 'span' && text(element).trim() === '·');
+    const date = metadata.find((element) => element.type === dateType && element.props.className === 'review-card-date');
+    const deletion = metadata.find((element) => element.type === Popconfirm);
+    assert.ok(rating && date && deletion);
+    assert.match(text(rating), /Calificación:\s*4\/5/);
+    assert.equal(separators.length, 1);
+    assert.equal(separators[0].props['aria-hidden'], 'true');
+    assert.equal((text(header).match(/·/g) || []).length, 1);
+    assert.ok(separatorIndex >= 0);
+    assert.ok(metadata.indexOf(rating) < separatorIndex);
+    assert.ok(separatorIndex < metadata.indexOf(date));
+    assert.ok(metadata.indexOf(date) < metadata.indexOf(deletion));
+    if (dateType === 'p') assert.equal(text(date), createdAt);
+  }
 });
 
 test('published ratings use five decorative static stars and one readable numeric label', () => {
@@ -131,7 +143,7 @@ test('valid SQLite dates render as semantic UTC times in the existing metadata r
   const time = findAll(tree, 'time')[0];
   assert.equal(time.props.className, 'review-card-date');
   assert.equal(time.props.dateTime, '2026-11-09T12:34:56.000Z');
-  assert.equal(time.props.children[1], new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn' }).format(new Date('2026-11-09T12:34:56Z')));
+  assert.equal(text(time), new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn' }).format(new Date('2026-11-09T12:34:56Z')));
 });
 
 test('strict review dates accept Gregorian leap days and preserve years below 100', () => {
@@ -158,7 +170,7 @@ test('invalid and unsupported timestamps remain unchanged without time semantics
     const tree = ReviewCard({ ...item, createdAt: value, onDelete() {}, pending: false, disabled: false });
     assert.equal(findAll(tree, 'time').length, 0, value);
     const date = findAll(tree, 'p').find((element) => element.props.className === 'review-card-date');
-    assert.equal(date.props.children[1], value);
+    assert.equal(date.props.children, value);
     assert.equal(date.props.dateTime, undefined);
   }
 });

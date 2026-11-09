@@ -35,7 +35,7 @@ function ReviewCard({
         {date ? (
           <time className="review-card-date" dateTime={date.dateTime}>{date.text}</time>
         ) : (
-          <p className="review-card-date"><span aria-hidden="true">· </span>{createdAt}</p>
+          <p className="review-card-date">{createdAt}</p>
         )}
         <Popconfirm
           title="¿Borrar esta reseña?"
