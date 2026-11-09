@@ -15,7 +15,7 @@ function ReviewCard({
   return (
     <div className="review-card">
       <div className="review-card-header">
-        <p className="text-sm text-text-secondary">{createdAt}</p>
+        <p className="review-card-date">{createdAt}</p>
         <Popconfirm
           title="¿Borrar esta reseña?"
           description="Esta acción no se puede deshacer."
@@ -34,8 +34,8 @@ function ReviewCard({
           />
         </Popconfirm>
       </div>
-      <p>{comment}</p>
-      <p className="self-end text-sm text-text-secondary">
+      <p className="review-card-comment">{comment}</p>
+      <p className="review-card-rating">
         Calificación: {`${rating}/5`}
       </p>
     </div>

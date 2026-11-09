@@ -106,16 +106,41 @@ body {
   flex-direction: column;
   gap: 0.5rem;
   padding: 1rem 0;
-  border-top: 1px solid var(--border-subtle);
   overflow-wrap: anywhere;
+}
+
+.review-card + .review-card {
+  border-top: 1px solid var(--border-subtle);
 }
 
 .review-card-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.25rem 0.75rem;
   min-width: 0;
+}
+
+.review-card-date,
+.review-card-rating {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.review-card-date {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.review-card-comment {
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.review-card .review-card-delete {
+  margin-left: auto;
 }
 
 .review-card .review-card-delete:not(:disabled) {

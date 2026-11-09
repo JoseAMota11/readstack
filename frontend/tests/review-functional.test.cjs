@@ -73,6 +73,17 @@ function setup() {
 function teardown() { Object.assign(React, originalHooks); global.window = originalWindow; global.sessionStorage = originalStorage; global.fetch = originalFetch; }
 const item = { id: 'review-a', comment: 'synthetic', rating: 4, createdAt: 'today' };
 
+test('published review presents raw date, comment and numeric rating in order', () => {
+  const tree = ReviewCard({ ...item, onDelete() {}, pending: false, disabled: false });
+  const children = React.Children.toArray(tree.props.children);
+  assert.equal(children[0].props.className, 'review-card-header');
+  assert.equal(text(findAll(children[0], 'p')[0]), item.createdAt);
+  assert.equal(children[1].props.className, 'review-card-comment');
+  assert.equal(text(children[1]), item.comment);
+  assert.equal(children[2].props.className, 'review-card-rating');
+  assert.match(text(children[2]), /Calificación:\s*4\/5/);
+});
+
 test('delete confirmation exposes cancel and invokes deletion only on confirmation', () => {
   const calls = [];
   const tree = ReviewCard({ ...item, onDelete: () => calls.push(1), pending: false, disabled: false });
@@ -80,8 +91,14 @@ test('delete confirmation exposes cancel and invokes deletion only on confirmati
   assert.equal(confirm.props.cancelText, 'Cancelar');
   assert.equal(calls.length, 0);
   assert.equal(findAll(tree, Button)[0].props['aria-label'], 'Borrar reseña');
+  assert.equal(findAll(tree, Button)[0].props.loading, false);
+  assert.equal(findAll(tree, Button)[0].props.disabled, false);
   confirm.props.onConfirm();
   assert.equal(calls.length, 1);
+  const pendingTree = ReviewCard({ ...item, onDelete: () => calls.push(1), pending: true, disabled: true });
+  assert.equal(findAll(pendingTree, Button)[0].props.loading, true);
+  assert.equal(findAll(pendingTree, Button)[0].props.disabled, true);
+  assert.equal(findAll(pendingTree, Popconfirm)[0].props.okButtonProps.disabled, true);
 });
 
 test('review textarea has a persistent associated label and example placeholder', () => {
