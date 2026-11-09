@@ -3,7 +3,7 @@
 import { Review } from '@/types/review.type';
 import { getTokenDecoded } from '@/utils/cookies-handlers';
 import { Button, Input, Rate } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { cloneElement, useCallback, useEffect, useRef, useState } from 'react';
 import ReviewCard from './review-card';
 import { deleteReview, getAllReviews, postReview } from '@/services/review.service';
 import { useMessage } from '@/context/message.context';
@@ -153,9 +153,22 @@ function Reviews({ bookId }: { bookId: string }) {
           value={review.comment}
           onChange={(e) => updateDraft({ ...reviewRef.current, comment: e.target.value })}
         />
-        <div className="flex justify-between items-center">
-          <div className="p-1 rounded-md dark:bg-neutral-400">
-            <Rate value={review.rating} onChange={(value) => updateDraft({ ...reviewRef.current, rating: value })} />
+        <div className="review-rating-row">
+          <div className="review-rating">
+            <span className="review-rating-label">Calificación de tu reseña</span>
+            <Rate
+              aria-label="Calificación de tu reseña"
+              value={review.rating}
+              onChange={(value) => updateDraft({ ...reviewRef.current, rating: value })}
+              characterRender={(star, { index = 0 }) => cloneElement(star, undefined,
+                cloneElement(star.props.children, {
+                  'aria-label': `${index + 1} ${index === 0 ? 'estrella' : 'estrellas'} de 5`,
+                  'aria-checked': review.rating === index + 1,
+                }))}
+            />
+            <span className="review-rating-value" aria-live="polite">
+              {review.rating ? `${review.rating} de 5 estrellas` : 'Sin calificación'}
+            </span>
           </div>
           <Button type="primary" disabled={!review.comment || !review.rating || !!pending || uncertain} loading={pending === 'create'} onClick={() => mutate('create')}>
             Publicar reseña

@@ -35,7 +35,7 @@ function ReviewCard({
         </Popconfirm>
       </div>
       <p>{comment}</p>
-      <p className="self-end text-sm text-neutral-400">
+      <p className="self-end text-sm text-text-secondary">
         Calificación: {`${rating}/5`}
       </p>
     </div>

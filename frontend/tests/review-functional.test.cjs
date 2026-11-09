@@ -84,6 +84,48 @@ test('delete confirmation exposes cancel and invokes deletion only on confirmati
   assert.equal(calls.length, 1);
 });
 
+test('rating names the group and stars, reports the actual value and preserves draft updates', async () => {
+  const store = setup();
+  const h = harness();
+  try {
+    h.render(); await flush();
+    let tree = h.render();
+    let rate = findAll(tree, Rate)[0];
+    assert.equal(rate.props['aria-label'], 'Calificación de tu reseña');
+    assert.match(text(tree), /Sin calificación/);
+    const star = React.createElement('li', null, React.createElement('div', { role: 'radio', 'aria-checked': true }));
+    let radio = rate.props.characterRender(star, { index: 0 }).props.children;
+    assert.equal(radio.props['aria-label'], '1 estrella de 5');
+    assert.equal(radio.props['aria-checked'], false);
+
+    rate.props.onChange(4);
+    tree = h.render(); rate = findAll(tree, Rate)[0];
+    assert.equal(rate.props.value, 4);
+    assert.match(text(tree), /4 de 5 estrellas/);
+    assert.equal(JSON.parse(store.get('review-draft:user-a:book-a')).draft.rating, 4);
+    for (let index = 0; index < 5; index++) {
+      radio = rate.props.characterRender(star, { index }).props.children;
+      assert.equal(radio.props['aria-checked'], index === 3);
+      assert.equal(radio.props['aria-label'], `${index + 1} ${index === 0 ? 'estrella' : 'estrellas'} de 5`);
+    }
+    const html = require('react-dom/server').renderToStaticMarkup(React.createElement(require('antd').Rate, rate.props));
+    assert.match(html, /aria-label="Calificación de tu reseña"/);
+    assert.equal((html.match(/aria-checked="true"/g) || []).length, 1);
+    assert.match(html, /aria-label="4 estrellas de 5"/);
+    rate.props.onChange(0);
+    assert.match(text(h.render()), /Sin calificación/);
+    assert.equal(JSON.parse(store.get('review-draft:user-a:book-a')).draft.rating, 0);
+  } finally { h.unmount(); teardown(); }
+});
+
+test('review rating styles scope selected, outlined, hover and focus states', () => {
+  const css = require('node:fs').readFileSync(path.join(root, 'app/globals.css'), 'utf8');
+  assert.match(css, /\.review-rating \.ant-rate \.ant-rate-star\s*\{[^}]*color: var\(--gold\)/);
+  assert.match(css, /\.review-rating \.ant-rate \.ant-rate-star-zero \.ant-rate-star-second svg\s*\{[^}]*fill: none;[^}]*stroke: currentColor/);
+  assert.match(css, /\.review-rating \.ant-rate:hover \.ant-rate-star-full\s*\{[^}]*color: var\(--accent-hover\)/);
+  assert.match(css, /\.review-rating \.ant-rate:focus-visible,[\s\S]*?outline: 3px solid var\(--focus\)/);
+});
+
 test('creation blocks rapid duplicates, shows pending and preserves later edits', async () => {
   setup(); const post = deferred(); let calls = 0;
   services.postReview = () => { calls++; return post.promise; };
