@@ -11,7 +11,6 @@ function Cover({ src }: { src?: string }) {
     <div className="library-cover">
       {src && !failed ? (
         // The title is already present in the link; the cover is decorative here.
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" onError={() => setFailed(true)} />
       ) : (
         <span className="library-cover-placeholder">Sin portada</span>

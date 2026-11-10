@@ -101,7 +101,7 @@ function EditBook({ id }: { id: string }) {
     <div className="h-screen grid place-content-center max-[500px]:block max-[500px]:p-4">
       <ConfigProvider componentDisabled={pending}>
       <form
-        onSubmit={handleSubmit(onValid, (errors) => console.log(errors))}
+        onSubmit={(event) => handleSubmit(onValid, (errors) => console.log(errors))(event)}
         className="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-lg grid grid-cols-[auto,300px] gap-4 items-center max-[500px]:grid-cols-[auto,180px]"
       >
         <h2 className="col-span-full text-lg font-semibold">

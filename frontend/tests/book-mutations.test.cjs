@@ -31,6 +31,9 @@ let resets;
 let closed;
 let refreshed;
 let navigated;
+let submitFactoryCalls = 0;
+let invalidSubmission = false;
+let submittedEvent;
 const setValue = (key, value) => { values[key] = value; };
 const ui = { Button, Modal, ConfigProvider, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null, Spin: () => null };
 Module._load = function (request, parent, ...args) {
@@ -39,7 +42,7 @@ Module._load = function (request, parent, ...args) {
   if (request === '@/context/filters.context') return { useFilters: () => ({ refreshData: () => refreshed++ }) };
   if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() {} };
   if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: () => navigated++ }) };
-  if (request === 'react-hook-form') return { Controller: () => null, useForm: () => ({ control: {}, formState: { errors: {} }, handleSubmit: (valid) => () => valid({ ...values }), reset: () => { resets++; values = {}; }, setValue }) };
+  if (request === 'react-hook-form') return { Controller: () => null, useForm: () => ({ control: {}, formState: { errors: {} }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return (event) => { submittedEvent = event; return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue }) };
   if (request === '@hookform/resolvers/zod') return { zodResolver: () => () => {} };
   if (request === '@/schemas/book.shema') return { bookSchema: {} };
   return original.load.call(this, request, parent, ...args);
@@ -90,6 +93,35 @@ function find(element, type) {
 }
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const response = (body, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
+
+for (const kind of ['create', 'edit']) {
+  test(`${kind}: submit validation is invoked only on the submit event`, async () => {
+    values = { title: 'Synthetic title' }; submitFactoryCalls = 0; invalidSubmission = true; submittedEvent = undefined;
+    let mutations = 0;
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(values)));
+      mutations++; return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness(kind);
+    const originalLog = console.log;
+    const errors = [];
+    try {
+      h.render(); await flush();
+      const tree = h.render();
+      assert.equal(submitFactoryCalls, 0);
+      console.log = (value) => errors.push(value);
+      const event = { synthetic: true };
+      await find(tree, 'form').props.onSubmit(event);
+      assert.equal(submitFactoryCalls, 1);
+      assert.equal(submittedEvent, event);
+      assert.deepEqual(errors, [{ title: 'invalid' }]);
+      assert.equal(mutations, 0);
+      assert.deepEqual(values, { title: 'Synthetic title' });
+    } finally {
+      console.log = originalLog; invalidSubmission = false; h.unmount();
+    }
+  });
+}
 
 for (const kind of ['create', 'edit']) {
   test(`${kind}: failures preserve values, pending blocks duplicates, and confirmed success completes`, async () => {

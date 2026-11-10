@@ -85,7 +85,7 @@ function CreateBookModal({
     >
       <ConfigProvider componentDisabled={pending}>
       <form
-        onSubmit={handleSubmit(onValid, (errors) => console.log(errors))}
+        onSubmit={(event) => handleSubmit(onValid, (errors) => console.log(errors))(event)}
         className="dark:text-neutral-100 grid grid-cols-[auto,300px] gap-4 items-center max-[500px]:grid-cols-[auto,180px]"
       >
         <h2 className="col-span-full dark:text-neutral-100 text-lg font-semibold">

@@ -85,7 +85,6 @@ function DetailCover({ src, title }: { src?: string; title: string }) {
   return (
     <div className="book-detail-cover">
       {src && !failed ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={title} onError={() => setFailed(true)} />
       ) : (
         <div className="book-detail-cover-placeholder">Sin portada</div>
