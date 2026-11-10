@@ -37,7 +37,7 @@ function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSe
   }, [filterKey, retry]);
 
   const handlePageChange = (page: number, pageSize: number) => {
-    handleSetFilters({ current: String(page), size: String(pageSize) });
+    handleSetFilters({ current: pageSize === result?.pagination.size ? String(page) : '1', size: String(pageSize) });
   };
 
   const handlePageSizeChange = (_: number, pageSize: number) => {

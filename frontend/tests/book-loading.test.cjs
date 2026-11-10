@@ -204,6 +204,30 @@ test('empty page with matching books offers recovery without claiming the librar
   assert.deepEqual(filterUpdates, [{ current: '1' }]); h.unmount();
 });
 
+test('pagination keeps page navigation and resets both size-change callbacks to page one', async () => {
+  reset(); const h = harness(Main); h.render();
+  requests.shift().resolve({ books: [book('a')], pagination: { current: 3, total: 30, totalPages: 3, size: 10 } }); await flush();
+  const pagination = byType(h.render(), ui.Pagination);
+  pagination.props.onChange(2, 10);
+  pagination.props.onShowSizeChange(3, 5);
+  pagination.props.onChange(3, 5);
+  assert.deepEqual(filterUpdates, [
+    { current: '2', size: '10' },
+    { current: '1', size: '5' },
+    { current: '1', size: '5' },
+  ]);
+  h.unmount();
+});
+
+test('equivalent empty filters do not trigger another library request', async () => {
+  reset(); const h = harness(Main); h.render();
+  requests.shift().resolve(list([book('a')])); await flush();
+  filters = { title: '', author: undefined, year: null, genre: '' };
+  assert.equal(byType(h.render(), Card).props.id, 'a');
+  assert.equal(requests.length, 0);
+  h.unmount();
+});
+
 for (const [label, Component, props] of [['library', Main, () => ({})], ['detail', Detail, detailProps], ['edit', Edit, () => ({})]]) {
   test(`${label} effect cleanup ignores the first request when effects are replayed`, async () => {
     reset(); const h = harness(Component, props); h.render(); const first = requests.shift();

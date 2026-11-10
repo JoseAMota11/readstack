@@ -3,9 +3,13 @@
 import debounce from 'lodash.debounce';
 import {
   createContext,
+  Dispatch,
   ReactNode,
+  SetStateAction,
   useCallback,
   useContext,
+  useEffect,
+  useMemo,
   useState,
 } from 'react';
 
@@ -27,16 +31,41 @@ export type Filters = {
   size?: string;
 };
 
+function createFilterUpdates(setFilters: Dispatch<SetStateAction<Filters>>) {
+  let pending: Filters = {};
+  const commit = debounce(() => {
+    const patch = pending;
+    pending = {};
+    setFilters((prevFilters) => {
+      const keys = Object.keys(patch) as (keyof Filters)[];
+      if (keys.every((key) => (prevFilters[key] || undefined) === (patch[key] || undefined))) {
+        return prevFilters;
+      }
+      return { ...prevFilters, ...patch };
+    });
+  }, 400);
+  return {
+    schedule: (patch: Filters) => {
+      pending = { ...pending, ...patch };
+      commit();
+    },
+    cancel: () => {
+      commit.cancel();
+      pending = {};
+    },
+  };
+}
+
 export function FiltersProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>({});
   const [refresh, setRefresh] = useState(false);
+  const filterUpdates = useMemo(() => createFilterUpdates(setFilters), []);
 
-  const handleSetFilters = useCallback(
-    debounce((filters: Filters) => {
-      setFilters((prevFilters) => ({ ...prevFilters, ...filters }));
-    }, 400),
-    []
-  );
+  const handleSetFilters = useCallback((patch: Filters) => {
+    filterUpdates.schedule(patch);
+  }, [filterUpdates]);
+
+  useEffect(() => () => filterUpdates.cancel(), [filterUpdates]);
 
   const refreshData = () => {
     setRefresh((prevState) => !prevState);
