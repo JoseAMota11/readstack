@@ -2,15 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { app } from './helpers/test-app';
-import { auth, createBook, registerUser } from './helpers/fixtures';
+import { auth, createBook, createReview, registerUser } from './helpers/fixtures';
 
 test('exports only the owner book as escaped CSV and denies foreign export', async () => {
   const alice = await registerUser('csv-a');
   const bob = await registerUser('csv-b');
   const title = 'Private, "quoted" title';
   const book = await createBook(alice.token, alice.userId, {
-    title, author: 'Synthetic, Author', genre: ['Fiction', 'Mystery'], isFavorite: true,
+    title, author: 'Synthetic, Author', genre: ['Fiction', 'Mystery'], isFavorite: true, rating: 3,
   });
+  assert.equal((await createReview(alice.token, alice.userId, book.id, { rating: 5 })).status, 201);
 
   const exported = await request(app).get(`/api/v1/books/${book.id}/export`)
     .set(auth(alice.token)).expect(200);
@@ -21,6 +22,8 @@ test('exports only the owner book as escaped CSV and denies foreign export', asy
   assert.ok(exported.text.includes('"Synthetic, Author"'));
   assert.ok(exported.text.includes('"Fiction, Mystery"'));
   assert.ok(exported.text.includes('"Sí"'));
+  assert.match(exported.text, /,3,"Sí",/);
+  assert.doesNotMatch(exported.text, /reviewAverageRating|reviewRatingCount/);
   assert.ok(exported.text.includes(alice.userId));
 
   const denied = await request(app).get(`/api/v1/books/${book.id}/export`)

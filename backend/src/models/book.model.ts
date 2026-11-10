@@ -1,6 +1,13 @@
 import db from '../config/db';
 import { Book, BooksFilters } from '../types/book.type';
 
+const reviewAggregates = `
+  SELECT bookId, userId, AVG(rating) AS reviewAverageRating,
+    COUNT(rating) AS reviewRatingCount
+  FROM Reviews WHERE userId = @userId
+  GROUP BY bookId, userId
+`;
+
 export class BookModel {
   static findAll(userId: string, filters?: BooksFilters) {
     let query = 'SELECT * FROM Books';
@@ -36,7 +43,14 @@ export class BookModel {
 
     query += ' ORDER BY createdAt DESC LIMIT @size OFFSET @offset';
 
-    const stmt = db.prepare(query);
+    const stmt = db.prepare(`
+      SELECT books.*, reviews.reviewAverageRating,
+        COALESCE(reviews.reviewRatingCount, 0) AS reviewRatingCount
+      FROM (${query}) AS books
+      LEFT JOIN (${reviewAggregates}) AS reviews
+        ON reviews.bookId = books.id AND reviews.userId = books.userId
+      ORDER BY books.createdAt DESC
+    `);
     const countStmt = db.prepare(countQuery);
 
     const books = stmt.all({ ...params, size, offset }) as Book[];
@@ -56,8 +70,15 @@ export class BookModel {
   }
 
   static findOneById(id: string, userId: string) {
-    const stmt = db.prepare(`SELECT * FROM Books WHERE id = ? AND userId = ?`);
-    const book = stmt.get(id, userId) as Book | undefined;
+    const stmt = db.prepare(`
+      SELECT books.*, reviews.reviewAverageRating,
+        COALESCE(reviews.reviewRatingCount, 0) AS reviewRatingCount
+      FROM Books AS books
+      LEFT JOIN (${reviewAggregates}) AS reviews
+        ON reviews.bookId = books.id AND reviews.userId = books.userId
+      WHERE books.id = @id AND books.userId = @userId
+    `);
+    const book = stmt.get({ id, userId }) as Book | undefined;
 
     if (!book) {
       return undefined;
