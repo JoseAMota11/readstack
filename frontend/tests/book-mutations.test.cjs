@@ -114,7 +114,7 @@ test('create: errors are absent initially and each reported error describes its 
   formErrors = {};
   let tree = h.render();
   assert.equal(formOptions.mode, undefined);
-  const fields = ['title', 'author', 'year', 'genre', 'coverImage', 'rating', 'isFavorite'];
+  const fields = ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite'];
   for (const name of fields) {
     const controller = find(tree, Controller, (node) => node.props.name === name);
     const control = controller.props.render({ field: { name, value: name === 'isFavorite' ? false : undefined } });
@@ -145,27 +145,21 @@ test('create: existing schema and responsive field layout remain intact', () => 
   const { bookSchema } = require('../schemas/book.shema.ts');
   const valid = { title: 'Título', author: 'Autor', year: 2000, genre: ['A'], isFavorite: false };
   assert.equal(bookSchema.safeParse(valid).success, true);
-  assert.equal(bookSchema.safeParse({ ...valid, rating: 0 }).success, true);
-  assert.equal(bookSchema.safeParse({ ...valid, rating: 3.7123 }).success, true);
-  for (const patch of [{ title: '' }, { author: '' }, { year: 999 }, { year: 2000.5 }, { genre: [] }, { coverImage: '' }, { rating: null }]) {
+  assert.deepEqual(bookSchema.parse({ ...valid, rating: null, reviewAverageRating: 4, reviewRatingCount: 1 }), valid);
+  for (const patch of [{ title: '' }, { author: '' }, { year: 999 }, { year: 2000.5 }, { genre: [] }, { coverImage: '' }]) {
     assert.equal(bookSchema.safeParse({ ...valid, ...patch }).success, false);
   }
   const h = harness('create');
   const form = find(h.render(), 'form');
-  const rating = find(form, Controller, (node) => node.props.name === 'rating')
-    .props.render({ field: { name: 'rating', value: 3.7123 } });
-  assert.equal(rating.type, ui.InputNumber);
-  assert.equal(rating.props.value, 3.7123);
-  assert.equal(rating.props.min, 1);
-  assert.equal(rating.props.max, 5);
-  assert.equal(rating.props.step, undefined);
-  assert.equal(rating.props.precision, undefined);
+  assert.equal(find(form, Controller, (node) => node.props.name === 'rating'), null);
+  assert.equal(find(form, 'label', (node) => node.props.htmlFor === 'rating'), null);
   const classes = React.Children.toArray(form.props.children).map((node) => node.props.className);
-  assert.deepEqual(classes.slice(1, 8).map((name) => name.split('--')[1]), ['title', 'author', 'year', 'genre', 'coverImage', 'rating', 'isFavorite']);
+  assert.deepEqual(classes.slice(1, 7).map((name) => name.split('--')[1]), ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite']);
   const css = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
   assert.match(css, /@media \(min-width: 576px\)[\s\S]*?\.create-book-form\s*\{[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
   const fullWidth = css.match(/\.create-book-heading,\s*\.create-book-field--title,[\s\S]*?grid-column: 1 \/ -1;/)[0];
   assert.match(fullWidth, /create-book-field--coverImage/);
+  assert.match(fullWidth, /create-book-field--isFavorite/);
   assert.doesNotMatch(fullWidth, /create-book-field--genre/);
   assert.match(css, /\.create-book-field--isFavorite \.ant-checkbox\s*\{\s*order: 1;/);
   assert.match(css, /\.create-book-form \.ant-input-number-input\s*\{\s*height: 38px;/);
@@ -174,6 +168,33 @@ test('create: existing schema and responsive field layout remain intact', () => 
   assert.match(css, /\.create-book-error \.anticon\s*\{[^}]*flex: none;[^}]*height: 1\.4em;/);
   h.unmount();
 });
+
+for (const kind of ['create', 'edit']) {
+  test(`${kind}: excludes legacy and aggregate ratings from form and mutation payload`, async () => {
+    const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false, rating: 0, reviewAverageRating: 4.25, reviewRatingCount: 2 };
+    values = kind === 'create' ? { ...stored } : {}; resets = 0; closed = 0; refreshed = 0; navigated = 0;
+    let payload;
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+      payload = JSON.parse(init.body);
+      return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness(kind);
+    h.render(); await flush();
+    if (kind === 'edit') {
+      for (const key of ['rating', 'reviewAverageRating', 'reviewRatingCount']) assert.equal(Object.hasOwn(values, key), false);
+      Object.assign(values, { rating: 0, reviewAverageRating: 4.25, reviewRatingCount: 2 });
+    }
+    const form = find(h.render(), 'form');
+    assert.equal(find(form, Controller, (node) => node.props.name === 'rating'), null);
+    assert.equal(find(form, 'label', (node) => node.props.htmlFor === 'rating'), null);
+    await form.props.onSubmit();
+    for (const key of ['rating', 'reviewAverageRating', 'reviewRatingCount']) assert.equal(Object.hasOwn(payload, key), false);
+    assert.equal(payload.title, stored.title);
+    assert.equal(({ ...stored, ...payload }).rating, 0);
+    h.unmount();
+  });
+}
 
 for (const kind of ['create', 'edit']) {
   test(`${kind}: submit validation is invoked only on the submit event`, async () => {

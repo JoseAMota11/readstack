@@ -5,6 +5,7 @@ import { coverTransitionName } from '@/utils/cover-transition';
 import { BookOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useState, ViewTransition } from 'react';
+import ReviewAverage from './review-average';
 
 function Cover({ src }: { src?: string }) {
   const [failed, setFailed] = useState(false);
@@ -24,7 +25,7 @@ function Cover({ src }: { src?: string }) {
   );
 }
 
-function Card({ id, title, author, year, coverImage, rating, isFavorite }: Book) {
+function Card({ id, title, author, year, coverImage, reviewAverageRating, reviewRatingCount, isFavorite }: Book) {
   return (
     <Link href={`/book/${id}`} className="library-card">
       <ViewTransition name={coverTransitionName(id)} default="none" share="book-cover">
@@ -34,12 +35,10 @@ function Card({ id, title, author, year, coverImage, rating, isFavorite }: Book)
         <h2 className="library-card-title">{title}</h2>
         <p className="library-card-author">{author}</p>
         <p className="library-card-year">{year}</p>
-        {(rating != null || isFavorite) && (
           <div className="library-card-details">
-            {rating != null && <span className="library-card-rating"><span aria-hidden="true">★</span><span className="sr-only">Calificación del libro: </span>{rating}/5</span>}
+            <ReviewAverage average={reviewAverageRating} count={reviewRatingCount} />
             {isFavorite && <span className="library-card-favorite"><span aria-hidden="true">♥</span> Favorito</span>}
           </div>
-        )}
       </div>
     </Link>
   );

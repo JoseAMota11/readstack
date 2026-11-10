@@ -23,7 +23,7 @@ Module._resolveFilename = function (request, ...args) {
 
 const Card = require('../components/card.tsx').default;
 const { coverTransitionName } = require('../utils/cover-transition.ts');
-const book = { id: 'synthetic-id', title: 'Synthetic title', author: 'Synthetic author', year: 2024, isFavorite: false };
+const book = { id: 'synthetic-id', title: 'Synthetic title', author: 'Synthetic author', year: 2024, isFavorite: false, reviewAverageRating: null, reviewRatingCount: 0 };
 const render = (props = {}) => renderToStaticMarkup(React.createElement(Card, { ...book, ...props }));
 
 test('cover names are deterministic, CSS-safe and distinct for different IDs', () => {
@@ -60,17 +60,13 @@ test('card links to book detail and preserves long titles and metadata', () => {
   assert.doesNotMatch(html, /Sin portada/);
 });
 
-test('card distinguishes absent, null, zero and positive ratings and favorite status', () => {
-  for (const rating of [undefined, null]) {
-    const html = render({ rating });
-    assert.doesNotMatch(html, /Calificación|Favorito/);
-  }
-  assert.match(render({ rating: 0, isFavorite: true }), /Calificación del libro: <\/span>0\/5/);
-  assert.match(render({ rating: 0, isFavorite: true }), /Favorito/);
-  assert.match(render({ rating: 3.5 }), /Calificación del libro: <\/span>3.5\/5/);
-  assert.match(render({ rating: 0, isFavorite: true }), /class="library-card-rating"><span aria-hidden="true">★<\/span>/);
-  assert.match(render({ rating: 0, isFavorite: true }), /class="library-card-favorite"><span aria-hidden="true">♥<\/span>/);
-  assert.doesNotMatch(render({ isFavorite: true }), /library-card-rating/);
+test('card uses review averages, including zero, and never the manual rating', () => {
+  assert.match(render({ rating: 4 }), /Sin reseñas calificadas/);
+  assert.doesNotMatch(render({ rating: 4 }), /4 de 5/);
+  assert.match(render({ reviewAverageRating: null, reviewRatingCount: 2 }), /Sin reseñas calificadas/);
+  assert.match(render({ reviewAverageRating: 0, reviewRatingCount: 1, isFavorite: true }), /0.0 de 5 · 1 reseña/);
+  assert.match(render({ reviewAverageRating: 3.56, reviewRatingCount: 3, rating: 1 }), /3.6 de 5 · 3 reseñas/);
+  assert.match(render({ isFavorite: true }), /class="library-card-favorite"><span aria-hidden="true">♥<\/span>/);
 });
 
 test('missing and failed covers fall back, and a changed URL resets the cover state', () => {

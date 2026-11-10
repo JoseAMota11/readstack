@@ -41,7 +41,10 @@ function CreateBookModal({
     submitting.current = true;
     setPending(true);
     try {
-      const data = { ...values };
+      const data: FieldValues = {
+        title: values.title, author: values.author, year: values.year,
+        genre: values.genre, coverImage: values.coverImage, isFavorite: values.isFavorite,
+      };
       const token = getTokenDecoded();
 
       if (token) {
@@ -187,26 +190,6 @@ function CreateBookModal({
               )}
             />
             {errors.coverImage && <span id="coverImage-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>Introduce una URL válida.</span></span>}
-          </div>
-          <div className="create-book-field create-book-field--rating">
-            <label htmlFor="rating">Calificación:</label>
-            <Controller
-              name="rating"
-              control={control}
-              render={({ field }) => (
-                <InputNumber
-                  {...field}
-                  id={field.name}
-                  min={1}
-                  max={5}
-                  placeholder="5"
-                  status={errors.rating && 'error'}
-                  aria-invalid={!!errors.rating}
-                  aria-describedby={errors.rating ? 'rating-error' : undefined}
-                />
-              )}
-            />
-            {errors.rating && <span id="rating-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>Introduce una calificación entre 0 y 5.</span></span>}
           </div>
           <div className="create-book-field create-book-field--isFavorite">
             <Controller

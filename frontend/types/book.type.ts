@@ -6,6 +6,8 @@ export type Book = {
   genre: string[];
   coverImage?: string;
   rating?: number;
+  reviewAverageRating: number | null;
+  reviewRatingCount: number;
   isFavorite: boolean;
   userId: string;
   createdAt: string;

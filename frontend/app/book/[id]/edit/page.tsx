@@ -50,7 +50,11 @@ function EditBook({ id }: { id: string }) {
     setPending(true);
     let navigating = false;
     try {
-      const data = { ...values, userId: id };
+      const data = {
+        title: values.title, author: values.author, year: values.year,
+        genre: values.genre, coverImage: values.coverImage, isFavorite: values.isFavorite,
+        userId: id,
+      };
 
       const [error, message] = await updateBook(id as string, data as Book);
       if (!mounted.current) return;
@@ -83,8 +87,8 @@ function EditBook({ id }: { id: string }) {
           setLoadError(true);
           return;
         }
-        for (const key in book) {
-          setValue(key, book[key as keyof Book]);
+        for (const key of ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite'] as const) {
+          if (key in book) setValue(key, book[key]);
         }
         setLoaded(true);
       } catch {
@@ -173,21 +177,6 @@ function EditBook({ id }: { id: string }) {
               {...field}
               id={field.name}
               placeholder="https://example.image.com/"
-            />
-          )}
-        />
-        <label htmlFor="rating">Calificación:</label>
-        <Controller
-          name="rating"
-          control={control}
-          render={({ field }) => (
-            <InputNumber
-              {...field}
-              id={field.name}
-              min={1}
-              max={5}
-              placeholder="5"
-              style={{ width: '100%' }}
             />
           )}
         />

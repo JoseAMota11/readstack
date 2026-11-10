@@ -9,7 +9,7 @@ import { deleteReview, getAllReviews, postReview } from '@/services/review.servi
 import { useMessage } from '@/context/message.context';
 import { readReviewDraft, writeReviewDraft } from '@/utils/review-draft';
 
-function Reviews({ bookId }: { bookId: string }) {
+function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: string; onAggregateChange?: () => void; onAggregateUncertain?: () => void }) {
   const [token] = useState(getTokenDecoded);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [review, setReview] = useState({ rating: 0, comment: '' });
@@ -119,6 +119,7 @@ function Reviews({ bookId }: { bookId: string }) {
           setReview(reviewRef.current);
         }
         messageApi.success(message);
+        onAggregateChange?.();
         // Invalidate any older load immediately, and mark the displayed list stale.
         sequence.current++;
         setListState(hasLoaded.current ? 'stale' : 'loading');
@@ -126,6 +127,7 @@ function Reviews({ bookId }: { bookId: string }) {
       }
     } catch {
       if (!active()) return;
+      onAggregateUncertain?.();
       sequence.current++;
       setListState(hasLoaded.current ? 'stale' : 'error');
       setInspected(false);

@@ -50,14 +50,14 @@ function text(element) {
   return React.Children.toArray(element.props?.children).map(text).join(' ');
 }
 function button(tree, label) { return findAll(tree, Button).find((item) => text(item).includes(label)); }
-function harness() {
+function harness(props = {}) {
   const states = [], cleanups = []; let cursor = 0, mounted = false, effects = [];
   React.useState = (initial) => { const i = cursor++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial; return [states[i], (v) => { states[i] = typeof v === 'function' ? v(states[i]) : v; }]; };
   React.useRef = (initial) => { const i = cursor++; if (!(i in states)) states[i] = { current: initial }; return states[i]; };
   React.useCallback = (fn) => fn;
   React.useEffect = (fn) => { if (!mounted) effects.push(fn); };
   return {
-    render() { cursor = 0; const tree = Reviews({ bookId: 'book-a' }); if (!mounted) { mounted = true; for (const effect of effects) { const cleanup = effect(); if (cleanup) cleanups.push(cleanup); } effects = []; } return tree; },
+    render() { cursor = 0; const tree = Reviews({ bookId: 'book-a', ...props }); if (!mounted) { mounted = true; for (const effect of effects) { const cleanup = effect(); if (cleanup) cleanups.push(cleanup); } effects = []; } return tree; },
     unmount() { cleanups.forEach((cleanup) => cleanup()); },
   };
 }
@@ -283,9 +283,9 @@ test('review rating styles scope selected, outlined, hover and focus states', ()
 });
 
 test('creation blocks rapid duplicates, shows pending and preserves later edits', async () => {
-  setup(); const post = deferred(); let calls = 0;
+  setup(); const post = deferred(); let calls = 0, aggregateRefreshes = 0;
   services.postReview = () => { calls++; return post.promise; };
-  const h = harness(); try {
+  const h = harness({ onAggregateChange: () => aggregateRefreshes++ }); try {
     h.render(); await flush(); let tree = h.render();
     findAll(tree, TextArea)[0].props.onChange({ target: { value: 'first' } });
     findAll(tree, Rate)[0].props.onChange(4); tree = h.render();
@@ -294,20 +294,22 @@ test('creation blocks rapid duplicates, shows pending and preserves later edits'
     tree = h.render(); assert.equal(button(tree, 'Publicar').props.loading, true); assert.equal(button(tree, 'Publicar').props.disabled, true);
     findAll(tree, TextArea)[0].props.onChange({ target: { value: 'later' } });
     post.resolve([undefined, 'Creada']); await first; await flush();
+    assert.equal(aggregateRefreshes, 1);
     assert.equal(findAll(h.render(), TextArea)[0].props.value, 'later');
     assert.equal(JSON.parse(sessionStorage.getItem('review-draft:user-a:book-a')).draft.comment, 'later');
   } finally { h.unmount(); teardown(); }
 });
 
 test('delete pending blocks duplicates and failed refresh marks stale with retry', async () => {
-  setup(); const deletion = deferred(); let calls = 0, loads = 0;
+  setup(); const deletion = deferred(); let calls = 0, loads = 0, aggregateRefreshes = 0;
   services.getAllReviews = async () => { loads++; return loads === 2 ? ['error', undefined] : [undefined, [item]]; };
   services.deleteReview = () => { calls++; return deletion.promise; };
-  const h = harness(); try {
+  const h = harness({ onAggregateChange: () => aggregateRefreshes++ }); try {
     h.render(); await flush(); let tree = h.render(); const remove = findAll(tree, Card)[0].props.onDelete;
     const first = remove(); await remove(); assert.equal(calls, 1);
     tree = h.render(); assert.equal(findAll(tree, Card)[0].props.pending, true); assert.equal(findAll(tree, Card)[0].props.disabled, true);
     deletion.resolve([undefined, 'Borrada']); await first; await flush(); tree = h.render();
+    assert.equal(aggregateRefreshes, 1);
     assert.match(text(tree), /podrían no estar actualizadas/);
     assert.equal(findAll(tree, Card).length, 1);
     button(tree, 'Reintentar').props.onClick(); await flush(); assert.doesNotMatch(text(h.render()), /podrían no estar actualizadas/);

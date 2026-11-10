@@ -22,6 +22,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Reviews from '@/components/reviews';
 import { coverTransitionName } from '@/utils/cover-transition';
 import Link from 'next/link';
+import ReviewAverage from '@/components/review-average';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -36,6 +37,36 @@ function BookDetails({ id }: { id: string }) {
   const [book, setBook] = useState<Book>();
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [aggregateState, setAggregateState] = useState<'current' | 'loading' | 'stale'>('current');
+  const aggregateSequence = useRef(0);
+  const aggregateMounted = useRef(false);
+
+  useEffect(() => {
+    const requests = aggregateSequence;
+    aggregateMounted.current = true;
+    return () => { aggregateMounted.current = false; requests.current++; };
+  }, []);
+
+  const refreshAggregate = async () => {
+    const request = ++aggregateSequence.current;
+    setAggregateState('loading');
+    try {
+      const [error, refreshed] = await getOneBook(id);
+      if (!aggregateMounted.current || request !== aggregateSequence.current) return;
+      if (error || !refreshed || refreshed.id !== id ||
+        !Number.isInteger(refreshed.reviewRatingCount) || refreshed.reviewRatingCount < 0 ||
+        (refreshed.reviewAverageRating !== null && (typeof refreshed.reviewAverageRating !== 'number' || !Number.isFinite(refreshed.reviewAverageRating)))) throw new Error('Invalid aggregate');
+      setBook((previous) => previous?.id === id ? { ...previous, reviewAverageRating: refreshed.reviewAverageRating, reviewRatingCount: refreshed.reviewRatingCount } : previous);
+      setAggregateState('current');
+    } catch {
+      if (aggregateMounted.current && request === aggregateSequence.current) setAggregateState('stale');
+    }
+  };
+
+  const invalidateAggregate = () => {
+    aggregateSequence.current++;
+    setAggregateState('stale');
+  };
 
   useEffect(() => {
     let active = true;
@@ -72,8 +103,13 @@ function BookDetails({ id }: { id: string }) {
             <p>{book.author}</p>
           </div>
           <Genres genre={book.genre} />
+          <div className="book-detail-rating" aria-live="polite">
+            <p>Promedio de tus reseñas: {aggregateState === 'current' ? <ReviewAverage average={book.reviewAverageRating} count={book.reviewRatingCount} /> : aggregateState === 'loading' ? 'Actualizando promedio...' : 'Promedio sin actualizar.'}</p>
+            {aggregateState === 'stale' && <Button onClick={() => void refreshAggregate()}>Reintentar promedio</Button>}
+            {book.rating != null && <p>Calificación manual anterior: {book.rating} de 5</p>}
+          </div>
           <ActionBar book={book} setBook={updateLoadedBook} />
-          <Reviews bookId={book.id} />
+          <Reviews bookId={book.id} onAggregateChange={() => void refreshAggregate()} onAggregateUncertain={invalidateAggregate} />
         </div>
       </div>
       )}
@@ -236,7 +272,7 @@ function ActionBar({
         (refreshed.rating != null && typeof refreshed.rating !== 'number')) {
         throw new Error('Invalid book response');
       }
-      setBook((previous) => previous?.id === book.id ? refreshed : previous);
+      setBook((previous) => previous?.id === book.id ? { ...refreshed, reviewAverageRating: previous.reviewAverageRating, reviewRatingCount: previous.reviewRatingCount } : previous);
       favoriteBlocked.current = false;
       setFavoriteUncertain(false);
     } catch {

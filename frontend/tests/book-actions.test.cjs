@@ -40,7 +40,7 @@ after(() => { Module._resolveFilename = original.resolve; Module._load = origina
 
 function harness() {
   calls = []; messages.length = 0; navigations.length = 0; global.window.location.pathname = '/book/a';
-  book = { id: 'a', title: 'Synthetic', genre: [], isFavorite: false };
+  book = { id: 'a', title: 'Synthetic', genre: [], isFavorite: false, reviewAverageRating: 3.5, reviewRatingCount: 2 };
   const slots = []; let cursor = 0; let effects = [];
   React.useState = (initial) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (v) => { slots[i] = typeof v === 'function' ? v(slots[i]) : v; }]; };
   React.useRef = (initial) => { const i = cursor++; if (!(i in slots)) slots[i] = { current: initial }; return slots[i]; };
@@ -195,9 +195,9 @@ test('favorite recovery retries only GET after failure and synchronizes confirme
     assert.match(messages.at(-1)[1], /No se pudo recargar/);
   }
   retry = recoveryButton(h.render()).props.onClick();
-  const refreshed = { id: 'a', title: 'Updated', author: 'Synthetic', year: 2000, genre: ['A'], coverImage: null, rating: null, isFavorite: true, userId: 'u', createdAt: 'date', updatedAt: 'date' };
+  const refreshed = { id: 'a', title: 'Updated', author: 'Synthetic', year: 2000, genre: ['A'], coverImage: null, rating: null, isFavorite: true, userId: 'u', createdAt: 'date', updatedAt: 'date', reviewAverageRating: 1, reviewRatingCount: 1 };
   finish.resolve([undefined, refreshed]); await retry;
-  assert.deepEqual(book, refreshed); assert.equal(actions(h.render()).favorite.props.disabled, false);
+  assert.deepEqual(book, { ...refreshed, reviewAverageRating: 3.5, reviewRatingCount: 2 }); assert.equal(actions(h.render()).favorite.props.disabled, false);
   assert.equal(actions(h.render()).favorite.props['aria-pressed'], true);
   assert.equal(favoriteStatus(h.render()), undefined);
   assert.equal(favoriteLabel(h.render()), 'Favorito');

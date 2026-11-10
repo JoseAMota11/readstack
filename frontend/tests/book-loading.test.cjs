@@ -104,7 +104,7 @@ function find(element, predicate) {
 const byRole = (tree, role) => find(tree, (element) => element.props?.role === role);
 const byType = (tree, type) => find(tree, (element) => element.type === type);
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
-const book = (id) => ({ id, title: `Book ${id}`, author: 'Synthetic', genre: [], isFavorite: false });
+const book = (id) => ({ id, title: `Book ${id}`, author: 'Synthetic', genre: [], isFavorite: false, reviewAverageRating: null, reviewRatingCount: 0 });
 const detailProps = () => ({ params: Object.assign(Promise.resolve({ id }), { testValue: { id } }) });
 const list = (books) => ({ books, pagination: { current: 1, total: books.length, totalPages: 1, size: 10 } });
 function reset() { requests.length = 0; filters = {}; refresh = false; id = 'a'; filterUpdates = []; for (const key of Object.keys(fields)) delete fields[key]; }
@@ -128,6 +128,27 @@ test('loaded detail presents the full title, author, cover and review section', 
   assert.equal(cover.props.src, 'https://example.test/cover.png');
   assert.equal(cover.props.title, title);
   assert.ok(find(tree, (element) => element.props?.bookId === 'a'));
+  h.unmount();
+});
+
+test('detail preserves historical zero and suppresses outdated aggregate responses', async () => {
+  reset(); const h = harness(Detail, detailProps); h.render();
+  requests.shift().resolve([undefined, { ...book('a'), rating: 0 }]); await flush();
+  let tree = h.render();
+  assert.match(JSON.stringify(tree), /Calificación manual anterior/);
+  const reviews = find(tree, (element) => element.props?.bookId === 'a');
+  reviews.props.onAggregateChange(); const first = requests.shift();
+  reviews.props.onAggregateChange(); const second = requests.shift();
+  second.resolve([undefined, { ...book('a'), reviewAverageRating: 3.75, reviewRatingCount: 2 }]); await flush();
+  first.resolve([undefined, { ...book('a'), reviewAverageRating: 1, reviewRatingCount: 1 }]); await flush();
+  tree = h.render();
+  const average = find(tree, (element) => element.props?.average === 3.75);
+  assert.equal(average.props.count, 2);
+  assert.match(JSON.stringify(tree), /Calificación manual anterior/);
+  reviews.props.onAggregateChange(); const late = requests.shift();
+  reviews.props.onAggregateUncertain();
+  late.resolve([undefined, { ...book('a'), reviewAverageRating: 5, reviewRatingCount: 3 }]); await flush();
+  assert.match(JSON.stringify(h.render()), /Promedio sin actualizar/);
   h.unmount();
 });
 

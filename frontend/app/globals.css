@@ -133,10 +133,6 @@ body {
   align-self: center;
 }
 
-.create-book-field--rating .ant-input-number {
-  width: min(100%, 8rem);
-}
-
 .create-book-error {
   display: inline-flex;
   align-items: flex-start;
@@ -186,13 +182,11 @@ body {
   .create-book-field--title,
   .create-book-field--author,
   .create-book-field--coverImage,
+  .create-book-field--isFavorite,
   .create-book-actions {
     grid-column: 1 / -1;
   }
 
-  .create-book-field--isFavorite {
-    padding-top: calc(1.5em + 0.25rem);
-  }
 }
 
 .review-section {
@@ -716,6 +710,13 @@ body {
 
 .library-card-rating > [aria-hidden='true'] {
   color: var(--gold);
+}
+
+.book-detail-rating {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-block: 0.75rem;
 }
 
 .library-card-favorite {
