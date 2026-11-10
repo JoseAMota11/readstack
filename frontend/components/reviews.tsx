@@ -63,24 +63,22 @@ function Reviews({ bookId }: { bookId: string }) {
     setReview(next);
   };
 
-  const getReviews = useCallback(async (forInspection = false) => {
+  const getReviews = useCallback((forInspection = false) => {
     const request = ++sequence.current;
-    if (forInspection) setInspected(false);
-    if (!hasLoaded.current) setListState('loading');
-    try {
-      const [error, data] = await getAllReviews(bookId);
+    const failed = () => {
       if (!active() || request !== sequence.current) return;
-      if (error || !data) throw new Error('Review list unavailable');
+      setListState(hasLoaded.current ? 'stale' : 'error');
+      if (forInspection) setInspected(false);
+    };
+    return getAllReviews(bookId).then(([error, data]) => {
+      if (!active() || request !== sequence.current) return;
+      if (error || !data) return failed();
       setReviews(data);
       hasLoaded.current = true;
       setHasLoadedReviews(true);
       setListState('loaded');
       if (forInspection) setInspected(true);
-    } catch {
-      if (!active() || request !== sequence.current) return;
-      setListState(hasLoaded.current ? 'stale' : 'error');
-      if (forInspection) setInspected(false);
-    }
+    }, failed);
   }, [bookId]);
 
   useEffect(() => { void getReviews(); }, [getReviews]);
@@ -89,6 +87,8 @@ function Reviews({ bookId }: { bookId: string }) {
     if (refreshingRef.current) return;
     refreshingRef.current = true;
     setRefreshing(true);
+    setInspected(false);
+    if (!hasLoaded.current) setListState('loading');
     try {
       await getReviews(true);
     } finally {
@@ -185,7 +185,7 @@ function Reviews({ bookId }: { bookId: string }) {
       <div className="review-published">
         {uncertain && <div><p role="alert">No se pudo confirmar el resultado: puede que el cambio ya se haya aplicado. Actualiza y revisa las reseñas antes de volver a intentarlo manualmente. Si editaste el borrador durante el envío, puede ser distinto de lo enviado.</p><Button loading={refreshing} disabled={refreshing} onClick={() => void refreshForInspection()}>Actualizar reseñas</Button>{refreshing && <span role="status"> Actualizando reseñas...</span>}{inspected && !refreshing && <Button onClick={acknowledge}>Ya revisé las reseñas</Button>}</div>}
         {listState === 'loading' && <p role="status">Cargando reseñas...</p>}
-        {(listState === 'error' || listState === 'stale') && <div role={uncertain ? undefined : 'alert'}><p>{listState === 'stale' ? 'Las reseñas mostradas podrían no estar actualizadas.' : 'No se pudieron cargar las reseñas.'}</p>{!uncertain && <Button onClick={() => void getReviews()}>Reintentar</Button>}</div>}
+        {(listState === 'error' || listState === 'stale') && <div role={uncertain ? undefined : 'alert'}><p>{listState === 'stale' ? 'Las reseñas mostradas podrían no estar actualizadas.' : 'No se pudieron cargar las reseñas.'}</p>{!uncertain && <Button onClick={() => { if (!hasLoaded.current) setListState('loading'); void getReviews(); }}>Reintentar</Button>}</div>}
         {hasLoadedReviews && (reviews.length === 0 ? (
           listState === 'loaded' && <p className="review-empty">No has reseñado este libro. Expresa lo que piensas de él.</p>
         ) : (
