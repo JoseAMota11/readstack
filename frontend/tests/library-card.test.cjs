@@ -65,9 +65,12 @@ test('card distinguishes absent, null, zero and positive ratings and favorite st
     const html = render({ rating });
     assert.doesNotMatch(html, /Calificación|Favorito/);
   }
-  assert.match(render({ rating: 0, isFavorite: true }), /Calificación del libro: 0\/5/);
+  assert.match(render({ rating: 0, isFavorite: true }), /Calificación del libro: <\/span>0\/5/);
   assert.match(render({ rating: 0, isFavorite: true }), /Favorito/);
-  assert.match(render({ rating: 3.5 }), /Calificación del libro: 3.5\/5/);
+  assert.match(render({ rating: 3.5 }), /Calificación del libro: <\/span>3.5\/5/);
+  assert.match(render({ rating: 0, isFavorite: true }), /class="library-card-rating"><span aria-hidden="true">★<\/span>/);
+  assert.match(render({ rating: 0, isFavorite: true }), /class="library-card-favorite"><span aria-hidden="true">♥<\/span>/);
+  assert.doesNotMatch(render({ isFavorite: true }), /library-card-rating/);
 });
 
 test('missing and failed covers fall back, and a changed URL resets the cover state', () => {

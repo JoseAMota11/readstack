@@ -1,6 +1,7 @@
 'use client';
 
 import { useFilters } from '@/context/filters.context';
+import { DownOutlined } from '@ant-design/icons';
 import { Button, Input, InputNumber, Select } from 'antd';
 import { Dispatch, SetStateAction, useId, useState } from 'react';
 import booksGenresOptions from '@/books-genres.json';
@@ -25,6 +26,11 @@ function Filters({ setOpen }: { setOpen: Dispatch<SetStateAction<boolean>> }) {
             }
           />
         </div>
+        <div className="library-add-action">
+          <Button type="primary" size="large" onClick={() => setOpen(true)}>
+            Añadir libro
+          </Button>
+        </div>
         <button
           type="button"
           className="library-filters-toggle"
@@ -34,55 +40,55 @@ function Filters({ setOpen }: { setOpen: Dispatch<SetStateAction<boolean>> }) {
         >
           <span>Más filtros</span>
           {hasActiveFilters && <span className="library-filters-active">Filtros activos</span>}
+          <DownOutlined className="library-filters-chevron" aria-hidden="true" />
         </button>
-        <div id={`${id}-secondary`} className="library-filters-secondary" data-expanded={expanded}>
-          <div className="library-filter-field">
-            <label htmlFor={`${id}-author`}>Autor</label>
-            <Input
-              id={`${id}-author`}
-              size="large"
-              placeholder="Ej: Miguel de Cervantes"
-              onChange={(e) =>
-                handleSetFilters({ author: e.target.value, current: '1' })
-              }
-            />
+        <div id={`${id}-secondary`} className="library-filters-panel" data-expanded={expanded}>
+          <div className="library-filters-clip">
+            <div className="library-filters-secondary">
+              <div className="library-filter-field">
+                <label htmlFor={`${id}-author`}>Autor</label>
+                <Input
+                  id={`${id}-author`}
+                  size="large"
+                  placeholder="Ej: Miguel de Cervantes"
+                  onChange={(e) =>
+                    handleSetFilters({ author: e.target.value, current: '1' })
+                  }
+                />
+              </div>
+              <div className="library-filter-field">
+                <label htmlFor={`${id}-year`}>Año</label>
+                <InputNumber
+                  id={`${id}-year`}
+                  size="large"
+                  placeholder="Ej: 1605"
+                  style={{ width: '100%' }}
+                  onChange={(value) =>
+                    handleSetFilters({ year: value as string, current: '1' })
+                  }
+                />
+              </div>
+              <div className="library-filter-field">
+                <label htmlFor={`${id}-genre`}>Género</label>
+                <Select
+                  id={`${id}-genre`}
+                  size="large"
+                  placeholder="Ej: Aventura"
+                  style={{ width: '100%' }}
+                  options={booksGenresOptions}
+                  virtual={false}
+                  showSearch
+                  allowClear
+                  onSelect={(value) =>
+                    handleSetFilters({ genre: value, current: '1' })
+                  }
+                  onClear={() =>
+                    handleSetFilters({ genre: undefined, current: '1' })
+                  }
+                />
+              </div>
+            </div>
           </div>
-          <div className="library-filter-field">
-            <label htmlFor={`${id}-year`}>Año</label>
-            <InputNumber
-              id={`${id}-year`}
-              size="large"
-              placeholder="Ej: 1605"
-              style={{ width: '100%' }}
-              onChange={(value) =>
-                handleSetFilters({ year: value as string, current: '1' })
-              }
-            />
-          </div>
-          <div className="library-filter-field">
-            <label htmlFor={`${id}-genre`}>Género</label>
-            <Select
-              id={`${id}-genre`}
-              size="large"
-              placeholder="Ej: Aventura"
-              style={{ width: '100%' }}
-              options={booksGenresOptions}
-              virtual={false}
-              showSearch
-              allowClear
-              onSelect={(value) =>
-                handleSetFilters({ genre: value, current: '1' })
-              }
-              onClear={() =>
-                handleSetFilters({ genre: undefined, current: '1' })
-              }
-            />
-          </div>
-        </div>
-        <div>
-          <Button type="primary" size="large" onClick={() => setOpen(true)}>
-            Añadir libro
-          </Button>
         </div>
       </div>
     </section>

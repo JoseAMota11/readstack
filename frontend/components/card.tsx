@@ -36,8 +36,8 @@ function Card({ id, title, author, year, coverImage, rating, isFavorite }: Book)
         <p className="library-card-year">{year}</p>
         {(rating != null || isFavorite) && (
           <div className="library-card-details">
-            {rating != null && <span>Calificación del libro: {rating}/5</span>}
-            {isFavorite && <span><span aria-hidden="true">★ </span>Favorito</span>}
+            {rating != null && <span className="library-card-rating"><span aria-hidden="true">★</span><span className="sr-only">Calificación del libro: </span>{rating}/5</span>}
+            {isFavorite && <span className="library-card-favorite"><span aria-hidden="true">♥</span> Favorito</span>}
           </div>
         )}
       </div>

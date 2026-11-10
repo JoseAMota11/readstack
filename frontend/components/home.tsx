@@ -18,7 +18,10 @@ function HomePage() {
         <main className="library-content">
           <h1 className="library-heading">Mi biblioteca</h1>
           <Filters setOpen={setOpen} />
-          <Main />
+          <section className="library-collection" aria-labelledby="library-collection-heading">
+            <h2 id="library-collection-heading" className="library-collection-heading">Colección</h2>
+            <Main />
+          </section>
         </main>
         <Footer />
         <CreateBookModal open={open} setOpen={setOpen} />
