@@ -4,6 +4,7 @@ import { TokenDecoded } from '@/types/token.type';
 import { decodeJwt } from 'jose';
 import Cookies from 'js-cookie';
 import { tokenExpiry } from './session';
+import { notifySessionMutation } from './session-observer';
 
 let sessionVersion = 0;
 
@@ -12,6 +13,7 @@ export const setToken = (token: string) => {
   if (!expires) throw new Error('Invalid or expired session');
   Cookies.set('token', token, { expires });
   sessionVersion += 1;
+  notifySessionMutation();
 };
 
 export const getSessionVersion = () => sessionVersion;
@@ -28,7 +30,9 @@ export const getTokenDecoded = (): TokenDecoded | null => {
 
 export const removeToken = () => {
   sessionVersion += 1;
-  return Cookies.remove('token');
+  const result = Cookies.remove('token');
+  notifySessionMutation();
+  return result;
 };
 
 export const hasToken = () => {
