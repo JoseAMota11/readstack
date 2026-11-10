@@ -90,7 +90,7 @@ function BookDetails({ id }: { id: string }) {
   return (
     <>
       <div className="book-detail-navigation">
-        <Link href="/" className="book-detail-return">Volver a la biblioteca</Link>
+        <Link href="/" className="book-detail-return"><span aria-hidden="true">←</span> Volver a la biblioteca</Link>
       </div>
       {loadError ? <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div> : !book ? <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div> : (
       <div className="book-detail">
@@ -106,7 +106,6 @@ function BookDetails({ id }: { id: string }) {
           <div className="book-detail-rating" aria-live="polite">
             <p>Promedio de tus reseñas: {aggregateState === 'current' ? <ReviewAverage average={book.reviewAverageRating} count={book.reviewRatingCount} /> : aggregateState === 'loading' ? 'Actualizando promedio...' : 'Promedio sin actualizar.'}</p>
             {aggregateState === 'stale' && <Button onClick={() => void refreshAggregate()}>Reintentar promedio</Button>}
-            {book.rating != null && <p>Calificación manual anterior: {book.rating} de 5</p>}
           </div>
           <ActionBar book={book} setBook={updateLoadedBook} />
           <Reviews bookId={book.id} onAggregateChange={() => void refreshAggregate()} onAggregateUncertain={invalidateAggregate} />
@@ -180,7 +179,7 @@ function ActionBar({
   const active = () => mounted.current && window.location.pathname === pathname;
 
   const handleEdit = () => {
-    router.push(pathname + '/edit');
+    router.replace(pathname + '/edit');
   };
 
   const handleDelete = async () => {

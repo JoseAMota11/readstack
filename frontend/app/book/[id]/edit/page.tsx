@@ -5,7 +5,9 @@ import { bookSchema } from '@/schemas/book.shema';
 import { getOneBook, updateBook } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, ConfigProvider, Input, InputNumber, Select, Spin } from 'antd';
+import { ExclamationCircleFilled } from '@ant-design/icons';
+import { Button, Checkbox, ConfigProvider, Input, InputNumber, Modal, Select, Spin } from 'antd';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -15,6 +17,8 @@ import {
   useForm,
 } from 'react-hook-form';
 import booksGenresOptions from '@/books-genres.json';
+
+const editFields = ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite'] as const;
 
 function EditBookPage() {
   const { id } = useParams();
@@ -27,6 +31,7 @@ function EditBook({ id }: { id: string }) {
     handleSubmit,
     formState: { errors },
     setValue,
+    getValues,
   } = useForm({
     resolver: zodResolver(bookSchema),
   });
@@ -38,6 +43,9 @@ function EditBook({ id }: { id: string }) {
   const submitting = useRef(false);
   const mounted = useRef(false);
   const [pending, setPending] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const loadedValues = useRef<(string | undefined)[]>([]);
+  const detailUrl = `/book/${encodeURIComponent(id)}`;
 
   useEffect(() => {
     mounted.current = true;
@@ -87,7 +95,8 @@ function EditBook({ id }: { id: string }) {
           setLoadError(true);
           return;
         }
-        for (const key of ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite'] as const) {
+        loadedValues.current = editFields.map((key) => JSON.stringify(key === 'isFavorite' && !(key in book) ? false : book[key]));
+        for (const key of editFields) {
           if (key in book) setValue(key, book[key]);
         }
         setLoaded(true);
@@ -102,101 +111,172 @@ function EditBook({ id }: { id: string }) {
   if (!loaded) return <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div>;
 
   return (
-    <div className="h-screen grid place-content-center max-[500px]:block max-[500px]:p-4">
-      <ConfigProvider componentDisabled={pending}>
-      <form
-        onSubmit={(event) => handleSubmit(onValid, (errors) => console.log(errors))(event)}
-        className="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-lg grid grid-cols-[auto,300px] gap-4 items-center max-[500px]:grid-cols-[auto,180px]"
+    <main className="edit-book-page">
+      <Link
+        href={detailUrl}
+        replace
+        className="book-detail-return edit-book-return"
+        aria-disabled={pending || undefined}
+        aria-describedby={pending ? 'edit-book-pending' : undefined}
+        onNavigate={(event) => {
+          if (submitting.current) {
+            event.preventDefault();
+            return;
+          }
+          const current = getValues();
+          if (editFields.some((key, index) => JSON.stringify(current[key]) !== loadedValues.current[index])) {
+            event.preventDefault();
+            setReturnOpen(true);
+          }
+        }}
       >
-        <h2 className="col-span-full text-lg font-semibold">
-          Actualizar libro
-        </h2>
-        <label htmlFor="title">Título:</label>
-        <Controller
-          name="title"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              id={field.name}
-              placeholder="Don Quijote de la Mancha"
-              status={errors.title && 'error'}
+        <span aria-hidden="true">←</span> Volver al libro
+      </Link>
+      {pending && <p id="edit-book-pending" role="status">Espera a que termine la actualización antes de volver.</p>}
+      <Modal
+        title="¿Volver al libro?"
+        open={returnOpen}
+        onOk={() => { if (!submitting.current) router.replace(detailUrl); }}
+        onCancel={() => setReturnOpen(false)}
+        okText="Salir"
+        cancelText="Seguir editando"
+        okButtonProps={{ disabled: pending }}
+        cancelButtonProps={{ autoFocus: true }}
+        destroyOnHidden
+        closable={false}
+      >
+        <p>Podrías perder los cambios de este formulario. Si intentaste guardar, comprueba el libro antes de volver a intentarlo.</p>
+      </Modal>
+      <ConfigProvider componentDisabled={pending}>
+        <form
+          onSubmit={(event) => handleSubmit(onValid, (errors) => console.log(errors))(event)}
+          className="create-book-form"
+        >
+          <h1 className="create-book-heading">
+            Editar libro
+          </h1>
+          <div className="create-book-field create-book-field--title">
+            <label htmlFor="title">Título:</label>
+            <Controller
+              name="title"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id={field.name}
+                  placeholder="Don Quijote de la Mancha"
+                  status={errors.title && 'error'}
+                  aria-invalid={!!errors.title}
+                  aria-describedby={errors.title ? 'title-error' : undefined}
+                />
+              )}
             />
-          )}
-        />
-        <label htmlFor="author">Autor:</label>
-        <Controller
-          name="author"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              id={field.name}
-              placeholder="Miguel de Cervantes"
-              status={errors.author && 'error'}
+            {errors.title && <span id="title-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>El título es obligatorio.</span></span>}
+          </div>
+          <div className="create-book-field create-book-field--author">
+            <label htmlFor="author">Autor:</label>
+            <Controller
+              name="author"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id={field.name}
+                  placeholder="Miguel de Cervantes"
+                  status={errors.author && 'error'}
+                  aria-invalid={!!errors.author}
+                  aria-describedby={errors.author ? 'author-error' : undefined}
+                />
+              )}
             />
-          )}
-        />
-        <label htmlFor="year">Año:</label>
-        <Controller
-          name="year"
-          control={control}
-          render={({ field }) => (
-            <InputNumber
-              {...field}
-              id={field.name}
-              min={1000}
-              max={9999}
-              placeholder="1605"
-              style={{ width: '100%' }}
-              status={errors.year && 'error'}
+            {errors.author && <span id="author-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>El autor es obligatorio.</span></span>}
+          </div>
+          <div className="create-book-field create-book-field--year">
+            <label htmlFor="year">Año:</label>
+            <Controller
+              name="year"
+              control={control}
+              render={({ field }) => (
+                <InputNumber
+                  {...field}
+                  id={field.name}
+                  min={1000}
+                  max={9999}
+                  placeholder="1605"
+                  style={{ width: '100%' }}
+                  status={errors.year && 'error'}
+                  aria-invalid={!!errors.year}
+                  aria-describedby={errors.year ? 'year-error' : undefined}
+                />
+              )}
             />
-          )}
-        />
-        <label htmlFor="genre">Género:</label>
-        <Controller
-          name="genre"
-          control={control}
-          render={({ field }) => (
-            <Select
-              {...field}
-              id={field.name}
-              mode="multiple"
-              placeholder="Aventura, Acción, etc."
-              status={errors.genre && 'error'}
-              options={booksGenresOptions}
+            {errors.year && <span id="year-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>Introduce un año entero entre 1000 y 9999.</span></span>}
+          </div>
+          <div className="create-book-field create-book-field--genre">
+            <label htmlFor="genre">Género:</label>
+            <Controller
+              name="genre"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  id={field.name}
+                  mode="multiple"
+                  placeholder="Aventura, Acción, etc."
+                  status={errors.genre && 'error'}
+                  aria-invalid={!!errors.genre}
+                  aria-describedby={errors.genre ? 'genre-error' : undefined}
+                  options={booksGenresOptions}
+                />
+              )}
             />
-          )}
-        />
-        <label htmlFor="coverImage">Imagen URL:</label>
-        <Controller
-          name="coverImage"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              id={field.name}
-              placeholder="https://example.image.com/"
+            {errors.genre && <span id="genre-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>Debe incluir al menos un género.</span></span>}
+          </div>
+          <div className="create-book-field create-book-field--coverImage">
+            <label htmlFor="coverImage">Imagen URL:</label>
+            <Controller
+              name="coverImage"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  {...field}
+                  id={field.name}
+                  placeholder="https://example.image.com/"
+                  status={errors.coverImage && 'error'}
+                  aria-invalid={!!errors.coverImage}
+                  aria-describedby={errors.coverImage ? 'coverImage-error' : undefined}
+                />
+              )}
             />
-          )}
-        />
-        <label htmlFor="isFavorite">Favorito:</label>
-        <Controller
-          name="isFavorite"
-          control={control}
-          defaultValue={false}
-          render={({ field }) => (
-            <Checkbox {...field} checked={field.value} id={field.name} />
-          )}
-        />
-        <div className="col-span-full w-full flex justify-end">
-          <Button type="primary" htmlType="submit" loading={pending} disabled={pending}>
-            Actualizar
-          </Button>
-        </div>
-      </form>
+            {errors.coverImage && <span id="coverImage-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>Introduce una URL válida.</span></span>}
+          </div>
+          <div className="create-book-field create-book-field--isFavorite">
+            <Controller
+              name="isFavorite"
+              control={control}
+              defaultValue={false}
+              render={({ field }) => (
+                <Checkbox
+                  {...field}
+                  checked={field.value}
+                  id={field.name}
+                  aria-invalid={!!errors.isFavorite}
+                  aria-describedby={errors.isFavorite ? 'isFavorite-error' : undefined}
+                >
+                  Favorito:
+                </Checkbox>
+              )}
+            />
+            {errors.isFavorite && <span id="isFavorite-error" className="create-book-error"><ExclamationCircleFilled aria-hidden="true" /><span>Indica si es favorito.</span></span>}
+          </div>
+          <div className="create-book-actions">
+            <Button type="primary" htmlType="submit" loading={pending} disabled={pending}>
+              Actualizar
+            </Button>
+          </div>
+        </form>
       </ConfigProvider>
-    </div>
+    </main>
   );
 }
 

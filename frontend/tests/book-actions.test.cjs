@@ -19,6 +19,7 @@ const Button = () => null;
 const Modal = () => null;
 const messages = [];
 const navigations = [];
+const navigationMethods = [];
 let calls = [];
 let finish;
 let book;
@@ -29,7 +30,7 @@ Module._load = function (request, parent, ...args) {
   if (request === 'antd') return { Button, Modal, Spin: () => null, Tag: () => null, Tooltip: () => null };
   if (request === '@/services/book.service') return service;
   if (request === '@/context/message.context') return { useMessage: () => ({ error: (s) => messages.push(['error', s]), success: (s) => messages.push(['success', s]), info: (s) => messages.push(['info', s]) }) };
-  if (request === 'next/navigation') return { usePathname: () => '/book/a', useRouter: () => ({ push: (s) => navigations.push(s), replace: (s) => navigations.push(s) }) };
+  if (request === 'next/navigation') return { usePathname: () => '/book/a', useRouter: () => ({ push: (s) => { navigationMethods.push('push'); navigations.push(s); }, replace: (s) => { navigationMethods.push('replace'); navigations.push(s); } }) };
   if (request === '@/components/reviews' || request === '@/components/image-placeholder') return { __esModule: true, default: () => null };
   if (request === './authenticated-fetch') return { authenticatedFetch: async () => { if (response instanceof Error) throw response; return response; }, responseError: async () => 'HTTP error' };
   return original.load.call(this, request, parent, ...args);
@@ -39,7 +40,7 @@ const actualService = require('../services/book.service.ts');
 after(() => { Module._resolveFilename = original.resolve; Module._load = original.load; React.useState = original.state; React.useRef = original.ref; React.useEffect = original.effect; global.window = original.window; global.document = original.document; });
 
 function harness() {
-  calls = []; messages.length = 0; navigations.length = 0; global.window.location.pathname = '/book/a';
+  calls = []; messages.length = 0; navigations.length = 0; navigationMethods.length = 0; global.window.location.pathname = '/book/a';
   book = { id: 'a', title: 'Synthetic', genre: [], isFavorite: false, reviewAverageRating: 3.5, reviewRatingCount: 2 };
   const slots = []; let cursor = 0; let effects = [];
   React.useState = (initial) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (v) => { slots[i] = typeof v === 'function' ? v(slots[i]) : v; }]; };
@@ -75,7 +76,7 @@ test('book actions have explicit names and edit preserves navigation', () => {
   assert.equal(a.favorite.props['aria-pressed'], false);
   assert.equal(favoriteStatus(h.render()), undefined);
   assert.equal(favoriteLabel(h.render()), 'No favorito');
-  a.edit.props.onClick(); assert.deepEqual(navigations, ['/book/a/edit']); h.unmount();
+  a.edit.props.onClick(); assert.deepEqual(navigations, ['/book/a/edit']); assert.deepEqual(navigationMethods, ['replace']); h.unmount();
 });
 
 test('delete opens a named modal, cancels without deleting, and supports dismissals', () => {

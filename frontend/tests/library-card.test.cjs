@@ -66,6 +66,7 @@ test('card uses review averages, including zero, and never the manual rating', (
   assert.match(render({ reviewAverageRating: null, reviewRatingCount: 2 }), /Sin reseñas calificadas/);
   assert.match(render({ reviewAverageRating: 0, reviewRatingCount: 1, isFavorite: true }), /0.0 de 5 · 1 reseña/);
   assert.match(render({ reviewAverageRating: 3.56, reviewRatingCount: 3, rating: 1 }), /3.6 de 5 · 3 reseñas/);
+  assert.doesNotMatch(render({ reviewAverageRating: 3.56, reviewRatingCount: 3, rating: 1 }), /1 de 5|Calificación manual/);
   assert.match(render({ isFavorite: true }), /class="library-card-favorite"><span aria-hidden="true">♥<\/span>/);
 });
 

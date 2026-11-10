@@ -77,6 +77,38 @@ body {
   background: var(--surface);
 }
 
+.edit-book-page {
+  width: min(100%, 42rem);
+  margin: 0 auto;
+  padding: clamp(1rem, 4vw, 2rem);
+}
+
+.edit-book-page .create-book-form {
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.edit-book-page .create-book-error {
+  font-size: 0.875rem;
+}
+
+.edit-book-return {
+  margin-bottom: 0.5rem;
+}
+
+.edit-book-return[aria-disabled='true'] {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.edit-book-page :is(.ant-input, .ant-input-number, .ant-select-selector, .ant-checkbox-wrapper):focus-visible,
+.edit-book-page .ant-checkbox-wrapper:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .create-book-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -747,6 +779,7 @@ body {
 .book-detail-return {
   display: inline-flex;
   align-items: center;
+  gap: 0.5rem;
   min-height: 2.75rem;
   color: var(--text-primary);
   text-decoration: underline;

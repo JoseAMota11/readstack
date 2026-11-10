@@ -131,20 +131,23 @@ test('loaded detail presents the full title, author, cover and review section', 
   h.unmount();
 });
 
-test('detail preserves historical zero and suppresses outdated aggregate responses', async () => {
+test('detail displays review averages, hides manual ratings and suppresses outdated aggregate responses', async () => {
   reset(); const h = harness(Detail, detailProps); h.render();
-  requests.shift().resolve([undefined, { ...book('a'), rating: 0 }]); await flush();
+  requests.shift().resolve([undefined, { ...book('a'), rating: 0, reviewAverageRating: 4.25, reviewRatingCount: 3 }]); await flush();
   let tree = h.render();
-  assert.match(JSON.stringify(tree), /Calificación manual anterior/);
+  const ratingSection = () => find(tree, (element) => element.props?.className === 'book-detail-rating');
+  let average = find(ratingSection(), (element) => element.props?.average === 4.25);
+  assert.equal(average.props.count, 3);
+  assert.doesNotMatch(JSON.stringify(ratingSection()), /Calificación manual anterior|0 de 5/);
   const reviews = find(tree, (element) => element.props?.bookId === 'a');
   reviews.props.onAggregateChange(); const first = requests.shift();
   reviews.props.onAggregateChange(); const second = requests.shift();
   second.resolve([undefined, { ...book('a'), reviewAverageRating: 3.75, reviewRatingCount: 2 }]); await flush();
   first.resolve([undefined, { ...book('a'), reviewAverageRating: 1, reviewRatingCount: 1 }]); await flush();
   tree = h.render();
-  const average = find(tree, (element) => element.props?.average === 3.75);
+  average = find(ratingSection(), (element) => element.props?.average === 3.75);
   assert.equal(average.props.count, 2);
-  assert.match(JSON.stringify(tree), /Calificación manual anterior/);
+  assert.doesNotMatch(JSON.stringify(ratingSection()), /Calificación manual anterior|0 de 5/);
   reviews.props.onAggregateChange(); const late = requests.shift();
   reviews.props.onAggregateUncertain();
   late.resolve([undefined, { ...book('a'), reviewAverageRating: 5, reviewRatingCount: 3 }]); await flush();
@@ -157,7 +160,10 @@ test('detail provides a library link during loading, error, and success', async 
   function assertLink(tree) {
     const link = byType(tree, Link);
     assert.equal(link.props.href, '/');
-    assert.equal(link.props.children, 'Volver a la biblioteca');
+    const [arrow, label] = React.Children.toArray(link.props.children);
+    assert.equal(arrow.props['aria-hidden'], 'true');
+    assert.equal(arrow.props.children, '←');
+    assert.equal(label.trim(), 'Volver a la biblioteca');
   }
   let tree = h.render(); assert.ok(byRole(tree, 'status')); assertLink(tree);
   requests.shift().reject(new Error('network')); await flush();

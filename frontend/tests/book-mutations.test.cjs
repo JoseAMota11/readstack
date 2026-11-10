@@ -26,6 +26,7 @@ const Button = () => null;
 const Modal = () => null;
 const ConfigProvider = () => null;
 const Controller = () => null;
+const Link = () => null;
 const messages = [];
 let formErrors = {};
 let formOptions;
@@ -34,6 +35,8 @@ let resets;
 let closed;
 let refreshed;
 let navigated;
+let pushed;
+let replaced;
 let submitFactoryCalls = 0;
 let invalidSubmission = false;
 let submittedEvent;
@@ -41,11 +44,12 @@ const setValue = (key, value) => { values[key] = value; };
 const ui = { Button, Modal, ConfigProvider, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null, Spin: () => null };
 Module._load = function (request, parent, ...args) {
   if (request === 'antd') return ui;
+  if (request === 'next/link') return { __esModule: true, default: Link };
   if (request === '@/context/message.context') return { useMessage: () => ({ error: (text) => messages.push(['error', text]), success: (text) => messages.push(['success', text]) }) };
   if (request === '@/context/filters.context') return { useFilters: () => ({ refreshData: () => refreshed++ }) };
   if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() {} };
-  if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: () => navigated++ }) };
-  if (request === 'react-hook-form') return { Controller, useForm: (options) => { formOptions = options; return { control: {}, formState: { errors: formErrors }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return (event) => { submittedEvent = event; return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue }; } };
+  if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: (url) => { navigated++; replaced = url; }, push: (url) => { pushed = url; } }) };
+  if (request === 'react-hook-form') return { Controller, useForm: (options) => { formOptions = options; return { control: {}, formState: { errors: formErrors }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return (event) => { submittedEvent = event; return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue, getValues: () => values }; } };
   if (request === '@hookform/resolvers/zod') return { zodResolver: () => () => {} };
   if (request === '@/schemas/book.shema') return { bookSchema: {} };
   return original.load.call(this, request, parent, ...args);
@@ -169,6 +173,98 @@ test('create: existing schema and responsive field layout remain intact', () => 
   h.unmount();
 });
 
+test('edit: loaded fields use the accessible responsive form presentation', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], coverImage: 'https://example.com/cover', isFavorite: true };
+  values = {}; formErrors = {};
+  global.fetch = () => Promise.resolve(response(JSON.stringify(stored)));
+  const h = harness('edit');
+  h.render(); await flush();
+  let tree = h.render();
+  assert.deepEqual(values, stored);
+  assert.equal(formOptions.mode, undefined);
+  assert.equal(find(tree, 'h1').props.children.trim(), 'Editar libro');
+  const fields = Object.keys(stored);
+  for (const name of fields) {
+    const controller = find(tree, Controller, (node) => node.props.name === name);
+    const control = controller.props.render({ field: { name, value: stored[name] } });
+    assert.equal(control.props['aria-invalid'], false);
+    assert.equal(control.props['aria-describedby'], undefined);
+  }
+  formErrors = Object.fromEntries(fields.map((name) => [name, { type: 'invalid' }]));
+  tree = h.render();
+  for (const name of fields) {
+    const controller = find(tree, Controller, (node) => node.props.name === name);
+    const control = controller.props.render({ field: { name, value: stored[name] } });
+    const error = find(tree, 'span', (node) => node.props.id === `${name}-error`);
+    assert.equal(control.props['aria-invalid'], true);
+    assert.equal(control.props['aria-describedby'], error.props.id);
+    assert.equal(error.props.children[0].props['aria-hidden'], 'true');
+    assert.ok(error.props.children[1].props.children.length > 0);
+    if (name !== 'isFavorite') assert.equal(control.props.status, 'error');
+  }
+  const favorite = find(tree, Controller, (node) => node.props.name === 'isFavorite');
+  assert.equal(favorite.props.render({ field: { name: 'isFavorite', value: true } }).props.children.trim(), 'Favorito:');
+  const form = find(tree, 'form');
+  const classes = React.Children.toArray(form.props.children).map((node) => node.props.className);
+  assert.deepEqual(classes.slice(1, 7).map((name) => name.split('--')[1]), ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite']);
+  assert.equal(find(form, Button, (button) => button.props.htmlType === 'button'), null);
+  formErrors = {}; h.unmount();
+});
+
+test('edit: return guards changed fields and preserves the form on cancellation', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  values = {}; pushed = undefined; replaced = undefined;
+  global.fetch = () => Promise.resolve(response(JSON.stringify(stored)));
+  const h = harness('edit'); h.render(); await flush();
+  let tree = h.render();
+  let prevented = false;
+  const navigate = () => { prevented = false; find(tree, Link).props.onNavigate({ preventDefault: () => { prevented = true; } }); };
+  assert.equal(find(tree, Link).props.href, '/book/book-a');
+  assert.equal(find(tree, Link).props.replace, true);
+  navigate(); assert.equal(prevented, false);
+  for (const [key, changed] of Object.entries({ title: 'Changed', author: 'Other', year: 2001, genre: ['B'], coverImage: '', isFavorite: true })) {
+    const old = values[key]; values[key] = changed;
+    navigate(); assert.equal(prevented, true, key);
+    tree = h.render();
+    const modal = find(tree, Modal);
+    assert.equal(modal.props.open, true);
+    modal.props.onCancel(); tree = h.render();
+    assert.deepEqual(values[key], changed);
+    assert.equal(find(tree, Modal).props.open, false);
+    values[key] = old;
+  }
+  navigate(); assert.equal(prevented, false);
+  values.title = 'Changed'; navigate(); tree = h.render();
+  find(tree, Modal).props.onOk();
+  assert.equal(replaced, '/book/book-a'); assert.equal(pushed, undefined);
+  h.unmount();
+});
+
+test('edit: return remains blocked during a mutation and available after an uncertain result', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  values = {}; pushed = undefined; replaced = undefined;
+  let reject;
+  global.fetch = (_url, init) => init.method === 'GET' ? Promise.resolve(response(JSON.stringify(stored))) : new Promise((_, fail) => { reject = fail; });
+  const h = harness('edit'); h.render(); await flush();
+  let tree = h.render(); values.title = 'Changed';
+  let prevented = false;
+  find(tree, Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+  tree = h.render();
+  const request = find(tree, 'form').props.onSubmit();
+  find(tree, Modal).props.onOk(); assert.equal(replaced, undefined); assert.equal(pushed, undefined);
+  tree = h.render();
+  assert.equal(find(tree, Link).props['aria-disabled'], true);
+  prevented = false; find(tree, Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, true);
+  reject(new Error('network')); await request;
+  tree = h.render();
+  assert.equal(find(tree, Link).props['aria-disabled'], undefined);
+  assert.match(messages.at(-1)[1], /No se pudo confirmar/);
+  assert.equal(values.title, 'Changed');
+  find(tree, Modal).props.onOk(); assert.equal(replaced, '/book/book-a'); assert.equal(pushed, undefined);
+  h.unmount();
+});
+
 for (const kind of ['create', 'edit']) {
   test(`${kind}: excludes legacy and aggregate ratings from form and mutation payload`, async () => {
     const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false, rating: 0, reviewAverageRating: 4.25, reviewRatingCount: 2 };
@@ -282,6 +378,7 @@ for (const kind of ['create', 'edit']) {
     if (kind === 'create') assert.deepEqual([resets, closed, refreshed, navigated], [1, 1, 1, 0]);
     else {
       assert.deepEqual([resets, closed, refreshed, navigated], [0, 0, 0, 1]);
+      assert.equal(replaced, '/');
       const navigating = h.render();
       assert.equal(find(navigating, ConfigProvider).props.componentDisabled, true);
       assert.equal(find(navigating, Button, (button) => button.props.htmlType === 'submit').props.disabled, true);
