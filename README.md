@@ -126,17 +126,19 @@ cd read-group-challenge
    npm run build
    ```
 
-4. Define una clave JWT local fuerte y arranca el servidor en el puerto 4000:
+4. Disable shell tracing and generate an independent local JWT key without printing it, then start the server on port 4000:
 
    ```bash
-   PORT=4000 SECRET_KEY="$(openssl rand -hex 32)" npm start
+   DATABASE_PATH="$(mktemp -d)/library.db" PORT=4000 SECRET_KEY="$(openssl rand -hex 32)" npm start
    ```
 
-   Esto levantará el backend en `http://localhost:4000`. El backend usa variables del entorno del proceso y no carga `.env` automáticamente. Sin `PORT`, usa el puerto 3000; sin `SECRET_KEY`, el código actual usa una clave de respaldo insegura. No uses esa clave de respaldo ni publiques claves. La base SQLite usa la ruta relativa `library.db`, por lo que debes iniciar el backend desde `backend/`.
+   This generates 32 cryptographically secure random bytes in hexadecimal for this process; it does not save the key. It also creates a fresh temporary directory for a synthetic database on each invocation; clean up those directories when no longer needed. Run it only with shell tracing disabled and without exposing process environments. Each invocation generates a different key, invalidating earlier sessions once all verifiers use it. To retain sessions across restarts, independently generate and supply the same local key through an access-controlled secret mechanism; do not print, commit, share, or place it in shell history. Use distinct keys for each environment.
+
+   The backend listens on `http://localhost:4000`, reads process environment variables, and does not load `.env` automatically. `PORT` defaults to 3000. Startup fails in every environment, including tests, unless `SECRET_KEY` is exactly 64 hexadecimal characters; there is no fallback. Format validation cannot establish randomness or uniqueness. SQLite defaults to the relative path `library.db`; use an isolated `DATABASE_PATH` for synthetic local data, and do not modify the tracked database.
 
 ### 4. Run backend tests
 
-The automated suite uses synthetic users and a temporary SQLite database. It checks that `backend/library.db` remains unchanged by comparing file hashes; application queries do not use that database. Node.js 22 is required.
+The automated suite uses synthetic users and isolated temporary SQLite databases; tests do not open `backend/library.db`. Node.js 22 is required.
 
 ```bash
 cd backend/
@@ -206,12 +208,12 @@ read-group-challenge/
 
 ## Env
 
-See [Environment governance](docs/ENVIRONMENT_GOVERNANCE.md) for the variable inventory and approved secret policy; `SEC-01` will implement the new JWT policy later.
+See [Environment governance](docs/ENVIRONMENT_GOVERNANCE.md) for the variable inventory, secret generation and rotation policy. Production configuration and deployed secret compliance have not been verified; production inspection, changes, rotation, and deployment require separate owner authorization. Replacing the single signing key invalidates previously issued JWTs once all verifiers use the replacement, requiring users to log in again; staggered instances may temporarily behave inconsistently.
 
 Backend: environment variables supplied to the process (see startup command above):
 
 ```env
-SECRET_KEY=<strong-local-secret>
+SECRET_KEY=<64-hex-character-local-secret>
 PORT=4000
 ```
 

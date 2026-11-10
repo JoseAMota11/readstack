@@ -100,7 +100,7 @@ test('rejects a malformed authorization header', async () => {
 
 test('rejects a token signed with a different secret', async () => {
   const user = await registerUser('wrongsecret');
-  const foreignToken = jwt.sign({ id: user.userId }, 'another-secret', {
+  const foreignToken = jwt.sign({ id: user.userId }, 'fedcba9876543210'.repeat(4), {
     expiresIn: '1h',
   });
 

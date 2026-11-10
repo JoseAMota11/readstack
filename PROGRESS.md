@@ -1,8 +1,8 @@
 # Progress — Biblioteca Personal
 
-**Last updated:** 2026-11-09
+**Last updated:** 2026-11-10
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** `GOV-02` documentation complete; `SEC-01` remains open. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** `SEC-01` implemented and locally validated; production configuration and deployment remain unverified. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -17,6 +17,7 @@
 | `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
 | `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
 | `GOV-02` | Owner-approved environment governance, service inventory, rotation and revocation procedures documented in `docs/ENVIRONMENT_GOVERNANCE.md`; production settings remain unverified. |
+| `SEC-01` | Explicit 64-hex JWT secret enforced before startup and app initialization in all environments; synthetic configuration and isolated SQLite regression tests pass locally. Runtime validation cannot establish randomness or uniqueness. |
 
 Frontend migration work is locally committed: Next.js 16 / React 19 (`78699d1`), the Ant Design `destroyOnHidden` correction (`639b590`), the middleware-to-Proxy convention migration (`cee9e10`), and authenticated-login navigation and recovery (`9a3a17a`). These increments do not complete `UPG-03`; no deployment or database migration was performed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
 
@@ -33,7 +34,7 @@ Functional modernization handoff: the locally committed FIX-02 work comprises A 
 - Review listing requires book ownership and filters reviews by owner. Creation, update, and deletion use token-derived identity and enforce the stored book relationship; inaccessible resources return a generic 404.
 - Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
 - CORS is open; authentication has local per-account rate limits and opt-in direct-peer IP limits; error handling is inconsistent.
-- JWT configuration includes a hardcoded fallback secret.
+- JWT configuration requires an explicit 64-hex-character secret and has no fallback; generation and uniqueness are operational responsibilities.
 - Initial discovery found no tests, test scripts, CI, or backup procedure. Backend tests and scripts now exist; CI and a backup procedure remain absent.
 - Initial discovery found the README partially stale; TEST-01 added backend test instructions.
 
@@ -71,7 +72,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
-- `GOV-02` documentation-only closeout: source and test references were checked without reading environment files or production systems; the inventory includes dynamically constructed rate-limit names, `DATABASE_PATH`, `NODE_ENV`, and frontend test `TZ`. Current backend test secret format does not meet the approved policy; runtime fallback and enforcement remain `SEC-01` work. No builds or tests were run for this documentation-only increment.
+- `SEC-01`: from `backend/` on Node v22.23.4, `fnm exec --using 22 npm run build` passed, `fnm exec --using 22 npm test` passed 64/64, and `fnm exec --using 22 npm run test:security` passed 3/3. Configuration tests exercise invalid and valid secrets in test and production modes through isolated subprocesses; they do not access production. Tests use temporary databases and no longer read the tracked database for hash guards. Independent before/after SHA-256 checks verify preservation of the pre-existing `backend/library.db` modification. Node emitted an existing experimental MockTimers warning.
+- `GOV-02` documentation-only closeout: source and test references were checked without reading environment files or production systems; the inventory includes dynamically constructed rate-limit names, `DATABASE_PATH`, `NODE_ENV`, and frontend test `TZ`. At that time the test secret did not meet the approved format and runtime fallback remained; `SEC-01` subsequently addressed both. No builds or tests were run for this documentation-only increment.
 - Frontend migration and login UX: on Node 22, `fnm exec --using 22 npm test` passed 87/87; `fnm exec --using 22 npm run lint` passed with 10 existing warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. The build did not report the middleware deprecation warning. After a test-only addition, the focused login component tests passed 2/2. These checks were not rerun during this documentation update.
 - Owner-reported browser checks: catalog-to-detail navigation and Back returned to the catalog; unauthenticated access to protected routes was denied; disconnecting the local backend displayed the session-verification recovery UI. Before the login correction, an authenticated user could visit `/login`, Back could return there, and `/` remained accessible with the existing session. These observations do not establish the corrected login flow end-to-end. Cross-tab changes, hydration failure, JavaScript-disabled behavior, deep-link and Back/Forward recovery, and comprehensive authentication and cross-user security remain unverified.
 - Published-review follow-up (2026-11-09): removed a duplicate decorative separator for unsupported dates and corrected review presentation assertions; valid UTC dates and raw unsupported values remain covered. On Node 22, focused review tests passed 22/22, frontend tests passed 79/79, lint and TypeScript checks passed, and the production build passed with the existing outdated Browserslist warning. No browser validation was performed.
@@ -108,6 +110,8 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
+`SEC-01` changes `backend/src/config/config.ts`, `backend/src/app.ts`, `backend/tests/helpers/test-env.ts`, `backend/tests/helpers/test-app.ts`, `backend/tests/auth.test.ts`, `backend/tests/config.test.ts`, `backend/package.json`, `README.md`, `docs/ENVIRONMENT_GOVERNANCE.md`, `PLAN.md`, and `PROGRESS.md`. The pre-existing `backend/library.db` modification is untouched. Frontend, dependencies, environment files, and production configuration are untouched.
+
 `GOV-02` creates `docs/ENVIRONMENT_GOVERNANCE.md` and updates `README.md`, `PLAN.md`, and `PROGRESS.md`. The pre-existing modification to `backend/library.db` is intentionally untouched; no application, test, dependency, environment, or production configuration changes are part of this increment.
 
 The migration commits listed above are already committed. The earlier migration handoff changed only `PROGRESS.md`; the pre-existing local modification to `backend/library.db` remains intentionally untouched.
@@ -126,7 +130,7 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
-Plan `SEC-01` separately: enforce the approved JWT format and fail-fast behavior, replace the nonconforming synthetic test fixture, and add relevant security tests. Secure generation and uniqueness require operational controls beyond format validation. Production secret inspection, configuration changes, rotation, and deployment each still require separate owner authorization; deployment settings and recovery remain unverified.
+Before any future deployment of `SEC-01`, obtain separate owner authorization to assess and, if needed, change the production secret securely and plan reauthentication; an absent or nonconforming secret will prevent startup. Production secret inspection, configuration changes, rotation, and deployment each require separate owner authorization; deployment settings and recovery remain unverified. Continue independently with the pending browser and isolation validation (`TEST-02` / `SEC-05`).
 
 Consider a separate local, cover-only View Transitions proof of concept using synthetic data and an isolated backend, with a non-animated fallback and unchanged authentication/navigation semantics. View Transitions have not been implemented or tested. Complete the pending login and isolation browser checks before treating the authentication work as fully validated.
 

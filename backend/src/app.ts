@@ -1,3 +1,4 @@
+import './config/config';
 import express from 'express';
 import cors from 'cors';
 import userRouter from './routes/user.route';
