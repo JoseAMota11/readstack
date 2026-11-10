@@ -57,6 +57,7 @@ test('card links to book detail and preserves long titles and metadata', () => {
   assert.match(html, /Synthetic author/);
   assert.match(html, /2024/);
   assert.match(html, /alt=""/);
+  assert.doesNotMatch(html, /Sin portada/);
 });
 
 test('card distinguishes absent, null, zero and positive ratings and favorite status', () => {
@@ -70,7 +71,9 @@ test('card distinguishes absent, null, zero and positive ratings and favorite st
 });
 
 test('missing and failed covers fall back, and a changed URL resets the cover state', () => {
-  assert.match(render(), /Sin portada/);
+  const html = render();
+  assert.match(html, /Sin portada/);
+  assert.match(html, /aria-hidden="true"[^>]*class="[^"]*anticon-book/);
 
   // Exercise the component handler and emulate React's keyed child remount.
   const originalUseState = React.useState;
@@ -87,7 +90,7 @@ test('missing and failed covers fall back, and a changed URL resets the cover st
     assert.equal(tree.props.children.type, 'img');
     tree.props.children.props.onError();
     tree = cover('https://example.test/first.png');
-    assert.equal(tree.props.children.props.children, 'Sin portada');
+    assert.equal(tree.props.children.props.children[1].props.children, 'Sin portada');
     tree = cover('https://example.test/second.png');
     assert.equal(tree.props.children.type, 'img');
     assert.equal(tree.props.children.props.src, 'https://example.test/second.png');

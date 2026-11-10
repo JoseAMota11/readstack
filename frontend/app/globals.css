@@ -442,10 +442,18 @@ body {
 }
 
 .library-cover-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--text-secondary);
   font-size: 0.875rem;
   padding: 1rem;
   text-align: center;
+}
+
+.library-cover-placeholder .anticon {
+  font-size: 1.5rem;
 }
 
 /* Only a paired cover should animate; leave the rest of the page instantaneous. */

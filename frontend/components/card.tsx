@@ -2,6 +2,7 @@
 
 import { Book } from '@/types/book.type';
 import { coverTransitionName } from '@/utils/cover-transition';
+import { BookOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useState, ViewTransition } from 'react';
 
@@ -14,7 +15,10 @@ function Cover({ src }: { src?: string }) {
         // The title is already present in the link; the cover is decorative here.
         <img src={src} alt="" onError={() => setFailed(true)} />
       ) : (
-        <span className="library-cover-placeholder">Sin portada</span>
+        <span className="library-cover-placeholder">
+          <BookOutlined aria-hidden="true" />
+          <span>Sin portada</span>
+        </span>
       )}
     </div>
   );
