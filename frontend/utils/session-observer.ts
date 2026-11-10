@@ -7,10 +7,11 @@ import { tokenExpiry } from './session';
 // event or a server-side revocation cannot be detected reliably by this store.
 export type SessionSnapshot = Readonly<{
   generation: number;
+  privateStateGeneration: number;
   state: 'unknown' | 'unavailable' | 'plausible';
 }>;
 
-const serverSnapshot: SessionSnapshot = Object.freeze({ generation: 0, state: 'unknown' });
+const serverSnapshot: SessionSnapshot = Object.freeze({ generation: 0, privateStateGeneration: 0, state: 'unknown' });
 let snapshot = serverSnapshot;
 let observedToken: string | undefined;
 let observing = false;
@@ -45,11 +46,16 @@ function readCookie(): { token: string | undefined; state: SessionSnapshot['stat
   }
 }
 
-function update(force: boolean) {
+function update(force: boolean, invalidatePrivateState = force) {
   const { token, state } = readCookie();
-  if (force || token !== observedToken || state !== snapshot.state) {
+  const changed = token !== observedToken || state !== snapshot.state;
+  if (force || changed) {
     observedToken = token;
-    snapshot = Object.freeze({ generation: snapshot.generation + 1, state });
+    snapshot = Object.freeze({
+      generation: snapshot.generation + 1,
+      privateStateGeneration: snapshot.privateStateGeneration + (invalidatePrivateState || changed || state !== 'plausible' ? 1 : 0),
+      state,
+    });
     notify();
   }
   return snapshot;
@@ -75,7 +81,7 @@ function onFocus() { reconcileSession(); }
 function onPageShow(event: PageTransitionEvent) { update(event.persisted); }
 function onVisibilityChange() {
   // A hidden or suspended document may have missed cross-tab messages.
-  if (document.visibilityState === 'visible') update(true);
+  if (document.visibilityState === 'visible') update(true, false);
 }
 function onMessage(event: MessageEvent) {
   if (event.data?.type === 'invalidate') update(true);

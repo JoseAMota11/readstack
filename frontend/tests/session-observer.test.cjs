@@ -188,3 +188,102 @@ test('current 401 notifies despite listener exceptions, while stale 401 does not
   assert.equal(calls, 1); assert.equal(cookie, token()); assert.deepEqual(redirects, []);
   off();
 });
+
+test('private invalidation counts every successful helper mutation, including identical tokens and repeated logout', () => {
+  const off = observer.subscribeSession(() => {});
+  const start = observer.getSessionSnapshot().privateStateGeneration;
+  const one = token();
+  helpers.setToken(one); helpers.setToken(one); helpers.removeToken(); helpers.removeToken();
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, start + 4);
+  assert.deepEqual(Object.keys(observer.getSessionSnapshot()).sort(), ['generation', 'privateStateGeneration', 'state']);
+  assert.equal(observer.getServerSessionSnapshot().privateStateGeneration, 0);
+  off();
+});
+
+test('ordinary visibility reconciliation preserves private state but cannot undo a preceding hint', () => {
+  cookie = token(); const off = observer.subscribeSession(() => {});
+  const start = observer.getSessionSnapshot();
+  document.visibilityState = 'hidden'; documentEvents.get('visibilitychange')();
+  document.visibilityState = 'visible'; documentEvents.get('visibilitychange')();
+  let current = observer.getSessionSnapshot();
+  assert.equal(current.generation, start.generation + 1);
+  assert.equal(current.privateStateGeneration, start.privateStateGeneration);
+  channels[0].onmessage({ data: { type: 'invalidate' } });
+  const hinted = observer.getSessionSnapshot();
+  assert.equal(hinted.privateStateGeneration, current.privateStateGeneration + 1);
+  documentEvents.get('visibilitychange')(); current = observer.getSessionSnapshot();
+  assert.equal(current.generation, hinted.generation + 1);
+  assert.equal(current.privateStateGeneration, hinted.privateStateGeneration);
+  off();
+});
+
+test('replacement, disappearance, unreadable cookies and unavailable visibility invalidate', () => {
+  cookie = token(); const off = observer.subscribeSession(() => {});
+  let previous = observer.getSessionSnapshot();
+  for (const next of [token('two'), undefined]) {
+    cookie = next; observer.reconcileSession();
+    const current = observer.getSessionSnapshot();
+    assert.equal(current.privateStateGeneration, previous.privateStateGeneration + 1);
+    previous = current;
+  }
+  documentEvents.get('visibilitychange')();
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  Cookies.get = () => { throw new Error('blocked'); };
+  previous = observer.getSessionSnapshot(); observer.reconcileSession();
+  assert.equal(observer.getSessionSnapshot().state, 'unknown');
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  previous = observer.getSessionSnapshot(); documentEvents.get('visibilitychange')();
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  Cookies.get = () => cookie;
+  previous = observer.getSessionSnapshot(); observer.reconcileSession();
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  off();
+});
+
+test('subscription gaps and persisted pageshow invalidate even when the cookie is unchanged', () => {
+  cookie = token(); let off = observer.subscribeSession(() => {});
+  let previous = observer.getSessionSnapshot();
+  events.get('pageshow')({ persisted: false });
+  assert.equal(observer.getSessionSnapshot(), previous);
+  events.get('pageshow')({ persisted: true });
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  off(); previous = observer.getSessionSnapshot();
+  observer.reconcileSession();
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  previous = observer.getSessionSnapshot(); off = observer.subscribeSession(() => {});
+  assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+  off();
+});
+
+test('expiry is detected at the next reconciliation, not by a background timer', () => {
+  const now = Date.now; let time = now(); Date.now = () => time;
+  try {
+    cookie = token('expiring', Math.floor(time / 1000) + 2);
+    const off = observer.subscribeSession(() => {});
+    const previous = observer.getSessionSnapshot();
+    time += 3000;
+    assert.equal(observer.getSessionSnapshot(), previous);
+    observer.reconcileSession();
+    assert.equal(observer.getSessionSnapshot().state, 'unavailable');
+    assert.equal(observer.getSessionSnapshot().privateStateGeneration, previous.privateStateGeneration + 1);
+    off();
+  } finally { Date.now = now; }
+});
+
+test('reentrant notifications publish cumulative counters before each subscriber runs', () => {
+  cookie = token(); const off = observer.subscribeSession(() => {});
+  const start = observer.getSessionSnapshot(); let nested = false; const seen = [];
+  const first = observer.subscribeSession(() => {
+    seen.push(observer.getSessionSnapshot().privateStateGeneration);
+    if (!nested) {
+      nested = true;
+      channels[0].onmessage({ data: { type: 'invalidate' } });
+      documentEvents.get('visibilitychange')();
+    }
+  });
+  const second = observer.subscribeSession(() => seen.push(observer.getSessionSnapshot().privateStateGeneration));
+  helpers.setToken(cookie);
+  assert.deepEqual(seen, [start.privateStateGeneration + 1, start.privateStateGeneration + 2, start.privateStateGeneration + 2, start.privateStateGeneration + 2]);
+  assert.equal(observer.getSessionSnapshot().generation, start.generation + 3);
+  first(); second(); off();
+});
