@@ -24,6 +24,7 @@ for (const extension of ['.ts', '.tsx']) {
 const original = { use: React.use, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, load: Module._load };
 const Button = () => null;
 const Card = () => null;
+const Link = () => null;
 const ui = { Button, ConfigProvider: () => null, Spin: () => null, Pagination: () => null, Tag: () => null, Tooltip: () => null, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null };
 const requests = [];
 let filters = {};
@@ -43,6 +44,7 @@ Module._load = function (request, parent, ...args) {
   if (request === '@/context/filters.context') return { useFilters: () => ({ filters, refresh, handleSetFilters: (value) => filterUpdates.push(value) }) };
   if (request === '@/context/message.context') return { useMessage: () => ({ info() {}, success() {}, error() {} }) };
   if (request === 'next/navigation') return { useParams: () => ({ id }), usePathname: () => `/book/${id}`, useRouter: () => ({ push() {}, replace() {} }) };
+  if (request === 'next/link') return { __esModule: true, default: Link };
   if (request === 'react-hook-form') return { Controller: () => null, useForm: () => ({ control: {}, handleSubmit: () => () => {}, formState: { errors: {} }, setValue }) };
   if (request === '@hookform/resolvers/zod') return { zodResolver: () => () => {} };
   if (request === '@/schemas/book.shema') return { bookSchema: {} };
@@ -129,6 +131,22 @@ test('loaded detail presents the full title, author, cover and review section', 
   h.unmount();
 });
 
+test('detail provides a library link during loading, error, and success', async () => {
+  reset(); const h = harness(Detail, detailProps);
+  function assertLink(tree) {
+    const link = byType(tree, Link);
+    assert.equal(link.props.href, '/');
+    assert.equal(link.props.children, 'Volver a la biblioteca');
+  }
+  let tree = h.render(); assert.ok(byRole(tree, 'status')); assertLink(tree);
+  requests.shift().reject(new Error('network')); await flush();
+  tree = h.render(); assert.ok(byRole(tree, 'alert')); assertLink(tree);
+  byType(tree, Button).props.onClick(); h.render();
+  requests.shift().resolve([undefined, book('a')]); await flush();
+  tree = h.render(); assert.ok(byType(tree, 'h1')); assertLink(tree);
+  h.unmount();
+});
+
 test('only loaded detail has a book-specific shared cover boundary', async () => {
   reset(); const h = harness(Detail, detailProps);
   assert.equal(find(h.render(), (element) => element.type === React.ViewTransition), null);
@@ -149,7 +167,7 @@ test('detail cover handles missing and failed images and resets on URL changes',
   let key; let failed = false;
   function cover() {
     tree = h.render();
-    const element = React.Children.toArray(tree.props.children)[0].props.children;
+    const element = find(tree, (item) => item.type === React.ViewTransition).props.children;
     if (element.key !== key) { key = element.key; failed = false; }
     const useState = React.useState;
     React.useState = () => [failed, (value) => { failed = value; }];

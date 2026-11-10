@@ -21,6 +21,7 @@ import { useMessage } from '@/context/message.context';
 import { usePathname, useRouter } from 'next/navigation';
 import Reviews from '@/components/reviews';
 import { coverTransitionName } from '@/utils/cover-transition';
+import Link from 'next/link';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -51,33 +52,33 @@ function BookDetails({ id }: { id: string }) {
     return () => { active = false; };
   }, [id, retry]);
 
-  if (loadError) return <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div>;
-  if (!book) return <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div>;
-
   const updateLoadedBook: Dispatch<SetStateAction<Book | undefined>> = (value) => {
     setBook((previous) => (typeof value === 'function' ? value(previous) : value) ?? previous);
   };
 
-  if (book) {
-    const { title, coverImage, author, genre } = book;
-
-    return (
+  return (
+    <>
+      <div className="book-detail-navigation">
+        <Link href="/" className="book-detail-return">Volver a la biblioteca</Link>
+      </div>
+      {loadError ? <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div> : !book ? <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div> : (
       <div className="book-detail">
         <ViewTransition name={coverTransitionName(book.id)} default="none" share="book-cover">
-          <DetailCover key={coverImage} src={coverImage} title={title} />
+          <DetailCover key={book.coverImage} src={book.coverImage} title={book.title} />
         </ViewTransition>
         <div className="book-detail-content">
           <div className="book-detail-heading">
-            <h1>{title}</h1>
-            <p>{author}</p>
+            <h1>{book.title}</h1>
+            <p>{book.author}</p>
           </div>
-          <Genres genre={genre} />
+          <Genres genre={book.genre} />
           <ActionBar book={book} setBook={updateLoadedBook} />
           <Reviews bookId={book.id} />
         </div>
       </div>
-    );
-  }
+      )}
+    </>
+  );
 }
 
 export default DetailsBookPage;
