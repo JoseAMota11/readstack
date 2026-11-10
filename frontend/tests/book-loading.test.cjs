@@ -129,6 +129,17 @@ test('loaded detail presents the full title, author, cover and review section', 
   h.unmount();
 });
 
+test('only loaded detail has a book-specific shared cover boundary', async () => {
+  reset(); const h = harness(Detail, detailProps);
+  assert.equal(find(h.render(), (element) => element.type === React.ViewTransition), null);
+  requests.shift().resolve([undefined, book('a')]); await flush();
+  const boundary = find(h.render(), (element) => element.type === React.ViewTransition);
+  assert.equal(boundary.props.name, require('../utils/cover-transition.ts').coverTransitionName('a'));
+  assert.equal(boundary.props.default, 'none');
+  assert.equal(boundary.props.share, 'book-cover');
+  h.unmount();
+});
+
 test('detail cover handles missing and failed images and resets on URL changes', async () => {
   reset(); const h = harness(Detail, detailProps); h.render();
   requests.shift().resolve([undefined, book('a')]); await flush();
@@ -138,7 +149,7 @@ test('detail cover handles missing and failed images and resets on URL changes',
   let key; let failed = false;
   function cover() {
     tree = h.render();
-    const element = React.Children.toArray(tree.props.children)[0];
+    const element = React.Children.toArray(tree.props.children)[0].props.children;
     if (element.key !== key) { key = element.key; failed = false; }
     const useState = React.useState;
     React.useState = () => [failed, (value) => { failed = value; }];

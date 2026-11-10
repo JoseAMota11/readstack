@@ -1,8 +1,9 @@
 'use client';
 
 import { Book } from '@/types/book.type';
+import { coverTransitionName } from '@/utils/cover-transition';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, ViewTransition } from 'react';
 
 function Cover({ src }: { src?: string }) {
   const [failed, setFailed] = useState(false);
@@ -22,7 +23,9 @@ function Cover({ src }: { src?: string }) {
 function Card({ id, title, author, year, coverImage, rating, isFavorite }: Book) {
   return (
     <Link href={`/book/${id}`} className="library-card">
-      <Cover key={coverImage} src={coverImage} />
+      <ViewTransition name={coverTransitionName(id)} default="none" share="book-cover">
+        <Cover key={coverImage} src={coverImage} />
+      </ViewTransition>
       <div className="library-card-content">
         <h2 className="library-card-title">{title}</h2>
         <p className="library-card-author">{author}</p>

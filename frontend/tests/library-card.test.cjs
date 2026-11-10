@@ -5,7 +5,7 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 
-require.extensions['.tsx'] = (module, filename) => {
+for (const extension of ['.ts', '.tsx']) require.extensions[extension] = (module, filename) => {
   const source = fs.readFileSync(filename, 'utf8');
   const { outputText } = ts.transpileModule(source, { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020,
@@ -14,9 +14,40 @@ require.extensions['.tsx'] = (module, filename) => {
   module._compile(outputText, filename);
 };
 
+const path = require('node:path');
+const Module = require('node:module');
+const resolve = Module._resolveFilename;
+Module._resolveFilename = function (request, ...args) {
+  return resolve.call(this, request.startsWith('@/') ? path.join(__dirname, '..', request.slice(2)) : request, ...args);
+};
+
 const Card = require('../components/card.tsx').default;
+const { coverTransitionName } = require('../utils/cover-transition.ts');
 const book = { id: 'synthetic-id', title: 'Synthetic title', author: 'Synthetic author', year: 2024, isFavorite: false };
 const render = (props = {}) => renderToStaticMarkup(React.createElement(Card, { ...book, ...props }));
+
+test('cover names are deterministic, CSS-safe and distinct for different IDs', () => {
+  const ids = ['', 'a', 'A', 'a-b', 'a b', 'é', '😀', '\ud800', '00'];
+  const names = ids.map(coverTransitionName);
+  assert.equal(new Set(names).size, ids.length);
+  for (const name of names) assert.match(name, /^book-cover-[0-9a-f]*$/);
+  assert.equal(coverTransitionName('a-b'), coverTransitionName('a-b'));
+});
+
+test('catalog cover boundary opts into shared transitions only', () => {
+  const boundary = Card(book).props.children[0];
+  assert.equal(boundary.type, React.ViewTransition);
+  assert.equal(boundary.props.name, coverTransitionName(book.id));
+  assert.equal(boundary.props.default, 'none');
+  assert.equal(boundary.props.share, 'book-cover');
+});
+
+test('cover transition styling suppresses root and reduced-motion animations', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  assert.match(css, /::view-transition-old\(root\),\s*::view-transition-new\(root\)\s*\{\s*animation:\s*none/);
+  assert.match(css, /::view-transition-group\(\.book-cover\)\s*\{[^}]*animation-duration:\s*220ms/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*::view-transition-group\(\*\),\s*::view-transition-old\(\*\),\s*::view-transition-new\(\*\)\s*\{\s*animation:\s*none\s*!important/);
+});
 
 test('card links to book detail and preserves long titles and metadata', () => {
   const title = 'A'.repeat(300);
@@ -47,7 +78,7 @@ test('missing and failed covers fall back, and a changed URL resets the cover st
   let failed = false;
   React.useState = () => [failed, (value) => { failed = value; }];
   function cover(src) {
-    const element = Card({ ...book, coverImage: src }).props.children[0];
+    const element = Card({ ...book, coverImage: src }).props.children[0].props.children;
     if (element.key !== key) { key = element.key; failed = false; }
     return element.type(element.props);
   }

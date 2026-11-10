@@ -15,11 +15,12 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { Button, Modal, Spin, Tag } from 'antd';
-import { Dispatch, SetStateAction, use, useEffect, useRef, useState } from 'react';
+import { Dispatch, SetStateAction, use, useEffect, useRef, useState, ViewTransition } from 'react';
 import booksGenresOptions from '@/books-genres.json';
 import { useMessage } from '@/context/message.context';
 import { usePathname, useRouter } from 'next/navigation';
 import Reviews from '@/components/reviews';
+import { coverTransitionName } from '@/utils/cover-transition';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -62,7 +63,9 @@ function BookDetails({ id }: { id: string }) {
 
     return (
       <div className="book-detail">
-        <DetailCover key={coverImage} src={coverImage} title={title} />
+        <ViewTransition name={coverTransitionName(book.id)} default="none" share="book-cover">
+          <DetailCover key={coverImage} src={coverImage} title={title} />
+        </ViewTransition>
         <div className="book-detail-content">
           <div className="book-detail-heading">
             <h1>{title}</h1>

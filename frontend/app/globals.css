@@ -448,6 +448,23 @@ body {
   text-align: center;
 }
 
+/* Only a paired cover should animate; leave the rest of the page instantaneous. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(.book-cover) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+}
+
+::view-transition-old(.book-cover),
+::view-transition-new(.book-cover) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+}
+
 .library-card-content {
   padding-top: 0.75rem;
   overflow-wrap: anywhere;
@@ -681,6 +698,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
   html { scroll-behavior: auto; }
   body { transition: none; }
   .library-filters-toggle,
