@@ -72,6 +72,129 @@ body {
   outline-offset: 2px;
 }
 
+.create-book-modal .ant-modal-content {
+  padding: clamp(1rem, 4vw, 1.5rem);
+  background: var(--surface);
+}
+
+.create-book-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  color: var(--text-primary);
+}
+
+.create-book-heading {
+  margin: 0 0 0.25rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.create-book-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.create-book-field label {
+  font-weight: 600;
+}
+
+.create-book-field--isFavorite .ant-checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.5rem;
+  min-height: 40px;
+  margin: 0;
+}
+
+.create-book-field--isFavorite .ant-checkbox {
+  order: 1;
+}
+
+.create-book-field--isFavorite .ant-checkbox + span {
+  padding: 0;
+}
+
+.create-book-form .ant-input,
+.create-book-form .ant-input-number,
+.create-book-form .ant-select-multiple .ant-select-selector {
+  min-height: 40px;
+}
+
+.create-book-form .ant-input-number-input {
+  height: 38px;
+}
+
+.create-book-form .ant-select-multiple .ant-select-selection-wrap {
+  align-self: center;
+}
+
+.create-book-field--rating .ant-input-number {
+  width: min(100%, 8rem);
+}
+
+.create-book-error {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  color: var(--error);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.create-book-error .anticon {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 1.4em;
+}
+
+.create-book-form input::placeholder,
+.create-book-form .ant-select-selection-placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+.create-book-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.create-book-actions .ant-btn {
+  min-height: 44px;
+}
+
+.create-book-actions .ant-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (min-width: 576px) {
+  .create-book-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.5rem;
+  }
+
+  .create-book-heading,
+  .create-book-field--title,
+  .create-book-field--author,
+  .create-book-field--coverImage,
+  .create-book-actions {
+    grid-column: 1 / -1;
+  }
+
+  .create-book-field--isFavorite {
+    padding-top: calc(1.5em + 0.25rem);
+  }
+}
+
 .review-section {
   min-width: 0;
   color: var(--text-primary);
