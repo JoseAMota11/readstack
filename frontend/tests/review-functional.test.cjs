@@ -309,7 +309,26 @@ test('delete pending blocks duplicates and failed refresh marks stale with retry
     tree = h.render(); assert.equal(findAll(tree, Card)[0].props.pending, true); assert.equal(findAll(tree, Card)[0].props.disabled, true);
     deletion.resolve([undefined, 'Borrada']); await first; await flush(); tree = h.render();
     assert.match(text(tree), /podrían no estar actualizadas/);
+    assert.equal(findAll(tree, Card).length, 1);
     button(tree, 'Reintentar').props.onClick(); await flush(); assert.doesNotMatch(text(h.render()), /podrían no estar actualizadas/);
+  } finally { h.unmount(); teardown(); }
+});
+
+test('review list distinguishes initial loading, failure, and successful empty loading', async () => {
+  setup(); const initial = deferred(), retry = deferred(); let loads = 0;
+  services.getAllReviews = () => ++loads === 1 ? initial.promise : retry.promise;
+  const h = harness(); try {
+    let tree = h.render();
+    assert.match(text(tree), /Cargando reseñas/);
+    assert.doesNotMatch(text(tree), /No has reseñado/);
+    initial.resolve(['offline', undefined]); await flush(); tree = h.render();
+    assert.match(text(tree), /No se pudieron cargar/);
+    assert.doesNotMatch(text(tree), /No has reseñado/);
+    button(tree, 'Reintentar').props.onClick(); tree = h.render();
+    assert.match(text(tree), /Cargando reseñas/);
+    retry.resolve([undefined, []]); await flush(); tree = h.render();
+    assert.match(text(tree), /No has reseñado/);
+    assert.doesNotMatch(text(tree), /No se pudieron cargar|Cargando reseñas/);
   } finally { h.unmount(); teardown(); }
 });
 
