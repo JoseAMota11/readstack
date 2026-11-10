@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-09
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** UI-03.1 completed and owner-validated within the checks recorded below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** `GOV-02` documentation complete; `SEC-01` remains open. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
@@ -16,6 +16,7 @@
 | `TEST-01` | Backend test harness and initial authentication and ownership tests implemented and locally validated. |
 | `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
 | `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
+| `GOV-02` | Owner-approved environment governance, service inventory, rotation and revocation procedures documented in `docs/ENVIRONMENT_GOVERNANCE.md`; production settings remain unverified. |
 
 Frontend migration work is locally committed: Next.js 16 / React 19 (`78699d1`), the Ant Design `destroyOnHidden` correction (`639b590`), the middleware-to-Proxy convention migration (`cee9e10`), and authenticated-login navigation and recovery (`9a3a17a`). These increments do not complete `UPG-03`; no deployment or database migration was performed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
 
@@ -70,6 +71,7 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Latest validation status
 
+- `GOV-02` documentation-only closeout: source and test references were checked without reading environment files or production systems; the inventory includes dynamically constructed rate-limit names, `DATABASE_PATH`, `NODE_ENV`, and frontend test `TZ`. Current backend test secret format does not meet the approved policy; runtime fallback and enforcement remain `SEC-01` work. No builds or tests were run for this documentation-only increment.
 - Frontend migration and login UX: on Node 22, `fnm exec --using 22 npm test` passed 87/87; `fnm exec --using 22 npm run lint` passed with 10 existing warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. The build did not report the middleware deprecation warning. After a test-only addition, the focused login component tests passed 2/2. These checks were not rerun during this documentation update.
 - Owner-reported browser checks: catalog-to-detail navigation and Back returned to the catalog; unauthenticated access to protected routes was denied; disconnecting the local backend displayed the session-verification recovery UI. Before the login correction, an authenticated user could visit `/login`, Back could return there, and `/` remained accessible with the existing session. These observations do not establish the corrected login flow end-to-end. Cross-tab changes, hydration failure, JavaScript-disabled behavior, deep-link and Back/Forward recovery, and comprehensive authentication and cross-user security remain unverified.
 - Published-review follow-up (2026-11-09): removed a duplicate decorative separator for unsupported dates and corrected review presentation assertions; valid UTC dates and raw unsupported values remain covered. On Node 22, focused review tests passed 22/22, frontend tests passed 79/79, lint and TypeScript checks passed, and the production build passed with the existing outdated Browserslist warning. No browser validation was performed.
@@ -106,7 +108,9 @@ Production persistence must not be tested destructively. Any disposal of product
 
 ## Files changed
 
-The migration commits listed above are already committed. This handoff changes only `PROGRESS.md`; the pre-existing local modification to `backend/library.db` remains intentionally untouched.
+`GOV-02` creates `docs/ENVIRONMENT_GOVERNANCE.md` and updates `README.md`, `PLAN.md`, and `PROGRESS.md`. The pre-existing modification to `backend/library.db` is intentionally untouched; no application, test, dependency, environment, or production configuration changes are part of this increment.
+
+The migration commits listed above are already committed. The earlier migration handoff changed only `PROGRESS.md`; the pre-existing local modification to `backend/library.db` remains intentionally untouched.
 
 The published-review follow-up changes `frontend/components/review-card.tsx`, `frontend/tests/review-functional.test.cjs`, and this handoff; pre-existing catalog work remains uncommitted.
 The catalog presentation batch changes `frontend/app/globals.css`, `frontend/components/main.tsx`, `frontend/tests/library-card.test.cjs`, `frontend/tests/book-loading.test.cjs`, and this handoff. No backend files were changed by the batch.
@@ -121,6 +125,8 @@ UI-02.1 changes `frontend/app/globals.css`, `frontend/components/card.tsx`, `fro
 The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/app/globals.css`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/register/page.tsx`, `frontend/components/reviews.tsx`, `frontend/components/theme-switcher.tsx`, `frontend/context/theme.context.tsx`, `frontend/tailwind.config.ts`, and `frontend/tests/theme.test.cjs`. Backend code, dependencies, production configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
 
 ## Next recommended task
+
+Plan `SEC-01` separately: enforce the approved JWT format and fail-fast behavior, replace the nonconforming synthetic test fixture, and add relevant security tests. Secure generation and uniqueness require operational controls beyond format validation. Production secret inspection, configuration changes, rotation, and deployment each still require separate owner authorization; deployment settings and recovery remain unverified.
 
 Consider a separate local, cover-only View Transitions proof of concept using synthetic data and an isolated backend, with a non-animated fallback and unchanged authentication/navigation semantics. View Transitions have not been implemented or tested. Complete the pending login and isolation browser checks before treating the authentication work as fully validated.
 

@@ -206,6 +206,8 @@ read-group-challenge/
 
 ## Env
 
+See [Environment governance](docs/ENVIRONMENT_GOVERNANCE.md) for the variable inventory and approved secret policy; `SEC-01` will implement the new JWT policy later.
+
 Backend: environment variables supplied to the process (see startup command above):
 
 ```env

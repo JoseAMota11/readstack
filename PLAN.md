@@ -1,7 +1,7 @@
 # Modernization Plan — Biblioteca Personal
 
 **Status:** Active
-**Last updated:** 2026-11-08
+**Last updated:** 2026-11-09
 **Owner:** Repository owner
 **Scope:** Incremental modernization of the existing Next.js/Express application.
 
@@ -131,7 +131,7 @@ Prerequisites:
 | `AUD-02` | Runtime and production verification | P0 | `[ ]` | — | Verified runtime and deployment baseline | Registration, login, CRUD, reviews, favorites, filters, CSV, and cross-user denial tested; persistence checked only with owner-approved disposable data; no secrets or destructive production actions; environment and date recorded |
 | `DOC-01` | Author and refine planning documents | P1 | `[x]` | — | `AGENTS.md`, `PLAN.md`, `PROGRESS.md` | Owner approved content; all three files created and verified on 2026-11-07; no implementation claimed |
 | `GOV-01` | Document production guardrails | P0 | `[ ]` | — | Written branch-to-environment and deployment procedure | Confirms Vercel Production/Preview and Render Auto-Deploy behavior; any `main` push is treated as production; authorization and rollback steps documented |
-| `GOV-02` | Inventory environment variables and rotation | P0 | `[ ]` | — | Variable names, owners, and rotation procedure by service | No secret values recorded; all services covered; rotation and revocation steps documented |
+| `GOV-02` | Inventory environment variables and rotation | P0 | `[x]` | — | Variable names, owners, and rotation procedure by service | No secret values recorded; all services covered; rotation and revocation steps documented. Evidence: `docs/ENVIRONMENT_GOVERNANCE.md`; deployed settings remain unverified |
 | `GOV-03` | Create recovery and rollback runbook | P0 | `[ ]` | `GOV-01`, `GOV-02` | Operational runbook for application, environment, and new database recovery | Distinguishes verified capability from assumptions; states current SQLite recovery is unverified; covers app rollback, fresh-database restore, and decision authority; no destructive production test |
 | `GOV-04` | Decide staging strategy | P0 | `[ ]` | — | Owner-approved staging ADR | Topology, access control, data policy, validation scope, and $0 feasibility documented; synthetic data only |
 
@@ -260,6 +260,7 @@ A push or merge to `main` is a production action because Vercel Production and R
 | `D-007` | Demo records, including current production demo data, may be discarded | Approved | No deletion during planning; deletion requires explicit approval |
 | `D-008` | Documentation, agent instructions, and agent responses are English | Approved | Spanish UI copy remains product behavior |
 | `D-009` | Start PostgreSQL with a fresh schema; do not migrate SQLite records | Approved | Synthetic fixtures and integration validation replace record migration |
+| `D-020` | Environment and JWT governance | Approved | Owner is sole policy owner/operator; JWT keys use 32 cryptographically random bytes encoded as exactly 64 hex characters; tests use an explicit synthetic key of the same format; keys are distinct across local, test, production and future staging. Rotate after suspected exposure or documented operational necessity, not on a mandatory schedule. Production inspection, configuration changes, rotation and deployment each require separate explicit owner authorization. Never record secret values; replacement invalidates previous JWTs under the single-key model. `SEC-01` implements enforcement later. |
 
 ### Proposed
 
