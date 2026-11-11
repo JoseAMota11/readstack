@@ -2,9 +2,7 @@ import Database from 'better-sqlite3';
 
 const dbPath = process.env.DATABASE_PATH || 'library.db';
 
-const db = new Database(dbPath, {
-  verbose: process.env.NODE_ENV === 'test' ? undefined : console.log,
-});
+const db = new Database(dbPath);
 
 db.pragma('foreign_keys = ON');
 

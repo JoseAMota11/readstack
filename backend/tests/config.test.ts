@@ -27,6 +27,29 @@ function environment(databasePath: string, nodeEnv: string, secret?: string): No
   };
 }
 
+for (const nodeEnv of ['production', 'development', 'test', '']) {
+  test(`database does not log SQL or bound values in ${nodeEnv || 'unset'} environment`, () => {
+    const script = `
+      const db = require('./src/config/db').default;
+      db.prepare('SELECT ? AS synthetic_sql_marker').get('synthetic_bound_value');
+      db.close();
+    `;
+    const env = environment(':memory:', nodeEnv);
+    if (!nodeEnv) delete env.NODE_ENV;
+    const result = spawnSync(process.execPath, ['--import', 'tsx', '-e', script], {
+      cwd: path.resolve(__dirname, '..'),
+      env,
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    const output = result.stdout + result.stderr;
+    assert.doesNotMatch(output, /CREATE TABLE|foreign_keys|synthetic_sql_marker|synthetic_bound_value/i);
+    assert.match(output, /Tables created successfully/);
+  });
+}
+
 for (const nodeEnv of ['test', 'production']) {
   for (const [label, secret] of invalidSecrets) {
     test(`${nodeEnv} rejects ${label} before startup or app database initialization`, () => {
