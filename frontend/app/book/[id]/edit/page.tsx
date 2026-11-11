@@ -1,7 +1,7 @@
 'use client';
 
 import { useMessage } from '@/context/message.context';
-import { bookSchema } from '@/schemas/book.shema';
+import { editBookSchema } from '@/schemas/book.shema';
 import { getOneBook, updateBook } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +33,7 @@ function EditBook({ id }: { id: string }) {
     setValue,
     getValues,
   } = useForm({
-    resolver: zodResolver(bookSchema),
+    resolver: zodResolver(editBookSchema),
   });
   const messageApi = useMessage();
   const router = useRouter();
@@ -95,9 +95,11 @@ function EditBook({ id }: { id: string }) {
           setLoadError(true);
           return;
         }
-        loadedValues.current = editFields.map((key) => JSON.stringify(key === 'isFavorite' && !(key in book) ? false : book[key]));
+        const formBook = { ...book };
+        if ('coverImage' in formBook) formBook.coverImage = formBook.coverImage ?? undefined;
+        loadedValues.current = editFields.map((key) => JSON.stringify(key === 'isFavorite' && !(key in formBook) ? false : formBook[key]));
         for (const key of editFields) {
-          if (key in book) setValue(key, book[key]);
+          if (key in formBook) setValue(key, formBook[key]);
         }
         setLoaded(true);
       } catch {

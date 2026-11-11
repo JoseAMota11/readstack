@@ -5,6 +5,7 @@ const path = require('node:path');
 const Module = require('node:module');
 const ts = require('typescript');
 const React = require('react');
+const reactHookForm = require('react-hook-form');
 
 const root = path.resolve(__dirname, '..');
 const original = { resolve: Module._resolveFilename, load: Module._load, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, fetch: global.fetch };
@@ -39,6 +40,7 @@ let pushed;
 let replaced;
 let submitFactoryCalls = 0;
 let invalidSubmission = false;
+let validateSubmission = false;
 let submittedEvent;
 const setValue = (key, value) => { values[key] = value; };
 const ui = { Button, Modal, ConfigProvider, Checkbox: () => null, Input: () => null, InputNumber: () => null, Select: () => null, Spin: () => null };
@@ -49,9 +51,9 @@ Module._load = function (request, parent, ...args) {
   if (request === '@/context/filters.context') return { useFilters: () => ({ refreshData: () => refreshed++ }) };
   if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() {} };
   if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: (url) => { navigated++; replaced = url; }, push: (url) => { pushed = url; } }) };
-  if (request === 'react-hook-form') return { Controller, useForm: (options) => { formOptions = options; return { control: {}, formState: { errors: formErrors }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return (event) => { submittedEvent = event; return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue, getValues: () => values }; } };
-  if (request === '@hookform/resolvers/zod') return { zodResolver: () => () => {} };
-  if (request === '@/schemas/book.shema') return { bookSchema: {} };
+  if (request === 'react-hook-form') return { ...reactHookForm, Controller, useForm: (options) => { formOptions = options; return { control: {}, formState: { errors: formErrors }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return async (event) => { submittedEvent = event; if (validateSubmission) { const result = await options.resolver(values, {}, {}); formErrors = result.errors; return Object.keys(result.errors).length ? invalid(result.errors) : valid(result.values); } return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue, getValues: () => values }; } };
+  if (request === '@hookform/resolvers/zod') return { zodResolver: (schema) => original.load.call(Module, '@hookform/resolvers/zod', module).zodResolver(schema) };
+  if (request === '@/schemas/book.shema') return require('../schemas/book.shema.ts');
   return original.load.call(this, request, parent, ...args);
 };
 process.env.NEXT_PUBLIC_API_URL = 'http://localhost:4000/api/v1';
@@ -209,6 +211,81 @@ test('edit: loaded fields use the accessible responsive form presentation', asyn
   assert.deepEqual(classes.slice(1, 7).map((name) => name.split('--')[1]), ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite']);
   assert.equal(find(form, Button, (button) => button.props.htmlType === 'button'), null);
   formErrors = {}; h.unmount();
+});
+
+test('edit: absent cover validates and is omitted from the update; existing URLs remain intact', async () => {
+  const { editBookSchema } = require('../schemas/book.shema.ts');
+  const { zodResolver } = original.load.call(Module, '@hookform/resolvers/zod', module);
+  const validate = zodResolver(editBookSchema);
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+
+  for (const coverImage of [null, undefined, 'https://example.com/cover']) {
+    values = {}; let payload;
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify({ ...stored, coverImage })));
+      payload = JSON.parse(init.body);
+      return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness('edit'); h.render(); await flush();
+    const tree = h.render();
+    assert.equal(values.coverImage, coverImage ?? undefined);
+    let prevented = false;
+    find(tree, Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+    assert.equal(prevented, false);
+    values.title = 'Changed';
+    const result = await validate(values, {}, {});
+    assert.deepEqual(result.errors, {});
+    await find(tree, 'form').props.onSubmit();
+    assert.equal(payload.title, 'Changed');
+    if (coverImage == null) assert.equal(Object.hasOwn(payload, 'coverImage'), false);
+    else assert.equal(payload.coverImage, coverImage);
+    h.unmount();
+  }
+  for (const coverImage of ['not a url', null]) {
+    const result = await validate({ ...stored, coverImage }, {}, {});
+    assert.ok(result.errors.coverImage);
+  }
+});
+
+test('edit: invalid cover can be cleared and submits as absent', async () => {
+  const { editBookSchema } = require('../schemas/book.shema.ts');
+  const { zodResolver } = original.load.call(Module, '@hookform/resolvers/zod', module);
+  const validate = zodResolver(editBookSchema);
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  for (const blank of ['', '  \t']) {
+    const invalid = await validate({ ...stored, coverImage: 'invalid' }, {}, {});
+    assert.ok(invalid.errors.coverImage);
+    const cleared = await validate({ ...stored, coverImage: blank }, {}, {});
+    assert.deepEqual(cleared.errors, {});
+    assert.equal(cleared.values.coverImage, undefined);
+    assert.equal(Object.hasOwn(JSON.parse(JSON.stringify(cleared.values)), 'coverImage'), false);
+  }
+  values = {}; formErrors = {}; validateSubmission = true;
+  let payload;
+  global.fetch = (_url, init) => {
+    if (init.method === 'GET') return Promise.resolve(response(JSON.stringify({ ...stored, coverImage: null })));
+    payload = JSON.parse(init.body);
+    return Promise.resolve(response('{"message":"ok"}'));
+  };
+  const h = harness('edit');
+  const originalLog = console.log;
+  try {
+    h.render(); await flush();
+    values.coverImage = 'invalid';
+    console.log = () => {};
+    await find(h.render(), 'form').props.onSubmit();
+    assert.ok(formErrors.coverImage);
+    assert.ok(find(h.render(), 'span', (node) => node.props.id === 'coverImage-error'));
+    assert.equal(payload, undefined);
+    values.coverImage = '';
+    values.title = 'Changed';
+    await find(h.render(), 'form').props.onSubmit();
+    assert.equal(formErrors.coverImage, undefined);
+    assert.equal(payload.title, 'Changed');
+    assert.equal(Object.hasOwn(payload, 'coverImage'), false);
+  } finally {
+    console.log = originalLog; validateSubmission = false; formErrors = {}; h.unmount();
+  }
 });
 
 test('edit: return guards changed fields and preserves the form on cancellation', async () => {

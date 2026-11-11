@@ -8,3 +8,10 @@ export const bookSchema = z.object({
   coverImage: z.string().url().optional(),
   isFavorite: z.boolean(),
 });
+
+export const editBookSchema = bookSchema.extend({
+  coverImage: z.preprocess(
+    (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
+    bookSchema.shape.coverImage,
+  ),
+});
