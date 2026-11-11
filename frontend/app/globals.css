@@ -155,7 +155,7 @@ body {
 @media (max-width: 767px) {
   .auth-page { grid-template-columns: minmax(0, 1fr); }
   .auth-identity { gap: 1.5rem; padding: 1.5rem; }
-  .auth-identity-copy { margin: 0; font-size: 1rem; }
+  .auth-identity-copy { width: min(100%, 27rem); margin: 0 auto; font-size: 1rem; }
   .auth-statement { margin-bottom: 0.5rem; font-size: 2rem; }
   .auth-statement br { display: none; }
   .auth-content { align-items: flex-start; padding: 2rem 1.5rem 3rem; }

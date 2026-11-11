@@ -8,7 +8,7 @@ export default function AuthIdentity() {
         <span className="library-beta-badge">BETA</span>
       </div>
       <div className="auth-identity-copy">
-        <p className="auth-statement">Tu biblioteca,<br />a tu manera.</p>
+        <p className="auth-statement">Tu biblioteca,{' '}<br />a tu manera.</p>
         <p>Catalogar, organizar y reseñar libros en un solo lugar.</p>
       </div>
     </aside>
