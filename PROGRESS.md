@@ -2,9 +2,16 @@
 
 **Last updated:** 2026-11-11
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** `SEC-01` implemented and locally validated; production configuration and deployment remain unverified. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
+**Active task:** `TEST-04` workflow implemented and locally validated; GitHub-hosted execution remains pending. `SEC-01` production configuration and deployment remain unverified. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review. `TEST-02` / `SEC-05` remain incomplete and `SEC-03` remains partial.
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
+
+## TEST-04 CI handoff
+
+- Added `.github/workflows/ci.yml` for pull requests targeting `main` and pushes to `modernization`. Separate Node 22 frontend and backend jobs use `npm ci`, dependency caches, read-only contents permission, and no deployment or production secrets. Frontend runs tests, lint, TypeScript and build; backend runs tests, security probes and build. Backend sparse checkout excludes the tracked database; current tests also use synthetic fixtures and isolated temporary or in-memory databases.
+- Locally, in fresh temporary copies without environment files (and without `backend/library.db`), on Node 22: frontend `npm ci`, `npm test` (134/134), `npm run lint -- --no-cache` (two existing `reviews.tsx` warnings), `npx tsc --noEmit --incremental false`, and `npm run build` passed; backend `npm ci`, `npm test` (71/71), `npm run test:security` (3/3), and `npm run build` passed. npm reported 12 frontend vulnerabilities (10 moderate, 2 high) and 4 backend vulnerabilities (3 high, 1 critical); these were not remediated in this task.
+- Python PyYAML parsed the workflow and checked triggers, permissions and job names; `actionlint` was unavailable. `git diff --check -- . ':(exclude)backend/library.db'` passed; `git diff --no-index --check /dev/null .github/workflows/ci.yml` reported no whitespace errors (exit 1 because the new file differs). Local checks do not validate GitHub Actions execution, sparse checkout on GitHub, or cache behavior. `TEST-04` remains open until both jobs succeed in a GitHub-hosted run; `TEST-02` also remains open for its remaining CI and browser evidence. The owner must separately authorize any commit or push and review the resulting run; pushing `modernization` may trigger configured Vercel Preview even though this workflow has no deployment steps. No deployment is authorized by this handoff.
+- Changed only `.github/workflows/ci.yml` and `PROGRESS.md`. The pre-existing `backend/library.db` modification was not inspected or intentionally touched. No production systems or secrets were accessed; no commit, push, merge, or deployment occurred.
 
 ## TEST-02 local validation handoff
 
@@ -69,7 +76,7 @@ Functional modernization handoff: the locally committed FIX-02 work comprises A 
 - Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
 - CORS is open; authentication has local per-account rate limits and opt-in direct-peer IP limits; error handling is inconsistent.
 - JWT configuration requires an explicit 64-hex-character secret and has no fallback; generation and uniqueness are operational responsibilities.
-- Initial discovery found no tests, test scripts, CI, or backup procedure. Backend tests and scripts now exist; CI and a backup procedure remain absent.
+- Initial discovery found no tests, test scripts, CI, or backup procedure. Test scripts and a locally validated CI workflow now exist; GitHub-hosted CI verification and a backup procedure remain pending.
 - Initial discovery found the README partially stale; TEST-01 added backend test instructions.
 
 ## Owner-confirmed deployment facts
