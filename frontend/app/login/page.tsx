@@ -1,6 +1,7 @@
 'use client';
 
-import ErrorMessage from '@/components/error-message';
+import AuthIdentity from '@/components/auth-identity';
+import AuthFieldError from '@/components/auth-field-error';
 import { useMessage } from '@/context/message.context';
 import { loginSchema } from '@/schemas/login.schema';
 import { loginUser } from '@/services/login.service';
@@ -8,7 +9,6 @@ import { verifyLoginSession } from '@/services/login-session';
 import { Login } from '@/types/login.type';
 import { setToken } from '@/utils/cookies-handlers';
 import { safeReturnPath } from '@/utils/session';
-import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input } from 'antd';
 import Link from 'next/link';
@@ -94,7 +94,10 @@ function LoginPage() {
   };
 
   return (
-    <div className="h-screen grid place-content-center">
+    <main className="auth-page">
+      <AuthIdentity />
+      <section className="auth-content">
+        <div className="auth-content-inner">
       <noscript>
         <style>{'#login-form { display: block !important; } #login-session-status { display: none !important; }'}</style>
         <p role="alert">Activa JavaScript para iniciar sesión.</p>
@@ -112,26 +115,27 @@ function LoginPage() {
         style={{ display: sessionState === 'anonymous' ? undefined : 'none' }}
         method="post"
         onSubmit={handleSubmit(onValid)}
-        className="w-[360px] bg-white dark:bg-surface p-4 rounded-lg shadow-lg flex flex-col gap-4 max-[400px]:w-full"
+        className="auth-form"
       >
-        <h2 className="text-center text-xl font-semibold">Inicia sesión</h2>
+        <div className="auth-heading"><h1>Inicia sesión</h1><p>Accede a tu biblioteca personal.</p></div>
         <Controller
           name="email"
           control={control}
           render={({ field }) => (
-            <div>
-              <div className="flex items-center gap-3">
-                <MailOutlined style={{ color: '#737373', fontSize: 18 }} />
+            <div className="auth-field">
+              <label htmlFor="email">Correo electrónico</label>
                 <Input
                   {...field}
                   id="email"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+
                   placeholder="example@gmail.com"
                   size="large"
                   status={errors.email && 'error'}
                 />
-              </div>
               {errors.email && (
-                <ErrorMessage>{errors.email.message as string}</ErrorMessage>
+                <AuthFieldError id="email-error">{errors.email.message as string}</AuthFieldError>
               )}
             </div>
           )}
@@ -140,19 +144,20 @@ function LoginPage() {
           name="password"
           control={control}
           render={({ field }) => (
-            <div>
-              <div className="flex items-center gap-3">
-                <LockOutlined style={{ color: '#737373', fontSize: 18 }} />
+            <div className="auth-field">
+              <label htmlFor="password">Contraseña</label>
                 <Input.Password
                   {...field}
                   id="password"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+
                   placeholder="******"
                   size="large"
                   status={errors.password && 'error'}
                 />
-              </div>
               {errors.password && (
-                <ErrorMessage>{errors.password.message as string}</ErrorMessage>
+                <AuthFieldError id="password-error">{errors.password.message as string}</AuthFieldError>
               )}
             </div>
           )}
@@ -166,15 +171,17 @@ function LoginPage() {
         >
           Iniciar sesión
         </Button>
-        <div className="w-full h-[1px] bg-neutral-200" />
+        <div className="auth-alternate">¿No tienes una cuenta?
         <Link
           href="/register"
-          className="h-10 rounded-lg flex items-center justify-center text-white bg-[#42b72a] hover:bg-[#4bc735]"
+          className="auth-link"
         >
           Regístrate
-        </Link>
+        </Link></div>
       </form>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }
 

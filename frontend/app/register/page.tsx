@@ -1,11 +1,11 @@
 'use client';
 
-import ErrorMessage from '@/components/error-message';
+import AuthIdentity from '@/components/auth-identity';
+import AuthFieldError from '@/components/auth-field-error';
 import { useMessage } from '@/context/message.context';
 import { registerSchema } from '@/schemas/register.schema';
 import { registerUser } from '@/services/register.service';
 import { Register } from '@/types/register.type';
-import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input } from 'antd';
 import Link from 'next/link';
@@ -51,29 +51,33 @@ function RegisterPage() {
   };
 
   return (
-    <div className="h-screen grid place-content-center">
+    <main className="auth-page">
+      <AuthIdentity />
+      <section className="auth-content">
+        <div className="auth-content-inner">
       <form
         method="post"
         onSubmit={handleSubmit(onValid)}
-        className="w-[360px] bg-white dark:bg-surface p-4 rounded-lg shadow-lg flex flex-col gap-4 max-[400px]:w-full"
+        className="auth-form"
       >
-        <h2 className="text-center text-xl font-semibold">Regístrate</h2>
+        <div className="auth-heading"><h1>Crea tu cuenta</h1><p>Empieza a organizar tu biblioteca personal.</p></div>
         <Controller
           name="username"
           control={control}
           render={({ field }) => (
-            <div>
-              <div className="flex items-center gap-3">
-                <UserOutlined style={{ color: '#737373', fontSize: 18 }} />
+            <div className="auth-field">
+              <label htmlFor="username">Nombre de usuario</label>
                 <Input
                   {...field}
+                  id="username"
+                  aria-invalid={!!errors.username}
+                  aria-describedby={errors.username ? 'username-error' : undefined}
                   placeholder="example123"
                   size="large"
                   status={errors.username && 'error'}
                 />
-              </div>
               {errors.username && (
-                <ErrorMessage>{errors.username.message as string}</ErrorMessage>
+                <AuthFieldError id="username-error">{errors.username.message as string}</AuthFieldError>
               )}
             </div>
           )}
@@ -82,18 +86,19 @@ function RegisterPage() {
           name="email"
           control={control}
           render={({ field }) => (
-            <div>
-              <div className="flex items-center gap-3">
-                <MailOutlined style={{ color: '#737373', fontSize: 18 }} />
+            <div className="auth-field">
+              <label htmlFor="email">Correo electrónico</label>
                 <Input
                   {...field}
+                  id="email"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
                   placeholder="example@gmail.com"
                   size="large"
                   status={errors.email && 'error'}
                 />
-              </div>
               {errors.email && (
-                <ErrorMessage>{errors.email.message as string}</ErrorMessage>
+                <AuthFieldError id="email-error">{errors.email.message as string}</AuthFieldError>
               )}
             </div>
           )}
@@ -102,18 +107,19 @@ function RegisterPage() {
           name="password"
           control={control}
           render={({ field }) => (
-            <div>
-              <div className="flex items-center gap-3">
-                <LockOutlined style={{ color: '#737373', fontSize: 18 }} />
+            <div className="auth-field">
+              <label htmlFor="password">Contraseña</label>
                 <Input.Password
                   {...field}
+                  id="password"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
                   placeholder="******"
                   size="large"
                   status={errors.password && 'error'}
                 />
-              </div>
               {errors.password && (
-                <ErrorMessage>{errors.password.message as string}</ErrorMessage>
+                <AuthFieldError id="password-error">{errors.password.message as string}</AuthFieldError>
               )}
             </div>
           )}
@@ -122,21 +128,22 @@ function RegisterPage() {
           name="confirmPassword"
           control={control}
           render={({ field }) => (
-            <div>
-              <div className="flex items-center gap-3">
-                <LockOutlined style={{ color: '#737373', fontSize: 18 }} />
+            <div className="auth-field">
+              <label htmlFor="confirmPassword">Confirmar contraseña</label>
                 <Input.Password
                   {...field}
                   id="confirmPassword"
+                  aria-invalid={!!errors.confirmPassword}
+                  aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
+
                   placeholder="******"
                   size="large"
                   status={errors.confirmPassword && 'error'}
                 />
-              </div>
               {errors.confirmPassword && (
-                <ErrorMessage>
+                <AuthFieldError id="confirmPassword-error">
                   {errors.confirmPassword.message as string}
-                </ErrorMessage>
+                </AuthFieldError>
               )}
             </div>
           )}
@@ -150,11 +157,11 @@ function RegisterPage() {
         >
           Registrarse
         </Button>
-        <Link href="/login" className="text-center text-blue-400 underline">
-          ¿Ya tienes una cuenta?
-        </Link>
+        <div className="auth-alternate">¿Ya tienes una cuenta? <Link href="/login" className="auth-link">Inicia sesión</Link></div>
       </form>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }
 
