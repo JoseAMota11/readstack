@@ -6,6 +6,25 @@
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
+## UI-BETA-03 local handoff
+
+- Added the existing library BETA badge to the shared authentication identity used by login and registration, retaining the decorative book icon and allowing the brand row to wrap. Added a focused source-level test; browser, narrow-screen, theme, and screen-reader review remain pending.
+- From `frontend/` on Node 22: `fnm exec --using 22 npm test` passed 132/132; `fnm exec --using 22 npm run lint -- --no-cache` passed with two existing `reviews.tsx` warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. `git diff --check -- . ':(exclude)backend/library.db'` passed.
+- Changed `frontend/components/auth-identity.tsx`, `frontend/app/globals.css`, `frontend/tests/auth-beta-badge.test.cjs`, and this handoff. Existing UI-BETA-01 work and favicon assets were preserved. The pre-existing database modification was not inspected or changed; no production access or deployment occurred.
+
+## UI-BETA-02 local handoff
+
+- Added `frontend/app/icon.svg`: an ivory tile with an ink-blue R, stacked book lines, and a bookmark; removed the conflicting legacy `frontend/app/favicon.ico`. The opaque tile is intended to work against both light and dark browser chrome.
+- From `frontend/` on Node 22: `fnm exec --using 22 npm test` passed 131/131; `fnm exec --using 22 npm run lint -- --no-cache` passed with two existing `reviews.tsx` warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. The build lists `/icon.svg` as a static route.
+- Browser review at 16px and 32px in light and dark browser themes remains pending. UI-BETA-01 changes and the pre-existing `backend/library.db` modification were intentionally preserved; no production access or deployment occurred.
+
+## UI-BETA-01 local handoff
+
+- Added a persistent BETA badge to the library navigation and a non-blocking Spanish notice that stored books and reviews could be lost during Beta. Existing theme tokens support both color schemes; the navigation can wrap on narrow screens.
+- From `frontend/` on Node 22: `fnm exec --using 22 npm test` passed 131/131; `fnm exec --using 22 npm run lint -- --no-cache` passed with two existing `reviews.tsx` warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. Tests use a component harness and CSS assertions, not browser automation.
+- Changed `frontend/components/navbar.tsx`, `frontend/components/home.tsx`, `frontend/app/globals.css`, `frontend/tests/beta-notice.test.cjs`, and this handoff. Backend code and the pre-existing `backend/library.db` modification were intentionally untouched. No deployment or production access occurred.
+- Owner browser review remains needed in both themes and at narrow widths and zoom, including keyboard and screen-reader reading order, contrast, and existing navigation and filter actions. No persistence or recovery guarantee is implied.
+
 ## SEC-BETA-02 local handoff
 
 - Added a dummy cost-10 bcrypt comparison for unknown-user login and made the opt-in IP limiter key explicitly from the direct socket peer, independent of Express proxy trust. Existing account limits, API responses and default-disabled IP behavior remain unchanged.

@@ -19,7 +19,10 @@ function Navbar() {
 
   return (
     <nav className="library-nav" aria-label="Navegación principal">
-      <span className="library-brand">Biblioteca Personal</span>
+      <div className="library-brand">
+        <span>Biblioteca Personal</span>
+        <span className="library-beta-badge">BETA</span>
+      </div>
       <div className="library-nav-actions">
         <ThemeSwitcher />
         <Button

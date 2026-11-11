@@ -17,6 +17,9 @@ function HomePage() {
         <Navbar />
         <main className="library-content">
           <h1 className="library-heading">Mi biblioteca</h1>
+          <p className="library-beta-notice">
+            Durante la versión Beta, los libros y las reseñas guardados podrían perderse.
+          </p>
           <Filters setOpen={setOpen} />
           <section className="library-collection" aria-labelledby="library-collection-heading">
             <h2 id="library-collection-heading" className="library-collection-heading">Colección</h2>
