@@ -6,6 +6,14 @@
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
+## TEST-02 local validation handoff
+
+- `TEST-02` remains open: its `PLAN.md` acceptance requires frontend tests running in CI, and documented browser-level authentication and route validation remains incomplete. `TEST-04` owns the CI workflow. `TEST-03` already covers the backend functional and multi-user regression suite; no new backend tests or application fixes were needed in this increment.
+- Added a focused login component-handler test in `frontend/tests/login-session.test.cjs`: after an anonymous session check, successful login retains a private edit deep link and its query. Existing tests already cover token/cookie helpers, proxy matching and redirects, unsafe return destinations, and login session recovery. This mocked hook/service harness is not a browser or end-to-end test and does not establish real cookie or navigation behavior.
+- On Node 22, from `frontend/`: `fnm exec --using 22 npm test` passed 134/134; `fnm exec --using 22 npm run lint -- --no-cache` passed with the two existing `reviews.tsx` warnings; `fnm exec --using 22 npx tsc --noEmit --incremental false` and `fnm exec --using 22 npm run build` passed. The build reported loading the existing `.env.local`; its contents were not inspected or changed. From `backend/`: `fnm exec --using 22 npm test` passed 71/71, `fnm exec --using 22 npm run test:security` passed 3/3, and `fnm exec --using 22 npm run build` passed. Tests use synthetic accounts and isolated temporary SQLite databases. Node reported existing experimental MockTimers warnings.
+- Existing owner-reported local browser evidence is recorded below. Remaining owner browser checks with synthetic accounts and isolated local services include authentication/deep-link redirects and Back/Forward and recovery behavior; cross-user book/review mutation denial and data preservation; and invalid-cover clearing, whitespace, and existing-cover preservation. The checks are not a substitute for CI or staging/production verification. No browser checks were performed in this increment.
+- Changed `frontend/tests/login-session.test.cjs` and this handoff. The pre-existing `backend/library.db` modification was not inspected or intentionally touched. No production systems were accessed; no secrets or production configuration were inspected or changed, and no deployment occurred.
+
 ## UI-BETA-03 local handoff
 
 - Added the existing library BETA badge to the shared authentication identity used by login and registration, retaining the decorative book icon and allowing the brand row to wrap. Added a focused source-level test; browser, narrow-screen, theme, and screen-reader review remain pending.
