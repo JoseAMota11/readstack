@@ -963,22 +963,35 @@ body {
     text-align: center;
   }
 
-  .book-detail-genres,
-  .book-detail-actions {
+  .book-detail-genres {
     justify-content: center;
+  }
+
+  .book-detail-rating {
+    margin-block: 0;
+    text-align: center;
+  }
+
+  .book-detail-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    width: min(100%, 22rem);
+    align-self: center;
   }
 
   .book-detail-actions .book-detail-action {
-    width: 2.75rem;
-    min-width: 2.75rem;
-    padding: 0;
-    font-size: 1.125rem;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    padding: 0.625rem 0.5rem;
     justify-content: center;
+    white-space: normal;
   }
 
-  /* Ant Design sets direct button spans to inline-flex. */
-  .book-detail-actions .book-detail-action > .book-detail-action-label {
-    display: none;
+  .book-detail-actions .book-detail-favorite-status,
+  .book-detail-actions > .ant-btn:not(.book-detail-action) {
+    grid-column: 1 / -1;
+    justify-self: center;
   }
 
   .review-composer {
