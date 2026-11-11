@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { app } from './helpers/test-app';
 import { PASSWORD, auth, registerUser } from './helpers/fixtures';
@@ -67,6 +68,27 @@ test('rejects login for an unknown email', async () => {
     .send({ email: 'unknown@example.test', password: PASSWORD });
 
   assert.equal(response.status, 401);
+});
+
+test('unknown and known invalid logins both perform a cost-10 bcrypt comparison', async (t) => {
+  const user = await registerUser('timing');
+  const originalCompare = bcrypt.compareSync;
+  const costs: number[] = [];
+  t.mock.method(bcrypt, 'compareSync', ((password: string, hash: string) => {
+    costs.push(bcrypt.getRounds(hash));
+    return originalCompare(password, hash);
+  }) as typeof bcrypt.compareSync);
+
+  const known = await request(app).post('/api/v1/login')
+    .send({ email: user.email, password: `${PASSWORD}-wrong` }).expect(401);
+  const unknown = await request(app).post('/api/v1/login')
+    .send({ email: 'timing-unknown@example.test', password: `${PASSWORD}-wrong` }).expect(401);
+  assert.deepEqual(known.body, unknown.body);
+  assert.deepEqual(costs, [10, 10]);
+
+  // Even the dummy hash's matching input must never authenticate an unknown user.
+  await request(app).post('/api/v1/login')
+    .send({ email: 'timing-unknown@example.test', password: 'synthetic dummy password' }).expect(401);
 });
 
 test('rejects invalid registration and login payloads', async () => {

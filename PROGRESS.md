@@ -6,6 +6,13 @@
 **Branch:** `modernization`
 **Production:** Not accessed or changed.
 
+## SEC-BETA-02 local handoff
+
+- Added a dummy cost-10 bcrypt comparison for unknown-user login and made the opt-in IP limiter key explicitly from the direct socket peer, independent of Express proxy trust. Existing account limits, API responses and default-disabled IP behavior remain unchanged.
+- With Node 22 from `backend/`, `fnm exec --using 22 npm test` passed 71/71; `fnm exec --using 22 npm run test:security` passed 3/3; `fnm exec --using 22 npm run build` passed. Tests use isolated synthetic databases. Node emitted an existing experimental MockTimers warning.
+- Render ingress and client-IP trust remain unverified; the direct-peer limiter is not a safe assumed Render per-client control. `SEC-03` remains partial. Account-spanning and distributed abuse, synchronous bcrypt CPU exhaustion, timing differences, and the existing duplicate-registration 409 disclosure remain risks. An enumeration-safe registration response needs a separate API contract decision.
+- Changed backend auth model, auth rate-limit middleware, focused auth tests, `README.md`, and this handoff. The pre-existing `backend/library.db` modification, frontend, environment and production configuration are intentionally untouched. No production access or deployment occurred.
+
 ## Completed
 
 | ID | Result |

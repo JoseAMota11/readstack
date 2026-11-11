@@ -1,5 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 
 // Never persist account identifiers in the in-memory stores.
 const accountKeySecret = randomBytes(32);
@@ -30,7 +30,8 @@ function createAuthLimiters(route: 'LOGIN' | 'REGISTER', windowMs: number, ipMax
       limit: positiveInteger(`AUTH_${route}_IP_MAX`, ipMax),
       // Opt in only when the direct peer is verified to be the client.
       skip: () => process.env.AUTH_IP_RATE_LIMIT_ENABLED !== 'true',
-      // Forwarded headers are intentionally ignored; Express trust proxy remains false.
+      // Use the socket peer even if trust proxy is changed elsewhere; never trust headers here.
+      keyGenerator: (req) => ipKeyGenerator(req.socket.remoteAddress ?? 'unknown'),
       validate: { xForwardedForHeader: false },
     }),
     account: rateLimit({

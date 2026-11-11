@@ -66,6 +66,10 @@ npm start
 
 With `PORT` set to `4000`, the API is available at `http://localhost:4000/api/v1`. See the [environment governance guide](docs/ENVIRONMENT_GOVERNANCE.md) for the full variable inventory, rate-limit options, and secret management. Keep secrets out of shell history and use distinct secrets for different environments; changing the signing key invalidates existing sessions.
 
+Authentication rate limits are process-local, not distributed. Login and registration have per-account limits; the optional IP limit uses only the direct socket peer and is disabled by default. Enable it only after verifying that the direct peer is the actual client, not a proxy shared by clients. Render's ingress and client-IP behavior are unverified: do not enable this direct-peer limiter there on that assumption. A Render per-client limiter requires a separately verified, non-spoofable ingress/header trust boundary and a reviewed implementation; the current limiter deliberately ignores forwarded headers, even if Express proxy trust is enabled. Verify that clients cannot bypass the trusted ingress, how it sanitizes forwarding headers and identifies the client, and the correct trusted proxy configuration before designing such a change.
+
+These limits do not stop attempts spread across many accounts, instances, or restarts. Registration currently reveals an existing email through its 409 response; changing that contract requires a separate decision. Unknown-user logins perform a dummy bcrypt comparison to reduce a timing signal, not guarantee constant-time responses; this extra synchronous work also increases the risk of CPU exhaustion under abuse.
+
 ### Frontend
 
 In another terminal, from the repository root:

@@ -4,6 +4,9 @@ import { User } from '../types/user.type';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
+// Synthetic hash with the same cost as newly registered passwords, not a credential.
+const DUMMY_PASSWORD_HASH = '$2b$10$gcjnO0Jf9YpGNkK2F3e2fOaPOLP9HvXACl/KXS7u.Ze3ygT8cXOOW';
+
 export class UserModel {
   static create(user: User) {
     const { username, email, password } = user;
@@ -25,13 +28,9 @@ export class UserModel {
     const stmt = db.prepare(`SELECT * FROM Users WHERE email = ?`);
     const dbUser = stmt.get(email) as User;
 
-    if (!dbUser) {
-      throw new Error('Credenciales inválidas.');
-    }
+    const isPasswordValid = bcrypt.compareSync(password, dbUser?.password ?? DUMMY_PASSWORD_HASH);
 
-    const isPasswordValid = bcrypt.compareSync(password, dbUser.password);
-
-    if (!isPasswordValid) {
+    if (!dbUser || !isPasswordValid) {
       throw new Error('Credenciales inválidas.');
     }
 
