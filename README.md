@@ -1,286 +1,118 @@
+# ReadStack
 
-# ReadStack — Sistema de Gestión de Biblioteca Personal
+ReadStack is a multiuser personal book catalog for organizing collections and recording reviews. Search and filter your library, keep track of favorites, and revisit your impressions of each book. It is a catalog, not an ebook reader.
 
-## Descripción
+## Screenshots
 
-ReadStack is a multiuser personal library application built with TypeScript, Next.js 14.2.18, React 18, Ant Design 5 and Tailwind CSS 3 on the frontend, and Node.js, Express 4 and SQLite on the backend. It supports public registration and private per-user collections. Modernization and release verification remain in progress.
+### Library
 
-### Frontend (React/Next.js)
+![Desktop view of the ReadStack library and book collection](docs/screenshots/library-desktop.png)
 
-1. **Interfaz de usuario responsiva:**
-   - La aplicación se adapta a diferentes tamaños de pantalla (móviles, tabletas, escritorios).
+### Book detail
 
-2. **Gestión de estado:**
-   - Uso de Context API para manejar el estado global de la aplicación.
+![Desktop book detail with cover, information, actions, and reviews](docs/screenshots/book-detail-desktop.png)
 
-3. **Rutas protegidas:**
-   - Implementación de autenticación en las rutas para restringir el acceso a usuarios no autenticados.
+| Mobile library | Add a book | Sign in |
+| --- | --- | --- |
+| ![ReadStack library on a mobile screen](docs/screenshots/library-mobile.png) | ![Add-book form displayed over the library](docs/screenshots/add-book-modal.png) | ![ReadStack sign-in screen on desktop](docs/screenshots/login-desktop.png) |
 
-4. **Manejo de formularios:**
-   - Formularios con validaciones personalizadas para:
-     - Registro y login de usuarios.
-     - Creación, edición y eliminación de libros.
+## Features
 
-5. **Búsqueda y filtros:**
-   - Barra de búsqueda para encontrar libros por título.
-   - Filtros avanzados para refinar resultados por:
-     - Autor.
-     - Año de publicación.
-     - Género.
+- Public registration and sign-in, with a separate collection for each user.
+- Add, view, edit, and delete books with details such as title, author, year, genres, and cover.
+- Search by title, filter by author, year, and genre, and browse paginated results.
+- Mark favorites and manage reviews and ratings on each book's detail page.
+- Export an individual book to CSV; full-library export is not implemented.
+- Responsive interface with light and dark themes; the browser stores the selected preference.
 
-6. **Vista detallada de libros:**
-   - Página individual para cada libro con información completa (título, autor, año, géneros, portada, reseñas, etc.).
+## Technology and architecture
 
-7. **Favoritos:**
-   - Funcionalidad para marcar y desmarcar libros como favoritos.
+- **Frontend:** Next.js 16.4.6 with App Router, React 19.3.1, and TypeScript. Ant Design 5.29.3 and Tailwind CSS 3 support the interface; client services communicate with the API.
+- **Backend:** Node.js, Express 4, and TypeScript. The REST API is organized into routes, middleware, controllers, and models, with Zod input validation.
+- **Data:** SQLite through `better-sqlite3` and parameterized SQL. Tables are created at startup; versioned migrations are not yet implemented.
+- **Authentication and authorization:** bcrypt password hashing and JWT authentication. The frontend stores the token in a JavaScript-readable cookie and sends it as a Bearer token. The API verifies the token and checks book and review ownership; frontend navigation protection does not replace those checks.
 
-8. **Dark/Light mode:**
-   - Alternancia entre tema claro y oscuro para personalizar la experiencia del usuario.
-   - The frontend stores the selected theme in `localStorage` and otherwise uses the initial system preference. A shared provider synchronizes the Tailwind dark class and Ant Design theme; first-paint and overlay behavior still require browser validation.
+## Design
 
-### Backend (Node.js/Express)
+The approved **Archival Modern** direction combines a restrained editorial style with prominent book covers, generous space, and responsive layouts. Light and dark themes receive equal care. Implementation and visual and accessibility validation are ongoing; see [DESIGN.md](DESIGN.md) for the design principles and their limits.
 
-1. **API RESTful:**
-   - Desarrollo de una API estructurada para soportar todas las funcionalidades del frontend, incluyendo:
-     - CRUD de libros.
-     - Autenticación de usuarios.
-     - Manejo de reseñas y calificaciones.
-     - Exportación de datos.
+## Local setup
 
-2. **Autenticación JWT:**
-   - Sistema seguro de inicio de sesión y autorización basado en tokens JWT para proteger rutas y recursos.
+Local validation has used Node.js 22; npm 10 is recommended. Install dependencies separately for the frontend and backend. Use synthetic accounts and data for local work.
 
-3. **Conexión a base de datos:**
-   - Gestión de datos almacenados en una base de datos para:
-     - Usuarios.
-     - Libros.
-     - Reseñas y calificaciones.
+### Backend
 
-4. **Validaciones y manejo de errores:**
-   - Validación de entradas para asegurarse de que los datos cumplen los requisitos.
-   - Respuestas claras y detalladas en caso de errores (ejemplo: credenciales incorrectas, datos faltantes).
-
-5. **Exportación a CSV:**
-   - Exportación CSV por libro. La exportación de toda la biblioteca aún no está implementada.
-
-## Requisitos previos
-
-Asegúrate de tener instalados los siguientes programas en tu máquina:
-
-- [Node.js](https://nodejs.org/) (v22)
-- [npm](https://www.npmjs.com/) (v10)
-- [Git](https://git-scm.com/)
-
-## Instalación y uso
-
-Sigue los pasos a continuación para clonar y ejecutar el proyecto.
-
-### 1. Clonar el repositorio
-
-Ejecuta el siguiente comando para clonar el repositorio en tu máquina local:
+From the repository root:
 
 ```bash
-git clone https://github.com/JoseAMota11/read-group-challenge.git
-cd read-group-challenge
+cd backend
+npm install
+npm run build
 ```
 
-### 2. Configurar el frontend
+Configure the following environment variables for the backend process. The backend does not automatically load an `.env` file.
 
-1. Accede al directorio del frontend:
+| Variable | Purpose |
+| --- | --- |
+| `SECRET_KEY` | Required. Use an independently generated local secret of exactly 64 hexadecimal characters. Do not publish it or store it in the repository. |
+| `DATABASE_PATH` | SQLite path. Use an isolated local path for synthetic data; otherwise it defaults to `library.db` relative to the working directory. Avoid modifying the tracked `backend/library.db`. |
+| `PORT` | API port; defaults to `3000`. Set it to `4000` for the frontend configuration below. |
 
-   ```bash
-   cd frontend/
-   ```
-
-2. Instala las dependencias:
-
-   ```bash
-   npm install
-   ```
-
-3. Crea `frontend/.env.local` con `NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1` y luego inicia el servidor de desarrollo:
-
-   ```bash
-   npm run dev
-   ```
-
-   Esto levantará el frontend en `http://localhost:3000`.
-
-### 3. Configurar el backend
-
-1. En otra terminal, desde la raíz del repositorio, accede al directorio del backend:
-
-   ```bash
-   cd backend/
-   ```
-
-2. Instala las dependencias:
-
-   ```bash
-   npm install
-   ```
-
-3. Genera el build del backend:
-
-   ```bash
-   npm run build
-   ```
-
-4. Disable shell tracing and generate an independent local JWT key without printing it, then start the server on port 4000:
-
-   ```bash
-   DATABASE_PATH="$(mktemp -d)/library.db" PORT=4000 SECRET_KEY="$(openssl rand -hex 32)" npm start
-   ```
-
-   This generates 32 cryptographically secure random bytes in hexadecimal for this process; it does not save the key. It also creates a fresh temporary directory for a synthetic database on each invocation; clean up those directories when no longer needed. Run it only with shell tracing disabled and without exposing process environments. Each invocation generates a different key, invalidating earlier sessions once all verifiers use it. To retain sessions across restarts, independently generate and supply the same local key through an access-controlled secret mechanism; do not print, commit, share, or place it in shell history. Use distinct keys for each environment.
-
-   The backend listens on `http://localhost:4000`, reads process environment variables, and does not load `.env` automatically. `PORT` defaults to 3000. Startup fails in every environment, including tests, unless `SECRET_KEY` is exactly 64 hexadecimal characters; there is no fallback. Format validation cannot establish randomness or uniqueness. SQLite defaults to the relative path `library.db`; use an isolated `DATABASE_PATH` for synthetic local data, and do not modify the tracked database.
-
-### 4. Run backend tests
-
-The automated suite uses synthetic users and isolated temporary SQLite databases; tests do not open `backend/library.db`. Node.js 22 is required.
+With those variables configured, start the server from `backend/`:
 
 ```bash
-cd backend/
-npm test                 # passing regression suite
-npm run test:security    # SEC-04 ownership regression probes
+npm start
 ```
 
-Review operations require ownership of both the review and its associated book. Foreign, missing, or inconsistent resources return HTTP 404; existing inconsistent reviews are not modified or deleted by these checks.
+With `PORT` set to `4000`, the API is available at `http://localhost:4000/api/v1`. See the [environment governance guide](docs/ENVIRONMENT_GOVERNANCE.md) for the full variable inventory, rate-limit options, and secret management. Keep secrets out of shell history and use distinct secrets for different environments; changing the signing key invalidates existing sessions.
 
-### Frontend authentication checks
+### Frontend
 
-With Node.js 22 and the existing frontend dependencies installed, run `npm test` from `frontend/`. The focused tests use Node's built-in test runner and the existing TypeScript compiler; they do not require a database or a live service. CI integration and browser-level coverage remain pending.
+In another terminal, from the repository root:
 
-The frontend protects library and book routes as a navigation aid; the API still verifies each token and enforces ownership. An expired or rejected session returns to login. Review edits are saved in browser session storage, scoped to the user and book, so they can be restored after login. A successful submission removes only the submitted version; later edits remain. Drafts expire after 24 hours without editing and are cleaned up when the app opens and approximately hourly while it remains open. If browser storage is unavailable, a draft cannot be restored after navigation.
-
-### Authentication rate limits
-
-Login and registration are limited per normalized email, without storing the email itself in the limiter. By default, login allows 10 requests per account per 15 minutes and registration allows 5 per account per hour, including successful requests. Exceeding a limit returns HTTP 429 with `Retry-After`. Duplicate registration still returns 409 below the limit; it can reveal that an email is registered.
-
-Optional IP limits default to 30 login requests per 15 minutes and 10 registration requests per hour. They are **disabled by default**: set `AUTH_IP_RATE_LIMIT_ENABLED=true` only when the direct socket peer is verified to be the actual client. Express does not trust proxy headers, and this code does not configure a trusted proxy. Render's ingress and forwarded-header behavior are not verified; enabling the IP limiter behind a shared proxy could block unrelated users. Before using per-client IP limiting on Render, verify its ingress topology, header sanitization and direct-access paths, then implement and validate a narrowly trusted client-IP strategy. Do not blindly trust forwarded headers.
-
-Each endpoint's window and limits can be configured with positive integer environment variables: `AUTH_LOGIN_WINDOW_MS`, `AUTH_LOGIN_ACCOUNT_MAX`, `AUTH_LOGIN_IP_MAX`, `AUTH_REGISTER_WINDOW_MS`, `AUTH_REGISTER_ACCOUNT_MAX`, and `AUTH_REGISTER_IP_MAX`. Window values are milliseconds. Invalid values prevent startup.
-
-The default in-memory stores are process-local: counters reset on restart and are not shared across instances. Account limits can temporarily block a targeted user, and case variants share a limit even though existing authentication remains case-sensitive. IP limits are needed to help limit attempts across many accounts; until a safe Render client-IP strategy is verified, this protection is incomplete. The in-memory store is not capped against many distinct identifiers. No external service is required.
-
-## Estructura del proyecto
-
-```plaintext
-read-group-challenge/
-  backend/
-    ├── dist/                   # Archivos generados tras la compilación
-    ├── node_modules/           # Dependencias instaladas del proyecto
-    ├── src/                    # Código fuente principal
-    │   ├── config/             # Configuraciones de la aplicación (ej: DB, variables)
-    │   ├── controllers/        # Controladores que manejan la lógica del negocio
-    │   ├── middlewares/        # Middlewares para la app
-    │   ├── models/             # Definición de modelos de datos
-    │   ├── routes/             # Rutas y su conexión con controladores
-    │   ├── types/              # Definiciones de tipos de TypeScript
-    │   └── utils/              # Funciones de utilidad compartidas
-    │   └── index.ts            # Punto de entrada principal del backend
-    ├── .gitignore              # Archivos y carpetas ignorados por Git
-    ├── library.db              # Archivo de base de datos SQLite
-    ├── package-lock.json       # Archivo de bloqueo de dependencias
-    ├── package.json            # Archivo de configuración de dependencias
-    └── tsconfig.json           # Configuración de TypeScript
-  frontend/
-    ├── node_modules/           # Dependencias instaladas del proyecto
-    ├── app/                    # Carpetas relacionadas a rutas o páginas principales
-    ├── components/             # Componentes reutilizables de React
-    ├── context/                # Configuración de contextos globales
-    ├── schemas/                # Validaciones o esquemas de datos
-    ├── services/               # Lógica de conexión con la API
-    ├── types/                  # Definiciones de tipos de TypeScript
-    ├── utils/                  # Funciones de utilidad
-    ├── middleware.ts           # Protección de rutas
-    ├── .env.local              # Variables de entorno locales
-    ├── .eslintrc.json           # Configuración de ESLint
-    ├── .gitignore              # Archivos y carpetas ignorados por Git
-    ├── package-lock.json       # Archivo de bloqueo de dependencias
-    ├── package.json            # Archivo de configuración de dependencias
-    ├── postcss.config.mjs      # Configuración de PostCSS
-    ├── tailwind.config.ts      # Configuración de Tailwind CSS
-    ├── tsconfig.json           # Configuración global de TypeScript
-    └── next.config.mjs         # Configuración de Next.js
+```bash
+cd frontend
+npm install
 ```
 
-## Env
-
-See [Environment governance](docs/ENVIRONMENT_GOVERNANCE.md) for the variable inventory, secret generation and rotation policy. Production configuration and deployed secret compliance have not been verified; production inspection, changes, rotation, and deployment require separate owner authorization. Replacing the single signing key invalidates previously issued JWTs once all verifiers use the replacement, requiring users to log in again; staggered instances may temporarily behave inconsistently.
-
-Backend: environment variables supplied to the process (see startup command above):
-
-```env
-SECRET_KEY=<64-hex-character-local-secret>
-PORT=4000
-```
-
-Frontend: *.env.local*
+Create `frontend/.env.local` with the local API address:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 ```
 
-## Recomendaciones
+Then start the development server:
 
-El proyecto sigue en modernización. Estas recomendaciones sirven para pruebas locales, no como aprobación de producción:
+```bash
+npm run dev
+```
 
-1. **Probar el backend:**
-   - Puedes probar la API RESTful utilizando herramientas como **Postman** o cualquier cliente HTTP de tu preferencia para verificar los endpoints y sus respuestas.
+Open `http://localhost:3000`. To build and serve an optimized local frontend, run `npm run build` and `npm run start` from `frontend/`.
 
-2. **Probar el frontend:**
-   - Para una experiencia más realista, se recomienda ejecutar el frontend (Next.js) en **modo producción** siguiendo los pasos indicados más abajo.
+## Tests
 
-3. **Cuenta de prueba:**
-   - Registra una cuenta sintética para las pruebas locales; no uses datos de producción.
+With dependencies installed, run these commands from the repository root in separate terminals:
 
-### Pasos para ejecutar el frontend (Next.js) en modo producción
+```bash
+cd frontend
+npm test
+npm run lint
+```
 
-1. **Asegúrate de tener instaladas las dependencias**
-   - Si no lo has hecho antes, instala las dependencias del proyecto usando **npm** o **yarn**:
+```bash
+cd backend
+npm test
+npm run test:security
+```
 
-     ```bash
-     npm install
-     ```
+Backend tests use synthetic data and isolated temporary SQLite databases. Local tests cover functionality and cross-user isolation, but CI and comprehensive browser validation remain pending.
 
-     o
+## Project status
 
-     ```bash
-     yarn install
-     ```
+ReadStack is being modernized. Its features and tests exist locally, but that is not production approval. Comprehensive browser validation, security and deployment gates, CI, and decisions about sessions and persistence remain outstanding.
 
-2. **Genera el build de producción**
-   - Usa el comando `build` para generar los archivos optimizados para producción:
-
-     ```bash
-     npm run build
-     ```
-
-     o
-
-     ```bash
-     yarn build
-     ```
-
-3. **Ejecuta el servidor en modo producción**
-   - Una vez generado el build, inicia el servidor de producción con:
-
-     ```bash
-     npm run start
-     ```
-
-     o
-
-     ```bash
-     yarn start
-     ```
-
-4. **Accede a la aplicación**
-   - Abre tu navegador y ve a [http://localhost:3000](http://localhost:3000) para probar la aplicación en modo producción.
+The current implementation uses SQLite. A PostgreSQL provider decision and the planned migration remain pending; no provider has been selected. A staging strategy has not been approved, and durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
 
 ---
 
-**Autor:** José A. Mota  
-[Repositorio del proyecto](https://github.com/JoseAMota11/read-group-challenge)
+**Author:** José A. Mota · [Project repository](https://github.com/JoseAMota11/read-group-challenge)
