@@ -2,13 +2,18 @@
 
 **Last updated:** 2026-11-11
 **Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** Record owner-reported `TEST-02` browser validation and successful `TEST-04` hosted CI execution. `TEST-04` remains open pending evidence of its pull-request criterion; `TEST-02` / `SEC-05` remain open for outstanding browser validation, and `SEC-03` remains partial. `SEC-01` production configuration and deployment remain unverified. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review.
+**Active task:** `TEST-04` documentation closeout; `TEST-02` / `SEC-05` remain open for outstanding browser validation, and `SEC-03` remains partial. `SEC-01` production configuration and deployment remain unverified. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
-## Latest owner-reported CI and browser validation
+## TEST-04 closeout
 
-- GitHub Actions CI succeeded on `modernization` at commit `0a289d5`, with both frontend and backend jobs passing, per owner. This supplies hosted CI evidence for `TEST-04` and satisfies the CI criterion of `TEST-02`. The reported run was on a branch push, not evidence of a successful pull-request run; `TEST-04` remains open pending evidence for its pull-request acceptance criterion. The run was not independently inspected in this documentation update.
+- GitHub Actions [CI run 43068633604](https://github.com/JoseAMota11/readstack/actions/runs/43068633604) completed successfully on a `pull_request` event for `modernization` at commit `e1b11fd23ed463da364c6c7770082436457ebde5`, associated with closed [PR #1](https://github.com/JoseAMota11/readstack/pull/1) targeting `main`. Both jobs passed: frontend `npm ci`, tests, lint, TypeScript and build; backend `npm ci`, tests, security probes and build. The workflow targets pull requests to `main`, uses read-only contents permission and does not reference deployment secrets. This satisfies `TEST-04`; the separate push run below is not used as pull-request evidence.
+- This closeout changes only `PLAN.md` and `PROGRESS.md`; the pre-existing database modification remains untouched. No application code or workflow changed, and no staging, commit, push, merge, deployment or production access occurred.
+
+## Earlier owner-reported CI and browser validation
+
+- GitHub Actions CI succeeded on `modernization` at commit `0a289d5`, with both frontend and backend jobs passing, per owner. This supplies hosted CI evidence for `TEST-04` and satisfies the CI criterion of `TEST-02`. The reported run was on a branch push, not evidence of a successful pull-request run; at that time `TEST-04` remained open pending pull-request evidence. The run was not independently inspected in that documentation update; the later pull-request run is recorded above.
 - A protected private edit deep link redirected through login and returned to the requested edit page with `?from=library` preserved. Back and Forward reached their destinations but briefly displayed the login page, more noticeably on Back; the cause is unknown and navigation behavior needs follow-up.
 - User B opening User A's private book edit URL received a 404 with no book data displayed. A manual cross-user PATCH attempt in Firefox DevTools produced no observable HTTP response, so its authorization behavior is unverified; User A later confirmed the target book retained its original information. This does not establish that the request was denied. Cross-user browser mutation denial for books and reviews remains unverified; automated backend tests cover book and review ownership, not browser-level mutation tests.
 - The owner confirmed all invalid-cover and cover-clearing checks passed, including placeholder behavior, empty URL persistence, and preservation of other book fields. These are owner-reported local browser observations, not staging or production evidence.
@@ -66,6 +71,7 @@
 | `TEST-01` | Backend test harness and initial authentication and ownership tests implemented and locally validated. |
 | `SEC-04` | Review and book ownership enforced and locally validated with A/B regression tests and security probes. |
 | `TEST-03` | Authentication and multiuser regression coverage expanded and a representative isolation regression detected in a temporary copy. |
+| `TEST-04` | Pull-request CI workflow validated by a successful hosted run for frontend and backend checks; no deployment secrets referenced. |
 | `GOV-02` | Owner-approved environment governance, service inventory, rotation and revocation procedures documented in `docs/ENVIRONMENT_GOVERNANCE.md`; production settings remain unverified. |
 | `SEC-01` | Explicit 64-hex JWT secret enforced before startup and app initialization in all environments; synthetic configuration and isolated SQLite regression tests pass locally. Runtime validation cannot establish randomness or uniqueness. |
 
@@ -85,7 +91,7 @@ Functional modernization handoff: the locally committed FIX-02 work comprises A 
 - Existing inconsistent review records are hidden and cannot be mutated through review endpoints; they are not repaired or deleted by SEC-04.
 - CORS is open; authentication has local per-account rate limits and opt-in direct-peer IP limits; error handling is inconsistent.
 - JWT configuration requires an explicit 64-hex-character secret and has no fallback; generation and uniqueness are operational responsibilities.
-- Initial discovery found no tests, test scripts, CI, or backup procedure. Test scripts and a CI workflow now exist; the owner reports a successful GitHub-hosted branch run, while pull-request run evidence and a backup procedure remain pending.
+- Initial discovery found no tests, test scripts, CI, or backup procedure. Test scripts and a CI workflow now exist; successful GitHub-hosted branch and pull-request runs are recorded above, while a backup procedure remains pending.
 - Initial discovery found the README partially stale; TEST-01 added backend test instructions.
 
 ## Owner-confirmed deployment facts
@@ -193,7 +199,7 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
-Follow up the login-page flash during Back/Forward navigation and obtain observable cross-user book and review mutation denial and data-preservation evidence using synthetic accounts and isolated local services. Obtain evidence of a successful pull-request CI run for `TEST-04`; neither follow-up authorizes a deployment.
+Follow up the login-page flash during Back/Forward navigation and obtain observable cross-user book and review mutation denial and data-preservation evidence using synthetic accounts and isolated local services. These follow-ups do not authorize a deployment.
 Continue browser validation of the observer with synthetic accounts and isolated services, including suspended tabs, back-forward cache restoration, synthetic token expiry, deliberately missed channel delivery, and server-side revocation. Design a separate private-state exposure boundary before using the observer for filter retention; observer notifications alone do not guarantee that retained UI cannot flash or that all changes are detected.
 Before any future deployment of `SEC-01`, obtain separate owner authorization to assess and, if needed, change the production secret securely and plan reauthentication; an absent or nonconforming secret will prevent startup. Production secret inspection, configuration changes, rotation, and deployment each require separate owner authorization; deployment settings and recovery remain unverified. Continue independently with the pending browser and isolation validation (`TEST-02` / `SEC-05`).
 
@@ -203,7 +209,7 @@ Independent follow-ups: evaluate ESLint 10 compatibility and the existing lint w
 
 Review UI-03.2 with the owner: accessible naming refinements for icon-only actions, missing/failed/changed cover fallback behavior beyond the existing behavior, and additional action or error-state presentation refinements were deferred from UI-03.1. The shared debounce's rapid-cross-filter limitation remains a separately scoped issue. Later visual refinement should revisit card alignment. Retain Ant Design 5 provisionally and preserve all functional behavior, authentication, public registration, and multiuser isolation.
 
-Nonblocking for starting design, but still required as applicable: remaining browser-level authentication/route/draft validation (`TEST-02`, `SEC-05`), pull-request CI evidence (`TEST-04`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
+Nonblocking for starting design, but still required as applicable: remaining browser-level authentication/route/draft validation (`TEST-02`, `SEC-05`), session/security decisions and remediation (`AUTH-01`, `SEC-01`–`SEC-03`, `SEC-06`–`SEC-07`), remaining dependency advisories (`UPG-02`), the pagination timestamp tie-breaker, production persistence/recovery, and release verification (`AUD-02`, `GOV-03`, `TEST-05`, `DB-06`–`DB-08`). These are not waived release gates. After the redesign is finalized, produce a polished GitHub/portfolio README with real screenshots, product overview, architecture, setup, and a demo; formal task assignment remains pending.
 
 `UPG-03` remains open: its `UPG-01`, `TEST-02`, and `TEST-05` prerequisites, auth/route smoke evidence, and visual-regression acceptance remain incomplete; broader upgrade and release decisions are not implied by the local commits.
 

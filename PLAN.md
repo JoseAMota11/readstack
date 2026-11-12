@@ -142,7 +142,7 @@ Prerequisites:
 | `TEST-01` | Add backend test harness | P0 | `[x]` | — | Test runner, scripts, and initial route/middleware tests | Runs locally without production services; authentication and one ownership route covered; isolated test database |
 | `TEST-02` | Add frontend test harness | P1 | `[ ]` | — | Component/route test setup and scripts | Runs in CI; cookie/token helpers and protected-route behavior covered. Local Node-based authentication tests added; CI and browser-level coverage remain pending. |
 | `TEST-03` | Add authentication and isolation regression suite | P0 | `[x]` | `TEST-01` | Automated multiuser regression suite | Registration, login, invalid/expired token, own-data CRUD, cross-user denial, reviews, favorites, filters, pagination, and CSV covered; suite fails on isolation regressions |
-| `TEST-04` | Add CI checks | P0 | `[ ]` | `TEST-01` | Pull-request workflow | Backend tests/build and frontend lint/build run on pull requests; frontend tests added when `TEST-02` lands; no deployment secrets exposed |
+| `TEST-04` | Add CI checks | P0 | `[x]` | `TEST-01` | Pull-request workflow | Backend tests/build and frontend lint/build run on pull requests; frontend tests added when `TEST-02` lands; no deployment secrets exposed. Evidence: successful [pull-request CI run](https://github.com/JoseAMota11/readstack/actions/runs/43068633604) at `e1b11fd` |
 | `TEST-05` | Create release smoke checklist | P1 | `[ ]` | `GOV-01`, `TEST-03` | Repeatable smoke procedure | Covers login/registration, CRUD, reviews, favorites, filters, CSV, and cross-user denial; executable with recorded evidence |
 
 ### M2 — Security and access-control stabilization
