@@ -11,7 +11,7 @@ import { postgresOptions } from '../../src/database/provider';
 import { validatePostgresReadiness } from '../../src/database/readiness';
 import { parityCases, parityGenres } from '../helpers/parity-cases';
 import { BooksFilters } from '../../src/types/book.type';
-import { checkActivity, checkTarget, database, role } from './db04i-guard';
+import { checkObserver, checkTarget, database, observerOptions, role } from './db04i-guard';
 
 function target() {
   const options = postgresOptions(process.env);
@@ -28,6 +28,7 @@ function target() {
 
 async function main() {
   const options = target();
+  const observer = observerOptions(process.env, options);
   process.env.SECRET_KEY = randomBytes(32).toString('hex');
   const { createApplication } = await import('../../src/application');
   const { composePostgres } = await import('../../src/database/postgres-composition');
@@ -37,7 +38,7 @@ async function main() {
   let transaction = false, injectError = false;
   try {
     await client.connect();
-    const identity = await client.query('SELECT current_database() AS db, current_user AS role, session_user AS session_role');
+    const identity = await client.query('SELECT current_database() AS db, current_user AS role, session_user AS session_role, pg_backend_pid() AS pid');
     if (identity.rows[0]?.db !== database || identity.rows[0]?.role !== role || identity.rows[0]?.session_role !== role) throw new Error('Identity rejected');
     await validatePostgresReadiness(options, () => ({ connect: async () => {}, query: async (sql) => client.query(sql), end: async () => {} }));
     const collation = await client.query(`SELECT c.collname FROM pg_attribute a JOIN pg_class t ON t.oid = a.attrelid
@@ -46,11 +47,8 @@ async function main() {
     if (collation.rows.length !== 1 || collation.rows[0].collname !== 'C') throw new Error('Collation rejected');
     const empty = await client.query('SELECT NOT EXISTS (SELECT 1 FROM public.users) AND NOT EXISTS (SELECT 1 FROM public.books) AND NOT EXISTS (SELECT 1 FROM public.reviews) AS empty');
     if (empty.rows[0]?.empty !== true) throw new Error('Nonempty target');
-    const activity = await client.query(`SELECT (r.rolsuper OR pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER')) AS visible,
-      (SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()) AS others
-      FROM pg_roles r WHERE r.rolname = current_user`);
-    checkActivity(activity.rows[0]);
     target();
+    await checkObserver(new Client(observer), identity.rows[0]?.pid);
     await client.query('BEGIN'); transaction = true;
     const adapter = { async query(sql: string, values: unknown[]) {
       if (injectError) { injectError = false; return client.query('SELECT 1 / 0'); }
