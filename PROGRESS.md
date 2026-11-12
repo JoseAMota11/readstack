@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** `DB-04B` SQLite asynchronous data-access preparation; not a production-release or security approval.
-**Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` application integration and fail-closed startup readiness and `DB-05` repeatable synthetic initialization/reset remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Current phase:** `DB-04C` provider configuration and PostgreSQL startup readiness foundation; not a production-release or security approval.
+**Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` remains open for PostgreSQL repositories and integration, and `DB-05` repeatable synthetic initialization/reset remains open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-04C local implementation handoff
+
+- Added validated provider selection with SQLite as default, retaining SQLite initialization and `DATABASE_PATH`. PostgreSQL readiness is separate and read-only: it verifies the complete packaged migration ledger and a limited catalog-based compatibility subset, with verified TLS configuration, bounded operations and cleanup attempts. It never invokes migrations. PostgreSQL repositories do not exist: even successful readiness exits without listening, with an explicit unsupported-runtime message. The catalog check does not detect all schema drift.
+- From `backend/` on Node 22: `fnm exec --using 22 npm run build` passed; `fnm exec --using 22 npm test` passed 109/109; `fnm exec --using 22 npm run test:security` passed 3/3. Tests use fake PostgreSQL clients and synthetic isolated SQLite fixtures; no PostgreSQL, migrations, Docker or production services were contacted. Initial build and suite failures were corrected before the successful runs. Real PostgreSQL catalog behavior, TLS and connectivity remain unverified.
+- Changed `backend/src/database/`, `backend/src/index.ts`, `backend/tests/database-readiness.test.ts`, `backend/tests/migration-cli.test.ts`, `backend/package.json`, `README.md`, and this handoff. Migration SQL, schema, frontend and production configuration are intentionally untouched. The pre-existing `backend/library.db` modification was neither inspected nor intentionally changed. Changes remain uncommitted and unstaged.
+- Next: `DB-04D` PostgreSQL repositories and subsequent integration and staging gates, with applicable approvals. `DB-04` remains open; no deployment or production configuration change is authorized.
 
 ## DB-04B local implementation handoff
 

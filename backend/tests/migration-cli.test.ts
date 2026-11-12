@@ -125,14 +125,18 @@ test('resolves source and dist directories independently of cwd and rejects miss
   assert.deepEqual(errors, ['Migration directory unavailable']);
 });
 
-test('ordinary application source does not reference migration modules', async () => {
+test('ordinary application source cannot invoke migration runner or CLI', async () => {
   const src = path.resolve(__dirname, '../src');
   async function scan(dir: string): Promise<void> {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       if (entry.name === 'migrations' && dir === src) continue;
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) await scan(file);
-      else if (entry.name.endsWith('.ts')) assert.doesNotMatch(await readFile(file, 'utf8'), /(?:from\s*|import\s*\(|require\s*\()\s*['"][^'"]*migrations(?:\/|['"])/);
+      else if (entry.name.endsWith('.ts')) {
+        const source = await readFile(file, 'utf8');
+        assert.doesNotMatch(source, /(?:from\s*|import\s*\(|require\s*\()\s*['"][^'"]*migrations\/(?:runner|cli|pg-adapter)/);
+        assert.doesNotMatch(source, /\brunMigrations\b/);
+      }
     }
   }
   await scan(src);

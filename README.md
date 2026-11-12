@@ -56,6 +56,7 @@ Configure the following environment variables for the backend process. The backe
 | --- | --- |
 | `SECRET_KEY` | Required. Use an independently generated local secret of exactly 64 hexadecimal characters. Do not publish it or store it in the repository. |
 | `DATABASE_PATH` | SQLite path. Use an isolated local path for synthetic data; otherwise it defaults to `library.db` relative to the working directory. Avoid modifying the tracked `backend/library.db`. |
+| `DATABASE_PROVIDER` | `sqlite` (default) or `postgres`; all other values fail startup. PostgreSQL application runtime is not yet supported. |
 | `PORT` | API port; defaults to `3000`. Set it to `4000` for the frontend configuration below. |
 
 With those variables configured, start the server from `backend/`:
@@ -69,6 +70,14 @@ With `PORT` set to `4000`, the API is available at `http://localhost:4000/api/v1
 Authentication rate limits are process-local, not distributed. Login and registration have per-account limits; the optional IP limit uses only the direct socket peer and is disabled by default. Enable it only after verifying that the direct peer is the actual client, not a proxy shared by clients. Render's ingress and client-IP behavior are unverified: do not enable this direct-peer limiter there on that assumption. A Render per-client limiter requires a separately verified, non-spoofable ingress/header trust boundary and a reviewed implementation; the current limiter deliberately ignores forwarded headers, even if Express proxy trust is enabled. Verify that clients cannot bypass the trusted ingress, how it sanitizes forwarding headers and identifies the client, and the correct trusted proxy configuration before designing such a change.
 
 These limits do not stop attempts spread across many accounts, instances, or restarts. Registration currently reveals an existing email through its 409 response; changing that contract requires a separate decision. Unknown-user logins perform a dummy bcrypt comparison to reduce a timing signal, not guarantee constant-time responses; this extra synchronous work also increases the risk of CPU exhaustion under abuse.
+
+### PostgreSQL startup readiness (not a supported runtime)
+
+PostgreSQL repositories are not implemented: selecting `postgres` **never starts the API**, including when readiness succeeds; it exits with an unsupported-runtime error until `DB-04D`. Do not change production configuration or connect to any service on the basis of this foundation. SQLite remains the default and `DATABASE_PATH` is unchanged.
+
+The PostgreSQL readiness configuration requires `DATABASE_URL` with a `postgres` or `postgresql` URL containing host, database, username and password, and `POSTGRES_TLS=verify-full`. URL query parameters and inherited `PG*` variables are rejected. TLS uses certificate and hostname verification with the Node trust store; no insecure TLS mode is provided. Do not log or publish the URL. The client has five-second connection, query and server statement timeouts; each readiness operation and cleanup also has a five-second bound. A stalled cleanup is reported as a failure, not proof that an unresponsive underlying client closed.
+
+Readiness reads the packaged migration files from `backend/migrations` (which must accompany the compiled application), checks the existing `public.schema_migrations` ledger for an exact complete version, filename and checksum match, and uses PostgreSQL catalogs to check expected columns, types, nullability, primary/unique keys and cascading ownership foreign keys. It does not create a ledger, run migrations, or detect all drift: defaults, checks, indexes, collation, triggers, privileges and many other properties are outside this limited check. Readiness and TLS have only fake-client tests; real PostgreSQL compatibility, connectivity and deployment remain unverified. Startup readiness is not a substitute for the later staging and security gates.
 
 ### Experimental local PostgreSQL migrations
 

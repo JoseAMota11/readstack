@@ -1,6 +1,14 @@
 import { config } from './config/config';
-import app from './app';
+import { startApplication } from './database/startup';
 
-app.listen(config.PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${config.PORT}/api/v1`);
+void config; // Validate authentication configuration before either provider starts.
+void startApplication(process.env).catch((error: unknown) => {
+  const safeMessages = new Set([
+    'Invalid database provider', 'Invalid PostgreSQL configuration',
+    'PostgreSQL migration discovery failed', 'PostgreSQL connection failed',
+    'PostgreSQL migration ledger not ready', 'PostgreSQL schema incompatible',
+    'PostgreSQL client cleanup failed', 'PostgreSQL runtime is unsupported until DB-04D',
+  ]);
+  console.error(error instanceof Error && safeMessages.has(error.message) ? error.message : 'Application startup failed');
+  process.exitCode = 1;
 });
