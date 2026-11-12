@@ -1,10 +1,16 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** `DB-04F` PostgreSQL integration validation; not a production-release or security approval.
+**Current phase:** `DB-04G` PostgreSQL lifecycle validation preparation; not a production-release or security approval.
 **Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` remains open for PostgreSQL repositories and integration, and `DB-05` repeatable synthetic initialization/reset remains open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-04G lifecycle harness preparation
+
+- Prepared an opt-in real-PostgreSQL `startApplication` harness, exact target guard and owner-approval procedure under `backend/tests/integration/`. It is designed to use the real readiness checker and pool with an injected loopback listener and registered shutdown callback, exercise a read-only HTTP request, and check the stopped listener, pool and one observed backend PID through a separate client. A temporary synthetic migration manifest is intended to produce a real ledger-mismatch readiness failure without changing the database. It does not test the unmodified entry point, OS signals, a physically invalid schema, or all shutdown/failure conditions; hard timeout cleanup remains uncertain.
+- From `backend/` on Node 22: `fnm exec --using 22 node --import tsx --test tests/database-readiness.test.ts tests/postgres-startup.test.ts tests/integration/db04g-guard.test.ts` passed 22/22; after adding a synthetic-manifest fake-client test, `fnm exec --using 22 node --import tsx --test tests/integration/db04g-guard.test.ts` passed 3/3. `fnm exec --using 22 npm run build` passed. `fnm exec --using 22 npx tsc --noEmit --strict --esModuleInterop --skipLibCheck --target es2022 --module commonjs src/types/express.d.ts tests/integration/db04g-guard.ts tests/integration/db04g-guard.test.ts tests/integration/postgres-lifecycle.ts` passed; an initial standalone check failed on an unavailable `PoolClient` type property and was corrected. These are disconnected fake-client/guard tests, not live DB-04G evidence. No PostgreSQL, Docker, migration, external service or production was accessed.
+- DB-04 remains open for separately authorized real lifecycle execution, provider parity and remaining security cases. The prior DB-04F container and credentials are not assumed available or approved for reuse; `DB-04G.md` specifies separate approvals, identity checks, stop conditions and post-checks. The pre-existing `backend/library.db` modification was not inspected or intentionally changed; application code, migration SQL, production configuration and frontend remain untouched.
 
 ## DB-04F owner-reported live integration validation
 
