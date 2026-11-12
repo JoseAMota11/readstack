@@ -41,10 +41,11 @@ export async function checkObserver(client: ObserverClient, runnerPid: number): 
   try {
     if (!Number.isSafeInteger(runnerPid) || runnerPid <= 0) throw new Error('Runner identity rejected');
     await client.connect();
+    // Docker forwarding can change the server-observed source; PID, database and role identify the runner.
     const result = await client.query(`SELECT current_database() AS db, current_user AS role, session_user AS session_role,
       pg_backend_pid() AS observer_pid, NOT r.rolsuper AND pg_has_role(current_user, 'pg_read_all_stats', 'USAGE') AS visible,
       (SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid = $1
-        AND usename = $2 AND backend_type = 'client backend' AND client_addr = inet '127.0.0.1') AS runner_matches,
+        AND usename = $2 AND backend_type = 'client backend') AS runner_matches,
       (SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND pid <> $1) AS others
       FROM pg_roles r WHERE r.rolname = current_user`, [runnerPid, role]);
     const row = result.rows[0];

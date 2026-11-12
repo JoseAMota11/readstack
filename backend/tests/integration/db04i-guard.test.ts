@@ -40,7 +40,8 @@ test('observer preflight accepts only the verified runner and always closes', as
         calls.push('query');
         assert.match(sql, /pg_has_role\(current_user, 'pg_read_all_stats', 'USAGE'\)/);
         assert.match(sql, /NOT r\.rolsuper/);
-        assert.match(sql, /client_addr = inet '127\.0\.0\.1'/);
+        assert.match(sql, /datname = current_database\(\) AND pid = \$1\s+AND usename = \$2 AND backend_type = 'client backend'/);
+        assert.doesNotMatch(sql, /client_addr/);
         assert.deepEqual(values, [11, role]);
         if (fail === 'query') throw new Error('query failed');
         return { rows: row ? [row] : [] };
@@ -66,4 +67,33 @@ test('observer preflight accepts only the verified runner and always closes', as
     await assert.rejects(fake.run());
     assert.equal(fake.calls.at(-1), 'end');
   }
+});
+
+test('observer matches the runner across NAT without accepting mismatched or additional sessions', async () => {
+  type Session = { pid: number; db: string; user: string; address: string; backend: string };
+  const runner: Session = { pid: 11, db: database, user: role, address: '172.19.0.1', backend: 'client backend' };
+  async function probe(sessions: Session[], runnerPid = 11) {
+    let closed = false;
+    const client = {
+      async connect() {},
+      async query(sql: string, values?: unknown[]) {
+        assert.match(sql, /datname = current_database\(\) AND pid = \$1\s+AND usename = \$2 AND backend_type = 'client backend'/);
+        assert.match(sql, /datname = current_database\(\) AND pid <> pg_backend_pid\(\) AND pid <> \$1/);
+        assert.doesNotMatch(sql, /client_addr/);
+        assert.deepEqual(values, [runnerPid, role]);
+        const matches = sessions.filter((s) => s.db === database && s.pid === runnerPid && s.user === role && s.backend === 'client backend');
+        const others = sessions.filter((s) => s.db === database && s.pid !== 12 && s.pid !== runnerPid);
+        return { rows: [{ db: database, role: observerRole, session_role: observerRole, observer_pid: 12, visible: true, runner_matches: String(matches.length), others: String(others.length) }] };
+      },
+      async end() { closed = true; },
+    };
+    try { await checkObserver(client, runnerPid); } finally { assert.equal(closed, true); }
+  }
+  await probe([runner]); // The source address is intentionally not loopback.
+  await assert.rejects(probe([{ ...runner, pid: 13 }]));
+  await assert.rejects(probe([{ ...runner, user: 'wrong_role' }]));
+  await assert.rejects(probe([{ ...runner, db: 'wrong_database' }]));
+  await assert.rejects(probe([{ ...runner, backend: 'background worker' }]));
+  await assert.rejects(probe([runner, { ...runner, pid: 13 }]));
+  await assert.rejects(probe([runner], 0));
 });
