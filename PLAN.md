@@ -45,7 +45,7 @@ Definition of done:
 - Hosting must remain approximately $0/month, including free-tier pauses, quotas, and overages.
 - The current production deployment remains available until a replacement is validated.
 - Public self-registration remains enabled until `PUB-01` records an approved policy change.
-- Database provider, authentication/session architecture, upgrade targets, and staging strategy require owner approval.
+- Authentication/session architecture, upgrade targets, and staging strategy require owner approval; the owner selected Neon PostgreSQL under `D-015`.
 - Demo records, including current production demo data, may be discarded. Nothing is deleted without explicit approval.
 - No production backup or recovery capability is assumed.
 - Documentation, agent instructions, and agent responses are English.
@@ -166,8 +166,8 @@ The approved approach starts with a fresh database. Existing demo records are no
 
 | ID | Task | P | Status | Depends on | Deliverable | Acceptance criteria |
 |---|---|---|---|---|---|---|
-| `DB-01` | Evaluate hosted PostgreSQL providers | P0 | `[ ]` | — | Comparison matrix for Supabase and Neon, plus any owner-supplied option | Current free-tier terms cited; persistence, pausing, backups/restore, connection limits, pooling, region, SSL, quotas, operational effort, and $0 feasibility compared; no vendor selected |
-| `DB-02` | Record database provider decision | P0 | `[ ]` | `DB-01` | Owner-approved provider ADR | Decision, rationale, rejected options, migration implications, and rollback limitations documented; implementation waits for approval |
+| `DB-01` | Evaluate hosted PostgreSQL providers | P0 | `[x]` | — | Comparison matrix for Supabase and Neon, plus any owner-supplied option | Current free-tier terms cited; persistence, pausing, backups/restore, connection limits, pooling, region, SSL, quotas, operational effort, and $0 feasibility compared; no vendor selected during evaluation |
+| `DB-02` | Record database provider decision | P0 | `[x]` | `DB-01` | Owner-approved provider ADR | Decision, rationale, rejected options, migration implications, and rollback limitations documented; implementation waits for approval |
 | `DB-03` | Create fresh schema and migrations | P0 | `[ ]` | `DB-02` | Versioned migrations and production-ready schema | Empty database initializes from migrations; users, books, reviews, foreign keys, indexes, timestamps, and genre representation are correct; reset and rollback behavior documented; no record migration |
 | `DB-04` | Refactor database configuration and access | P0 | `[ ]` | `DB-03` | Provider-compatible connection/configuration layer | No relative SQLite path in the production path; connection settings come from environment variables; startup fails clearly on invalid configuration; secrets are not logged; model boundaries remain intact |
 | `DB-05` | Add synthetic fixtures and clean initialization checks | P0 | `[ ]` | `DB-03`, `DB-04` | Deterministic fixture and reset procedure | Empty database can be initialized and seeded with two synthetic users, books, reviews, and favorites; reset is repeatable; no real or production data |
@@ -175,6 +175,29 @@ The approved approach starts with a fresh database. Existing demo records are no
 | `DB-07` | Verify backup and restore for the new database | P0 | `[ ]` | `DB-06` | Tested recovery procedure | Provider backup/restore or documented alternative restores into a separate database; synthetic data verified; recovery-point and recovery-time limits documented, including free-tier constraints; no production destructive test |
 | `DB-08` | Cut over production to a fresh PostgreSQL database | P0 | `[ ]` | `DB-06`, `DB-07`, `GOV-03`, `SEC-01`, `SEC-02`, `SEC-03`, `SEC-04`, `SEC-05`, `SEC-06` | Executed cutover with evidence | Owner confirms demo data is disposable; fresh schema initialized; no SQLite records migrated; environment switched; smoke tests pass; previous deployment retained; no data deleted; rollback limitations documented because current SQLite recovery is unverified; no backup assumed |
 | `DB-09` | Decommission SQLite | P2 | `[ ]` | `DB-08`, agreed observation period | Removed legacy dependency and tracked data file | Owner approves removal; no remaining reliance on SQLite; README, environment docs, and tests updated; no claim of recoverability for deleted demo data |
+
+#### `DB-01` provider comparison
+
+Two read-only investigations compared the options below. Provider documentation was retrieved on 2026-11-12; terms may change and published features are not operational validation. The evaluation did not select a vendor; the owner made the separate `DB-02` decision afterward.
+
+| Criterion | Neon Free | Supabase Free |
+|---|---|---|
+| Persistence and quotas | Managed PostgreSQL; published 100 projects, 1 GB per project and 20 GB account total, 100 CU-hours and 5 GB egress per project per month, up to 10 branches per project; compute suspends on compute or egress exhaustion and storage limits can block writes. | Managed PostgreSQL; published two active projects, 500 MB database per project and 5 GB egress; Nano has shared CPU and up to 0.5 GB RAM. See [Neon plans](https://neon.com/docs/introduction/plans) and [Supabase pricing](https://supabase.com/pricing). |
+| Idle behavior and compute | Neon Free scales compute to zero after five idle minutes, with up to 2 CU; it does not pause projects merely for inactivity. See [Neon plans](https://neon.com/docs/introduction/plans). | Supabase Free projects may pause after one week of inactivity. See [Supabase pricing](https://supabase.com/pricing) and [compute](https://supabase.com/docs/guides/platform/compute-and-disk). Actual wake-up and workload behavior remain untested for both. |
+| Recovery | Neon documents a six-hour history window capped at 1 GB and Free instant restore in its [plans](https://neon.com/docs/introduction/plans) and [history](https://neon.com/docs/postgres/backup-restore/history-window) documentation, but its [pricing table](https://neon.com/pricing) marks instant restore unavailable on Free. This discrepancy remains unresolved; do not rely on the feature until confirmed and tested. Independent [Neon dumps](https://neon.com/docs/manage/backup-pg-dump) are documented. | Automatic backups and PITR are not included on Free; Supabase recommends [off-site exports](https://supabase.com/docs/guides/platform/backups). Neither provider's published recovery features replace independent, protected backups and a tested restore into a separate database. |
+| Connections and pooling | At 0.25 CU Neon documents 112 database connections, seven reserved, and up to 10,000 pooler clients, not simultaneous database queries. Its transaction pooler has session-state restrictions; use direct connections for dumps and migrations. | Supabase documents Nano limits of 60 database connections, 200 pooler clients, and default pool size 15; platform services also consume connections. Its IPv4 shared pooler offers session and transaction modes, with transaction-mode restrictions. See [Neon pooling](https://neon.com/docs/connect/connection-pooling), [Supabase limits](https://supabase.com/docs/guides/platform/compute-and-disk), and [Supabase connections](https://supabase.com/docs/guides/database/connecting-to-postgres). |
+| Regions and TLS | Neon lists regions geographically matching Render's Oregon, Ohio, Virginia, Frankfurt and Singapore options and documents full TLS verification. See [Neon regions](https://neon.com/docs/introduction/regions) and [TLS](https://neon.com/docs/connect/connect-securely). | Supabase lists matching regions and documents full TLS verification; see [regions](https://supabase.com/docs/guides/platform/regions) and [connections](https://supabase.com/docs/guides/database/connecting-to-postgres). For both, require client certificate-chain and hostname verification; actual [Render](https://render.com/docs/regions) region, latency and endpoint reachability are unverified. |
+| Effort and cost | Both require asynchronous backend access, SQL and schema conversion, versioned migrations, isolation regression tests, and operated backups. Neon allows separate free projects for synthetic development and staging plus eventual production. | Supabase's two-active-project limit favors local development plus separate staging and production. Approximately $0 is plausible for low intermittent usage, not verified or guaranteed for either provider once staging, backups, egress and Render usage are included. [Render Free](https://render.com/docs/free) shares instance hours across the workspace, so staging could affect the existing service. |
+
+`DB-01` assesses documented options, not production readiness. Reconfirm changing terms, the Neon restore discrepancy, actual Render region and IPv4/IPv6 connectivity, TLS hostname verification, pooling, quotas, staging costs, backup and separate-database restore before relying on them. Approval of a staging strategy and `DB-06`–`DB-08` remain separate gates.
+
+#### `DB-02` provider decision — `D-015`
+
+The owner selected **Neon PostgreSQL** on 2026-11-12. It offers focused managed PostgreSQL, transferable PostgreSQL learning, and published project isolation and free allowances that appear suitable for low intermittent use. Its $0 feasibility for the full application and recovery workflow is not established. Supabase PostgreSQL was evaluated but not selected: it offers a broader platform that this database-only change does not require, and its two active Free projects and lack of Free automatic backups make the proposed isolated environments and recovery operations less convenient. These are tradeoffs, not a claim that Supabase is unsuitable.
+
+Under `D-009`, the target starts with a fresh schema: existing Beta accounts, books, reviews and other SQLite records will not automatically transfer. This can require users to register again and loses continuity of their existing collections; any different data-transfer proposal requires a separate owner decision and an approved backup and recovery procedure. Synchronous SQLite access and SQL must eventually be redesigned for asynchronous PostgreSQL while preserving authentication, API behavior and user isolation. Selection authorizes architecture design only; it does not authorize provisioning, implementation or deployment.
+
+Application rollback and data recovery are distinct. Current production SQLite persistence and recovery are unverified, and no backup is assumed. Rolling application code back after PostgreSQL accepts writes does not restore old SQLite records or carry new writes back. Define ownership, write handling and rollback limitations in `GOV-03`, test independent backup and restore under `DB-07`, and satisfy all `DB-08` gates before any separately authorized cutover. Do not delete old data or the tracked SQLite file without separate approval.
 
 ### M4 — Framework and dependency upgrades
 
@@ -255,11 +278,12 @@ A push or merge to `main` is a production action because Vercel Production and R
 | `D-002` | Keep hosting at approximately $0/month | Approved | Applies to database, staging, email, and monitoring |
 | `D-003` | Prefer incremental modernization over a full rewrite | Approved | Confirmed requirement |
 | `D-004` | Preserve current production until replacement changes are validated | Approved | Cutover requires staging evidence and owner approval |
-| `D-005` | Evaluate Supabase and Neon before selecting a database provider | Approved | No provider selected by this plan |
+| `D-005` | Evaluate Supabase and Neon before selecting a database provider | Approved | Completed in `DB-01` before the separate `D-015` decision |
 | `D-006` | Keep public self-registration unchanged until an explicit policy decision | Approved | `PUB-01` owns the decision |
 | `D-007` | Demo records, including current production demo data, may be discarded | Approved | No deletion during planning; deletion requires explicit approval |
 | `D-008` | Documentation, agent instructions, and agent responses are English | Approved | Spanish UI copy remains product behavior |
 | `D-009` | Start PostgreSQL with a fresh schema; do not migrate SQLite records | Approved | Synthetic fixtures and integration validation replace record migration |
+| `D-015` | Select Neon PostgreSQL as the database provider | Approved | Owner decision for `DB-02`; rationale, alternative, migration implications, and rollback limits in the `DB-02` section |
 | `D-020` | Environment and JWT governance | Approved | Owner is sole policy owner/operator; JWT keys use 32 cryptographically random bytes encoded as exactly 64 hex characters; tests use an explicit synthetic key of the same format; keys are distinct across local, test, production and future staging. Rotate after suspected exposure or documented operational necessity, not on a mandatory schedule. Production inspection, configuration changes, rotation and deployment each require separate explicit owner authorization. Never record secret values; replacement invalidates previous JWTs under the single-key model. `SEC-01` implements enforcement later. |
 
 ### Proposed
@@ -276,7 +300,6 @@ A push or merge to `main` is a production action because Vercel Production and R
 
 | ID | Decision | Status | Blocking |
 |---|---|---|---|
-| `D-015` | Database provider: Supabase, Neon, or another approved option | Pending | `DB-02` and downstream database work |
 | `D-016` | Authentication and session architecture, including cross-origin transport, CORS, SameSite, and CSRF | Pending | `SEC-02`, `SEC-06`, `OPT-02` |
 | `D-017` | Supported upgrade targets and order | Pending | `UPG-02`, `UPG-03`, `UPG-04`; owner approved only the limited Express 4 and compatible transitive security refresh, not Zod 4 or bcrypt 6 |
 | `D-018` | Staging strategy and topology | Pending | `DB-06` and production validation |

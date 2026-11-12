@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** UX/UI redesign — authorized to begin; not a production-release or security approval.
-**Active task:** `TEST-02` and `SEC-05` documentation closeout; `SEC-03` remains partial. `SEC-01` production configuration and deployment remain unverified. UI-03.1 was owner-validated within the checks below; UI-03.2 awaits owner review.
+**Current phase:** Persistence architecture design; not a production-release or security approval.
+**Active task:** `DB-01` and `DB-02` documentation closeout; `DB-03` architecture design is next. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-01 and DB-02 closeout
+
+- `DB-01` compared Neon and Supabase using two read-only investigations and official provider sources retrieved on 2026-11-12; the cited matrix in `PLAN.md` covers the documented comparison criteria. It did not select a vendor. The Neon Free pricing table and plan/history documentation disagree about instant restore; the discrepancy is recorded, not resolved by assumption. Published history or restore features do not replace independent protected backups and a tested restore.
+- For `DB-02`, the owner explicitly approved Neon PostgreSQL under `D-015`. Supabase remains the evaluated alternative. The rationale, migration implications and rollback limits are recorded in `PLAN.md`. `D-009` remains in force: a fresh PostgreSQL database with no SQLite record transfer; existing Beta accounts and collections will not automatically carry over.
+- Provider selection authorizes architecture design only. Provisioning, implementation, production configuration and deployment are not authorized. Actual Render region and IPv4/IPv6 connectivity, TLS certificate and hostname verification, pool behavior, quotas, staging topology and costs, backup and restore, and production rollback remain unverified; no backup is assumed. `DB-06`–`DB-08` remain open.
+- This closeout changes only `PLAN.md` and `PROGRESS.md`. The pre-existing `backend/library.db` modification was not inspected or changed. No production access, service provisioning, migration or deployment occurred.
 
 ## TEST-02 and SEC-05 closeout
 
@@ -83,6 +90,8 @@
 | `TEST-04` | Pull-request CI workflow validated by a successful hosted run for frontend and backend checks; no deployment secrets referenced. |
 | `GOV-02` | Owner-approved environment governance, service inventory, rotation and revocation procedures documented in `docs/ENVIRONMENT_GOVERNANCE.md`; production settings remain unverified. |
 | `SEC-01` | Explicit 64-hex JWT secret enforced before startup and app initialization in all environments; synthetic configuration and isolated SQLite regression tests pass locally. Runtime validation cannot establish randomness or uniqueness. |
+| `DB-01` | Cited read-only comparison of Neon and Supabase documented; provider restore discrepancy and operational unknowns remain open. |
+| `DB-02` | Owner selected Neon PostgreSQL; decision, alternative, fresh-database implications and rollback limitations recorded under `D-015`. |
 
 Frontend migration work is locally committed: Next.js 16 / React 19 (`78699d1`), the Ant Design `destroyOnHidden` correction (`639b590`), the middleware-to-Proxy convention migration (`cee9e10`), and authenticated-login navigation and recovery (`9a3a17a`). These increments do not complete `UPG-03`; no deployment or database migration was performed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
 
@@ -127,7 +136,7 @@ Production persistence must not be tested destructively. Any disposal of product
 
 | Decision | Impact |
 |---|---|
-| Database provider not selected | Blocks `DB-02` and downstream database work. `DB-01` can proceed. |
+| Neon recovery terms and operational behavior unverified | Resolve the published restore discrepancy and verify connectivity, TLS, quotas, independent backup and separate-database restore before relying on the provider. |
 | Authentication/session architecture not approved | Blocks `SEC-02`, `SEC-06`, and `OPT-02`. |
 | Broader upgrade targets not approved | Blocks completion of `UPG-02`, `UPG-03`, and `UPG-04`; the owner approved the limited Express 4 and compatible transitive refresh. |
 | Staging strategy not approved | Blocks `DB-06` and production validation. |
@@ -207,6 +216,8 @@ UI-02.1 changes `frontend/app/globals.css`, `frontend/components/card.tsx`, `fro
 The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/app/globals.css`, `frontend/app/layout.tsx`, `frontend/app/login/page.tsx`, `frontend/app/register/page.tsx`, `frontend/components/reviews.tsx`, `frontend/components/theme-switcher.tsx`, `frontend/context/theme.context.tsx`, `frontend/tailwind.config.ts`, and `frontend/tests/theme.test.cjs`. Backend code, dependencies, production configuration, and `backend/library.db` are intentionally untouched; the tracked database has a pre-existing local modification.
 
 ## Next recommended task
+
+Design `DB-03`: specify the fresh PostgreSQL schema, ownership constraints, indexes, timestamps, genre representation and versioned migration/rollback approach, using synthetic data only. Design is authorized; do not create schemas, provision services or implement migrations without separate authorization. `DB-03` remains open until its implementation and acceptance criteria are verified.
 
 The latest owner-reported Back/Forward check did not reproduce the earlier login flash. Further investigation of navigation or observable cross-user book and review mutation denial using synthetic accounts and isolated local services is optional for `TEST-02` and `SEC-05`; it does not authorize a deployment.
 Continue browser validation of the observer with synthetic accounts and isolated services, including suspended tabs, back-forward cache restoration, synthetic token expiry, deliberately missed channel delivery, and server-side revocation. Design a separate private-state exposure boundary before using the observer for filter retention; observer notifications alone do not guarantee that retained UI cannot flash or that all changes are detected.
