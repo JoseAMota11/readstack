@@ -2,14 +2,15 @@
 
 **Last updated:** 2026-11-12
 **Current phase:** Persistence architecture design; not a production-release or security approval.
-**Active task:** `DB-03` technical architecture approved under `D-022`; implementation authorization and acceptance remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Active task:** `DB-03` technical architecture and initial schema specification approved under `D-022`; implementation authorization and acceptance remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
 ## DB-03 product and technical decision handoff
 
+- The owner approved the exact initial PostgreSQL column types, nullability, defaults, relationships, checks and owner-scoped listing indexes recorded in `PLAN.md`. This clarifies the schema specification only; it does not implement or validate PostgreSQL, authorize provisioning or deployment, or complete `DB-03`. The initial migration, migration runner and isolated synthetic validation remain future work requiring authorization as applicable.
 - Owner-approved `D-021` records optional descriptions and reading status, including normalization, PATCH behavior, status values and default, edit-form changes, card display, owner-scoped filtering, and coordinated CSV export. Functional/API/UI work follows PostgreSQL infrastructure validation and separate feature-increment approval; existing responses, validation, CSV headers and UI behavior remain unchanged until then.
-- Owner-approved `D-022` records search compatibility, email collation, timestamp serialization, genre validation, UUID handling, deterministic ordering, Unicode scalar counting, migration safety and composite review/book ownership with cascades. Actual search parity, environment compatibility, runner operations and safe reset/recovery still need verification; no genre-search difference has been preapproved.
+- Owner-approved `D-022` records search compatibility, email collation, timestamp serialization, genre validation, UUID handling, deterministic ordering, Unicode scalar counting, migration safety and composite review/book ownership with cascades. Actual search and genre-filter parity, timestamp serialization, target collation, migration operations, connectivity, TLS, staging, recovery and production cutover remain unverified; no genre-search difference has been preapproved.
 - `PLAN.md` records Explore Your Library as a future detail-page concept, not a `DB-03` blocker or implementation authorization. No external service, AI or additional schema is authorized for it.
 - `DB-03` remains open; no PostgreSQL schema, migration, database access or validation has been performed. This documentation-only handoff changes `PLAN.md` and `PROGRESS.md`; the pre-existing `backend/library.db` modification was not inspected or changed. No production access, provisioning, staging, commit, push, merge or deployment occurred.
 
