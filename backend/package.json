@@ -5,7 +5,9 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "npx tsc",
-    "test": "node --import tsx --test tests/config.test.ts tests/auth.test.ts tests/auth.rate-limit.test.ts tests/auth.ip-rate-limit.test.ts tests/books.ownership.test.ts tests/books.filters-pagination.test.ts tests/books.export.test.ts tests/reviews.ownership.test.ts tests/compressed-json.test.ts tests/migrations.test.ts",
+    "test": "node --import tsx --test tests/config.test.ts tests/auth.test.ts tests/auth.rate-limit.test.ts tests/auth.ip-rate-limit.test.ts tests/books.ownership.test.ts tests/books.filters-pagination.test.ts tests/books.export.test.ts tests/reviews.ownership.test.ts tests/compressed-json.test.ts tests/migrations.test.ts tests/migration-cli.test.ts",
+    "migrate:local:ts": "node --import tsx src/migrations/cli.ts",
+    "migrate:local": "node dist/migrations/cli.js",
     "test:security": "node --import tsx --test tests/security/sec04-review-ownership.probes.test.ts"
   },
   "keywords": [],
@@ -20,6 +22,7 @@
     "express-rate-limit": "^8.7.3",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
+    "pg": "8.23.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -30,6 +33,7 @@
     "@types/json2csv": "^5.0.7",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.9.3",
+    "@types/pg": "8.23.1",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",

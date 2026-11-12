@@ -29,7 +29,7 @@ ReadStack is a multiuser personal book catalog for organizing collections and re
 
 - **Frontend:** Next.js 16.4.6 with App Router, React 19.3.1, and TypeScript. Ant Design 5.29.3 and Tailwind CSS 3 support the interface; client services communicate with the API.
 - **Backend:** Node.js, Express 4, and TypeScript. The REST API is organized into routes, middleware, controllers, and models, with Zod input validation.
-- **Data:** SQLite through `better-sqlite3` and parameterized SQL. Tables are created at startup; versioned migrations are not yet implemented.
+- **Data:** The application uses SQLite through `better-sqlite3` and parameterized SQL, creating its tables at startup. A separate, experimental PostgreSQL versioned migration CLI is available only for explicitly approved local disposable targets; it is not part of application startup.
 - **Authentication and authorization:** bcrypt password hashing and JWT authentication. The frontend stores the token in a JavaScript-readable cookie and sends it as a Bearer token. The API verifies the token and checks book and review ownership; frontend navigation protection does not replace those checks.
 
 ## Design
@@ -69,6 +69,25 @@ With `PORT` set to `4000`, the API is available at `http://localhost:4000/api/v1
 Authentication rate limits are process-local, not distributed. Login and registration have per-account limits; the optional IP limit uses only the direct socket peer and is disabled by default. Enable it only after verifying that the direct peer is the actual client, not a proxy shared by clients. Render's ingress and client-IP behavior are unverified: do not enable this direct-peer limiter there on that assumption. A Render per-client limiter requires a separately verified, non-spoofable ingress/header trust boundary and a reviewed implementation; the current limiter deliberately ignores forwarded headers, even if Express proxy trust is enabled. Verify that clients cannot bypass the trusted ingress, how it sanitizes forwarding headers and identifies the client, and the correct trusted proxy configuration before designing such a change.
 
 These limits do not stop attempts spread across many accounts, instances, or restarts. Registration currently reveals an existing email through its 409 response; changing that contract requires a separate decision. Unknown-user logins perform a dummy bcrypt comparison to reduce a timing signal, not guarantee constant-time responses; this extra synchronous work also increases the risk of CPU exhaustion under abuse.
+
+### Experimental local PostgreSQL migrations
+
+Preparing this CLI is not authorization to execute it. Obtain separate owner approval for the **exact local PostgreSQL instance and disposable database** before running either command. Loopback does not guarantee a disposable target: a tunnel or proxy could forward to another system. Verify the target independently; the naming and acknowledgement checks do not establish safety. Do not use this CLI for Neon, Render, or production. The application remains on SQLite and no SQLite records are transferred.
+
+For an approved target, configure these process environment variables without putting credentials in shell history or the repository (placeholders are not values to use):
+
+| Variable | Requirement |
+| --- | --- |
+| `READSTACK_MIGRATION_HOST` | Literal `127.0.0.1` or `::1` only. |
+| `READSTACK_MIGRATION_PORT` | Explicit decimal TCP port, 1–65535. |
+| `READSTACK_MIGRATION_DATABASE` | Explicit lowercase name beginning `readstack_disposable_`, followed by lowercase letters, digits or underscores; maximum 63 characters. |
+| `READSTACK_MIGRATION_USER` | Explicit PostgreSQL user identifier. |
+| `READSTACK_MIGRATION_PASSWORD` | Nonempty password, supplied securely. |
+| `READSTACK_MIGRATION_CONFIRM_LOCAL` | Exactly `I_APPROVE_LOCAL_DISPOSABLE_MIGRATIONS`. This is not a substitute for separate target approval. |
+
+Remove inherited `PG*` variables first; the CLI rejects them. It does not load dotenv files or use `DATABASE_URL` or `DATABASE_PATH`. From `backend/`, **only after approval**, `npm run migrate:local:ts` invokes the TypeScript CLI; `npm run build` followed by `npm run migrate:local` invokes the compiled CLI. Neither ordinary startup nor build runs migrations.
+
+Migrations are forward-only and tracked with checksums: modifying an applied migration causes validation to fail. A failed or uncertain commit is not automatically retried; investigate the exact database and ledger before any further action. No tested backup, restore, rollback, recovery procedure, production readiness, or provider connectivity is implied by this CLI.
 
 ### Frontend
 
@@ -115,7 +134,7 @@ Backend tests use synthetic data and isolated temporary SQLite databases. Local 
 
 ReadStack is being modernized. Its features and tests exist locally, but that is not production approval. Comprehensive browser validation, security and deployment gates, CI, and decisions about sessions and persistence remain outstanding.
 
-The current implementation uses SQLite. A PostgreSQL provider decision and the planned migration remain pending; no provider has been selected. A staging strategy has not been approved, and durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
+The current application uses SQLite. Neon has been selected for eventual PostgreSQL deployment, but provider connectivity and the migration remain unverified. A staging strategy has not been approved, and durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
 
 ---
 
