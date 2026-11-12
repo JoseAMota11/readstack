@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** `DB-04D` standalone PostgreSQL repositories; not a production-release or security approval.
+**Current phase:** `DB-04E` PostgreSQL application composition and lifecycle; not a production-release or security approval.
 **Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` remains open for PostgreSQL repositories and integration, and `DB-05` repeatable synthetic initialization/reset remains open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-04E application composition and lifecycle
+
+- PostgreSQL mode composes the three repositories into the existing Express routes only after the existing read-only ledger and schema checks succeed. SQLite remains the default; PostgreSQL application imports do not load the SQLite models or singleton. The PostgreSQL pool has a five-client cap and bounded connection, query, statement, readiness and cleanup operations; shutdown drains HTTP requests before attempting pool cleanup. Startup never runs migrations. The readiness catalog check remains deliberately incomplete, and bounded cleanup is an attempt, not proof of closing a stalled driver.
+- From `backend/` on Node 22: `fnm exec --using 22 npm run build` passed; `fnm exec --using 22 npm test` passed 130/130; `fnm exec --using 22 npm run test:security` passed 3/3. Tests use synthetic isolated SQLite and fake PostgreSQL clients, including successful routing, readiness failure, cleanup, shutdown and transitive SQLite isolation; they do not test a real PostgreSQL server. No PostgreSQL service, Docker, migration, external service or production system was accessed.
+- Changed `README.md`, `PROGRESS.md`, `backend/package.json`, application/controller composition, PostgreSQL startup and tests; new files are `backend/src/application.ts`, `backend/src/database/composition.ts`, `backend/src/database/postgres-composition.ts` and `backend/tests/postgres-startup.test.ts`. The pre-existing `backend/library.db` modification, migration SQL, schema, frontend and production configuration were intentionally untouched. Work is unstaged and uncommitted.
+- `DB-04` remains open: real PostgreSQL integration and provider parity, catalog behavior, TLS, connection and shutdown behavior, authentication, ownership, CRUD, timestamps, search/genre/wildcard behavior, pagination and CSV require separately authorized validation. `DB-05` through `DB-08` remain open; no production deployment or configuration change is authorized.
 
 ## DB-04D standalone book repository
 

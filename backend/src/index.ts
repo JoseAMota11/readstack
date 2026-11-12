@@ -7,7 +7,7 @@ void startApplication(process.env).catch((error: unknown) => {
     'Invalid database provider', 'Invalid PostgreSQL configuration',
     'PostgreSQL migration discovery failed', 'PostgreSQL connection failed',
     'PostgreSQL migration ledger not ready', 'PostgreSQL schema incompatible',
-    'PostgreSQL client cleanup failed', 'PostgreSQL runtime is unsupported until DB-04D',
+    'PostgreSQL client cleanup failed', 'PostgreSQL application startup failed',
   ]);
   console.error(error instanceof Error && safeMessages.has(error.message) ? error.message : 'Application startup failed');
   process.exitCode = 1;

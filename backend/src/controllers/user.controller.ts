@@ -1,4 +1,4 @@
-import { UserModel } from '../models/user.model';
+import { repositoriesFor } from '../database/composition';
 import { User } from '../types/user.type';
 import { Request, Response } from 'express';
 
@@ -7,7 +7,7 @@ export class UserController {
     const user = req.body as User;
 
     try {
-      const { changes } = await UserModel.create(user);
+      const { changes } = await repositoriesFor(req).users.create(user);
 
       if (changes) {
         res.status(200).json({ message: 'Usuario creado satisfactoriamente' });
@@ -33,7 +33,7 @@ export class UserController {
     const user = req.body as Pick<User, 'email' | 'password'>;
 
     try {
-      const { token } = await UserModel.find(user);
+      const { token } = await repositoriesFor(req).users.find(user);
 
       res.status(200).json({ token });
     } catch (error) {

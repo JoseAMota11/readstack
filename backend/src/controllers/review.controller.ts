@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { ReviewModel } from '../models/review.model';
+import { repositoriesFor } from '../database/composition';
 
 export class ReviewController {
   static async getAllReviews(req: Request, res: Response) {
     const { bookId } = req.params;
-    const result = await ReviewModel.findAll(bookId, req.userId!);
+    const result = await repositoriesFor(req).reviews.findAll(bookId, req.userId!);
 
     if (result) {
       res.status(200).json(result);
@@ -15,7 +15,7 @@ export class ReviewController {
 
   static async setReview(req: Request, res: Response) {
     try {
-      const { changes } = await ReviewModel.create({
+      const { changes } = await repositoriesFor(req).reviews.create({
         ...req.body,
         userId: req.userId,
       });
@@ -39,7 +39,7 @@ export class ReviewController {
     const { id } = req.params;
 
     try {
-      const { changes } = await ReviewModel.update(id, {
+      const { changes } = await repositoriesFor(req).reviews.update(id, {
         ...req.body,
         userId: req.userId,
       });
@@ -62,7 +62,7 @@ export class ReviewController {
   static async deleteReview(req: Request, res: Response) {
     const { id } = req.params;
 
-    const { changes } = await ReviewModel.delete(id, req.userId!);
+    const { changes } = await repositoriesFor(req).reviews.delete(id, req.userId!);
 
     if (changes) {
       res.status(200).json({ message: 'Reseña borrada exitosamente.' });

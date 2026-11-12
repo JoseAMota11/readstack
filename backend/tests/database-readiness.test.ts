@@ -74,6 +74,14 @@ for (const [label, change, message] of [
     change(state);
     await assert.rejects(run(), (error: Error) => error.message.includes(message) && !error.message.includes('synthetic secret'));
     assert.equal(state.ended, 1);
+    let started = false;
+    await assert.rejects(startApplication(env, {
+      readiness: run,
+      createPool: () => { started = true; throw new Error(); },
+      listen: async () => { started = true; throw new Error(); },
+    }));
+    assert.equal(started, false);
+    assert.equal(state.ended, 2);
   });
 }
 
@@ -99,11 +107,14 @@ test('stalled readiness query times out and closes the client', async () => {
   assert.equal(ended, true);
 });
 
-test('PostgreSQL never starts SQLite or listens even after readiness succeeds', async () => {
+test('PostgreSQL readiness failure never starts SQLite, creates a pool, or listens', async () => {
   let starts = 0;
-  let checks = 0;
-  await assert.rejects(startApplication(env, { readiness: async () => { checks++; }, startSqlite: () => { starts++; } }), /unsupported until DB-04D/);
-  assert.equal(checks, 1);
+  await assert.rejects(startApplication(env, {
+    readiness: async () => { throw new Error('PostgreSQL schema incompatible'); },
+    startSqlite: () => { starts++; },
+    createPool: () => { starts++; throw new Error(); },
+    listen: async () => { starts++; throw new Error(); },
+  }), /schema incompatible/);
   assert.equal(starts, 0);
   await assert.rejects(startApplication({ DATABASE_PROVIDER: 'bad' }, { startSqlite: () => { starts++; } }), /Invalid database provider/);
   assert.equal(starts, 0);

@@ -11,7 +11,7 @@ export interface PostgresUserClient {
   query(sql: string, values: unknown[]): Promise<{ rows: Record<string, unknown>[]; rowCount: number | null }>;
 }
 
-/** Unwired until all PostgreSQL repositories and provider composition are ready. */
+/** Uses the application-supplied PostgreSQL query client. */
 export class PostgresUserRepository implements UserDataAccess {
   constructor(private readonly client: PostgresUserClient) {}
 

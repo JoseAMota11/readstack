@@ -29,7 +29,7 @@ ReadStack is a multiuser personal book catalog for organizing collections and re
 
 - **Frontend:** Next.js 16.4.6 with App Router, React 19.3.1, and TypeScript. Ant Design 5.29.3 and Tailwind CSS 3 support the interface; client services communicate with the API.
 - **Backend:** Node.js, Express 4, and TypeScript. The REST API is organized into routes, middleware, controllers, and models, with Zod input validation.
-- **Data:** The application uses SQLite through `better-sqlite3` and parameterized SQL, creating its tables at startup. User, book, and review model operations expose typed asynchronous contracts; SQLite and bcrypt still execute synchronously. A separate, experimental PostgreSQL versioned migration CLI is available only for explicitly approved local disposable targets; it is not part of application startup.
+- **Data:** SQLite is the default, using `better-sqlite3` and creating its tables at startup. Experimental PostgreSQL repositories are composed into the application after read-only readiness succeeds. User, book, and review operations expose typed asynchronous contracts; SQLite and bcrypt still execute synchronously. The separate experimental PostgreSQL migration CLI is not part of application startup.
 - **Authentication and authorization:** bcrypt password hashing and JWT authentication. The frontend stores the token in a JavaScript-readable cookie and sends it as a Bearer token. The API verifies the token and checks book and review ownership; frontend navigation protection does not replace those checks.
 
 ## Design
@@ -56,7 +56,7 @@ Configure the following environment variables for the backend process. The backe
 | --- | --- |
 | `SECRET_KEY` | Required. Use an independently generated local secret of exactly 64 hexadecimal characters. Do not publish it or store it in the repository. |
 | `DATABASE_PATH` | SQLite path. Use an isolated local path for synthetic data; otherwise it defaults to `library.db` relative to the working directory. Avoid modifying the tracked `backend/library.db`. |
-| `DATABASE_PROVIDER` | `sqlite` (default) or `postgres`; all other values fail startup. PostgreSQL application runtime is not yet supported. |
+| `DATABASE_PROVIDER` | `sqlite` (default) or experimental `postgres`; all other values fail startup. PostgreSQL integration has not been validated against a real server. |
 | `PORT` | API port; defaults to `3000`. Set it to `4000` for the frontend configuration below. |
 
 With those variables configured, start the server from `backend/`:
@@ -71,9 +71,9 @@ Authentication rate limits are process-local, not distributed. Login and registr
 
 These limits do not stop attempts spread across many accounts, instances, or restarts. Registration currently reveals an existing email through its 409 response; changing that contract requires a separate decision. Unknown-user logins perform a dummy bcrypt comparison to reduce a timing signal, not guarantee constant-time responses; this extra synchronous work also increases the risk of CPU exhaustion under abuse.
 
-### PostgreSQL startup readiness (not a supported runtime)
+### Experimental PostgreSQL runtime and startup readiness
 
-Standalone PostgreSQL user, book and review repositories exist behind injected clients and have fake-client tests, but are not wired into the application. Provider composition and runtime pool management remain unimplemented. Selecting `postgres` **never starts the API**, including when readiness succeeds; it exits with an unsupported-runtime error. PostgreSQL SQL, collation, authentication parity and runtime behavior have not been validated against a real server. Do not change production configuration or connect to any service on the basis of this foundation. SQLite remains the default and `DATABASE_PATH` is unchanged.
+PostgreSQL mode composes the user, book and review repositories explicitly and listens only after read-only readiness succeeds. It does not import the SQLite singleton or fall back to SQLite. The application pool is limited to five clients, with ten-second idle expiry and five-second connection, query and server statement timeouts. Startup failure attempts bounded pool cleanup; SIGINT/SIGTERM stop accepting requests, allow up to five seconds for draining, then close connections if needed and attempt bounded pool cleanup. A cleanup timeout does not prove an underlying client closed. PostgreSQL SQL, collation, authentication parity, actual pool behavior and shutdown have only fake-client coverage and have not been validated against a real server. Do not change production configuration or connect to any service on the basis of this foundation. SQLite remains the default and `DATABASE_PATH` is unchanged.
 
 Book title, author and genre elements and review comments reject embedded U+0000 at request validation. Genre elements also reject unpaired UTF-16 surrogates, while valid pairs are accepted. These rules apply to both providers; existing stored records are not changed. PostgreSQL search, wildcard and JSONB genre parity remain unverified against a real server.
 
@@ -83,7 +83,7 @@ Readiness reads the packaged migration files from `backend/migrations` (which mu
 
 ### Experimental local PostgreSQL migrations
 
-Preparing this CLI is not authorization to execute it. Obtain separate owner approval for the **exact local PostgreSQL instance and disposable database** before running either command. Loopback does not guarantee a disposable target: a tunnel or proxy could forward to another system. Verify the target independently; the naming and acknowledgement checks do not establish safety. Do not use this CLI for Neon, Render, or production. The application remains on SQLite and no SQLite records are transferred.
+Preparing this CLI is not authorization to execute it. Obtain separate owner approval for the **exact local PostgreSQL instance and disposable database** before running either command. Loopback does not guarantee a disposable target: a tunnel or proxy could forward to another system. Verify the target independently; the naming and acknowledgement checks do not establish safety. Do not use this CLI for Neon, Render, or production. SQLite remains the default and no SQLite records are transferred.
 
 For an approved target, configure these process environment variables without putting credentials in shell history or the repository (placeholders are not values to use):
 
@@ -153,7 +153,7 @@ Backend tests use synthetic data and isolated temporary SQLite databases. Local 
 
 ReadStack is being modernized. Its features and tests exist locally, but that is not production approval. Comprehensive browser validation, security and deployment gates, CI, and decisions about sessions and persistence remain outstanding.
 
-The current application uses SQLite. Neon has been selected for eventual PostgreSQL deployment, but provider connectivity and the migration remain unverified. A staging strategy has not been approved, and durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
+The default application uses SQLite; the experimental PostgreSQL runtime is not yet validated against a real server. Neon has been selected for eventual PostgreSQL deployment, but provider connectivity and the migration remain unverified. A staging strategy has not been approved, and durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
 
 ---
 

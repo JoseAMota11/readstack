@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BookModel } from '../models/book.model';
+import { repositoriesFor } from '../database/composition';
 import { BooksFilters } from '../types/book.type';
 import { Parser } from 'json2csv';
 
@@ -11,7 +11,7 @@ export class BookController {
     const size = filters?.size ? Number(filters.size) : 10;
 
     try {
-      const result = await BookModel.findAll(req.userId!, {
+      const result = await repositoriesFor(req).books.findAll(req.userId!, {
         ...filters,
         current,
         size,
@@ -35,7 +35,7 @@ export class BookController {
 
   static async getOneBook(req: Request, res: Response) {
     const { id } = req.params;
-    const result = await BookModel.findOneById(id, req.userId!);
+    const result = await repositoriesFor(req).books.findOneById(id, req.userId!);
 
     if (result) {
       res.status(200).json(result);
@@ -46,7 +46,7 @@ export class BookController {
 
   static async setBook(req: Request, res: Response) {
     try {
-      const { changes } = await BookModel.create({ ...req.body, userId: req.userId });
+      const { changes } = await repositoriesFor(req).books.create({ ...req.body, userId: req.userId });
 
       if (changes) {
         res.status(201).json({ message: 'Libro creado exitosamente.' });
@@ -70,7 +70,7 @@ export class BookController {
     const { id } = req.params;
 
     try {
-      const { changes } = await BookModel.update(id, {
+      const { changes } = await repositoriesFor(req).books.update(id, {
         ...req.body,
         userId: req.userId!,
       });
@@ -96,7 +96,7 @@ export class BookController {
   static async deleteBook(req: Request, res: Response) {
     const { id } = req.params;
 
-    const { changes } = await BookModel.delete(id, req.userId!);
+    const { changes } = await repositoriesFor(req).books.delete(id, req.userId!);
 
     if (changes) {
       res.status(200).json({ message: 'Libro borrado exitosamente.' });
@@ -112,7 +112,7 @@ export class BookController {
     const { id } = req.params;
 
     try {
-      const book = await BookModel.findOneById(id, req.userId!);
+      const book = await repositoriesFor(req).books.findOneById(id, req.userId!);
 
       if (!book) {
         res.status(404).json({ error: 'Este libro no está disponible' });
