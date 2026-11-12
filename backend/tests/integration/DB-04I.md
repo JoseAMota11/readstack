@@ -1,6 +1,6 @@
 # DB-04I: opt-in live parity and security harness
 
-Prepared only; **not executed against PostgreSQL**. DB-04 remains open. `postgres-parity-security.ts` is not part of `npm test`; the included guard unit test never connects to Docker or PostgreSQL. SQLite stays the default. No existing container or past approval is presumed valid.
+The owner reports that a prior live invocation failed with a generic error and that independent pre- and post-checks passed; the failure stage is unknown. The diagnostic changes described below are **not live-validated**. DB-04 remains open. `postgres-parity-security.ts` is not part of `npm test`; the guard and diagnostic unit tests never connect to Docker or PostgreSQL. SQLite stays the default. No existing container or past approval is presumed valid.
 
 ## Separate written owner approvals
 
@@ -14,6 +14,8 @@ The runner needs only its normal application permissions for readiness and synth
 
 The harness rechecks container ID/image/binding/tmpfs, runner database/role, packaged readiness ledger and limited schema, `C` collation and empty application tables. Immediately before the write transaction, a separate TLS observer on the same loopback host, port and database verifies its own current/session identity, effective monitoring visibility and non-superuser status; it requires exactly the loopback runner backend PID and no other same-database sessions. Observer connection, query or shutdown failure rejects the run before `BEGIN`. The observer is closed before writes; the runner never receives observer credentials through its database connection. The check and successful close do not prove lasting isolation or preclude a race. These checks cannot prove image provenance, other databases' data, complete schema integrity, absence of a port proxy, or effective read-only privileges. The owner must independently verify those boundaries. If isolation cannot be established, stop.
 
+The observer also requires PostgreSQL's `client_addr` for the runner to be exactly `127.0.0.1`. Depending on Docker's published-port forwarding and NAT, PostgreSQL may instead observe a bridge-side source address even when the client connects to host loopback. This is a possible guard/target mismatch, **not** an established cause of the reported failure. The guard remains unchanged and fail-closed; do not widen it or retry on that assumption. Any safe change to the identity/isolation design requires separate review and approval.
+
 ## Invocation after approval and checks
 
 In a private shell with Node 22, existing dependencies and no inherited `PG*` variables, disable shell tracing. Securely supply `DATABASE_URL` for the runner and `DB04I_OBSERVER_URL` for the separately authenticated observer (both exact same local host/port/database, respective fixed role, no query options), and trust the local test CA via `NODE_EXTRA_CA_CERTS`. Both credentials are in the harness process environment, so protect that environment from other users; neither belongs in history, arguments, logs or shared environments. Never print Docker inspect output or environment. Set `DATABASE_PROVIDER=postgres`, `POSTGRES_TLS=verify-full`, `DB04I_APPROVED=yes`, `DB04I_CONTAINER_ID` to the full approved ID, `DB04I_IMAGE_ID` to the approved `sha256:` image ID, and `DB04I_PORT` to the approved decimal port. From `backend/` run:
@@ -23,6 +25,8 @@ timeout --signal=TERM --kill-after=10s 140s node --import tsx tests/integration/
 ```
 
 The process creates a synthetic in-memory JWT key and a loopback-only ephemeral HTTP listener. It does not create, migrate, reset or remove resources. It uses 5-second Docker, connection, server statement, driver query and HTTP bounds, a 120-second watchdog and the external timeout above. The runner uses one transaction and savepoints; cleanup attempts observer and runner shutdown, listener close and rollback. A timeout, lost connection, forced termination or failed cleanup does **not** establish rollback or session closure. On any failure or interruption isolate the target; do not retry or remove it without the corresponding approval. After success **or failure**, independently recheck exact container/endpoint, identity, original ledger/checksum, empty users/books/reviews, and absence of runner, observer and other test sessions. Remove the specifically approved resources and secret material only with separate authorization. Never assume cleanup succeeded.
+
+Harness-managed failure and watchdog output now uses only an allowlisted stage (`preflight`, `observer`, `transaction`, `parity`, `security`, `rollback`, or `cleanup`) and a generic status; it does not print exception text. A failure followed by a separate rollback or cleanup failure can report multiple stages. A stage identifies the operation in progress, not the root cause or proof of cleanup. Runtime or module-loader failures before the reporter starts are outside this reporting guarantee. Diagnostic preparation is not authorization for another live invocation.
 
 ## Scope and limitations
 

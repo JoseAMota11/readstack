@@ -12,6 +12,9 @@ import { validatePostgresReadiness } from '../../src/database/readiness';
 import { parityCases, parityGenres } from '../helpers/parity-cases';
 import { BooksFilters } from '../../src/types/book.type';
 import { checkObserver, checkTarget, database, observerOptions, role } from './db04i-guard';
+import { createDiagnostics } from './db04i-diagnostics';
+
+const diagnostics = createDiagnostics((message) => console.error(message));
 
 function target() {
   const options = postgresOptions(process.env);
@@ -48,7 +51,9 @@ async function main() {
     const empty = await client.query('SELECT NOT EXISTS (SELECT 1 FROM public.users) AND NOT EXISTS (SELECT 1 FROM public.books) AND NOT EXISTS (SELECT 1 FROM public.reviews) AS empty');
     if (empty.rows[0]?.empty !== true) throw new Error('Nonempty target');
     target();
+    diagnostics.enter('observer');
     await checkObserver(new Client(observer), identity.rows[0]?.pid);
+    diagnostics.enter('transaction');
     await client.query('BEGIN'); transaction = true;
     const adapter = { async query(sql: string, values: unknown[]) {
       if (injectError) { injectError = false; return client.query('SELECT 1 / 0'); }
@@ -70,6 +75,7 @@ async function main() {
       const token = login.body.token as string;
       return { token, id: (jwt.verify(token, process.env.SECRET_KEY!) as jwt.JwtPayload).id as string };
     }
+    diagnostics.enter('parity');
     const alice = await register(email, 'SyntheticAlice');
     const bob = await register(email.toLowerCase(), 'SyntheticBob');
     assert.notEqual(alice.id, bob.id);
@@ -95,6 +101,7 @@ async function main() {
     assert.equal(list.total, 1);
     assert.deepEqual(list.books[0].genre, parityGenres);
     const id = list.books[0].id;
+    diagnostics.enter('security');
     assert.equal((await repo.findAll(bob.id, { current: 1, size: 10 } as BooksFilters)).total, 0);
     await api().get(`/api/v1/books/${id}`).set(auth(bob.token)).timeout(5000).expect(404);
     await api().get(`/api/v1/books/${id}/export`).set(auth(bob.token)).timeout(5000).expect(404);
@@ -135,19 +142,25 @@ async function main() {
     await client.query('ROLLBACK TO SAVEPOINT error_probe');
     assert.equal((await repo.findAll(alice.id, { current: 1, size: 10 } as BooksFilters)).total, 1);
     console.log('DB-04I assertions passed; rollback still required.');
+  } catch {
+    diagnostics.fail();
+    process.exitCode = 1;
   } finally {
+    diagnostics.enter('cleanup');
     if (server) {
       try { await new Promise<void>((resolve, reject) => server!.close((error) => error ? reject(error) : resolve())); }
-      catch { process.exitCode = 1; console.error('HTTP shutdown failed; isolate target.'); }
+      catch { process.exitCode = 1; diagnostics.fail(); }
     }
     if (transaction) {
+      diagnostics.enter('rollback');
       try { await client.query('ROLLBACK'); console.log('DB-04I rollback completed.'); }
-      catch { process.exitCode = 1; console.error('Rollback failed; isolate target.'); }
+      catch { process.exitCode = 1; diagnostics.fail(); }
     }
-    try { await client.end(); } catch { process.exitCode = 1; console.error('Client shutdown failed; isolate target.'); }
+    diagnostics.enter('cleanup');
+    try { await client.end(); } catch { process.exitCode = 1; diagnostics.fail(); }
   }
 }
 
-const watchdog = setTimeout(() => { console.error('DB-04I timeout; isolate target.'); process.exit(1); }, 120000);
-main().catch(() => { console.error('DB-04I failed; isolate target and consult the procedure.'); process.exitCode = 1; })
+const watchdog = setTimeout(() => { diagnostics.fail(); process.exit(1); }, 120000);
+main().catch(() => { diagnostics.fail(); process.exitCode = 1; })
   .finally(() => clearTimeout(watchdog));

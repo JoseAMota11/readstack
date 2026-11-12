@@ -40,6 +40,7 @@ test('observer preflight accepts only the verified runner and always closes', as
         calls.push('query');
         assert.match(sql, /pg_has_role\(current_user, 'pg_read_all_stats', 'USAGE'\)/);
         assert.match(sql, /NOT r\.rolsuper/);
+        assert.match(sql, /client_addr = inet '127\.0\.0\.1'/);
         assert.deepEqual(values, [11, role]);
         if (fail === 'query') throw new Error('query failed');
         return { rows: row ? [row] : [] };
