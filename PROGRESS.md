@@ -2,14 +2,15 @@
 
 **Last updated:** 2026-11-12
 **Current phase:** Persistence architecture design; not a production-release or security approval.
-**Active task:** `DB-03` architecture design and owner review; implementation and acceptance remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Active task:** `DB-03` technical architecture approved under `D-022`; implementation authorization and acceptance remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
-## DB-03 product decision and design handoff
+## DB-03 product and technical decision handoff
 
 - Owner-approved `D-021` records optional descriptions and reading status, including normalization, PATCH behavior, status values and default, edit-form changes, card display, owner-scoped filtering, and coordinated CSV export. Functional/API/UI work follows PostgreSQL infrastructure validation and separate feature-increment approval; existing responses, validation, CSV headers and UI behavior remain unchanged until then.
-- `PLAN.md` records the proposed columns, composite review/book ownership foreign key, and versioned SQL migration approach separately from the product approval. Unicode counting, search parity, date serialization, email collation, migration-runner operations and safe reset/recovery remain unresolved. Schema and migration implementation have not been approved by this documentation update.
+- Owner-approved `D-022` records search compatibility, email collation, timestamp serialization, genre validation, UUID handling, deterministic ordering, Unicode scalar counting, migration safety and composite review/book ownership with cascades. Actual search parity, environment compatibility, runner operations and safe reset/recovery still need verification; no genre-search difference has been preapproved.
+- `PLAN.md` records Explore Your Library as a future detail-page concept, not a `DB-03` blocker or implementation authorization. No external service, AI or additional schema is authorized for it.
 - `DB-03` remains open; no PostgreSQL schema, migration, database access or validation has been performed. This documentation-only handoff changes `PLAN.md` and `PROGRESS.md`; the pre-existing `backend/library.db` modification was not inspected or changed. No production access, provisioning, staging, commit, push, merge or deployment occurred.
 
 ## DB-01 and DB-02 closeout
@@ -223,7 +224,7 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
-Review the proposed `DB-03` schema and migration design in `PLAN.md`, resolve its open decisions, and obtain separate authorization before implementation. Then proceed with the schema foundation, database access and synthetic validation before the separately approved `D-021` feature increment. Do not create schemas, provision services or implement migrations without separate authorization. `DB-03` remains open until its implementation and acceptance criteria are verified.
+Obtain separate authorization before implementing the `D-022` schema and migration design in `PLAN.md`; resolve remaining operational details and validate with synthetic data. Then proceed with database access and synthetic validation before the separately approved `D-021` feature increment. Do not create schemas, provision services or implement migrations without separate authorization. `DB-03` remains open until its implementation and acceptance criteria are verified.
 
 The latest owner-reported Back/Forward check did not reproduce the earlier login flash. Further investigation of navigation or observable cross-user book and review mutation denial using synthetic accounts and isolated local services is optional for `TEST-02` and `SEC-05`; it does not authorize a deployment.
 Continue browser validation of the observer with synthetic accounts and isolated services, including suspended tabs, back-forward cache restoration, synthetic token expiry, deliberately missed channel delivery, and server-side revocation. Design a separate private-state exposure boundary before using the observer for filter retention; observer notifications alone do not guarantee that retained UI cannot flash or that all changes are detected.
