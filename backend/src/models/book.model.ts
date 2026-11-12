@@ -1,3 +1,4 @@
+import { BookDataAccess, BookWithReviews } from './data-access';
 import db from '../config/db';
 import { Book, BooksFilters } from '../types/book.type';
 
@@ -9,7 +10,7 @@ const reviewAggregates = `
 `;
 
 export class BookModel {
-  static findAll(userId: string, filters?: BooksFilters) {
+  static async findAll(userId: string, filters?: BooksFilters) {
     let query = 'SELECT * FROM Books';
     let countQuery = 'SELECT COUNT(*) AS total FROM Books';
     const conditions: string[] = ['userId = @userId'];
@@ -53,7 +54,7 @@ export class BookModel {
     `);
     const countStmt = db.prepare(countQuery);
 
-    const books = stmt.all({ ...params, size, offset }) as Book[];
+    const books = stmt.all({ ...params, size, offset }) as BookWithReviews[];
     const { total } = countStmt.get(params) as { total: number };
 
     return {
@@ -69,7 +70,7 @@ export class BookModel {
     };
   }
 
-  static findOneById(id: string, userId: string) {
+  static async findOneById(id: string, userId: string) {
     const stmt = db.prepare(`
       SELECT books.*, reviews.reviewAverageRating,
         COALESCE(reviews.reviewRatingCount, 0) AS reviewRatingCount
@@ -78,7 +79,7 @@ export class BookModel {
         ON reviews.bookId = books.id AND reviews.userId = books.userId
       WHERE books.id = @id AND books.userId = @userId
     `);
-    const book = stmt.get({ id, userId }) as Book | undefined;
+    const book = stmt.get({ id, userId }) as BookWithReviews | undefined;
 
     if (!book) {
       return undefined;
@@ -93,7 +94,7 @@ export class BookModel {
     };
   }
 
-  static create(book: Book) {
+  static async create(book: Book) {
     const {
       title,
       author,
@@ -149,7 +150,7 @@ export class BookModel {
     }
   }
 
-  static update(id: string, book: Partial<Book>) {
+  static async update(id: string, book: Partial<Book> & Pick<Book, 'userId'>) {
     const updates: string[] = [];
     const params: any[] = [];
 
@@ -202,17 +203,18 @@ export class BookModel {
 
       return { changes: Boolean(info.changes) };
     } catch (error) {
-      console.error('Error al actualizar el libro:', error);
       throw new Error(
         'No se pudo actualizar el libro. Inténtalo de nuevo más tarde.'
       );
     }
   }
 
-  static delete(id: string, userId: string) {
+  static async delete(id: string, userId: string) {
     const stmt = db.prepare('DELETE FROM Books WHERE id = ? AND userId = ?');
     const info = stmt.run(id, userId);
 
     return { changes: Boolean(info.changes) };
   }
 }
+
+BookModel satisfies BookDataAccess;

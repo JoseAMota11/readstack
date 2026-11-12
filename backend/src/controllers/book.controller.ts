@@ -4,14 +4,14 @@ import { BooksFilters } from '../types/book.type';
 import { Parser } from 'json2csv';
 
 export class BookController {
-  static getAllBooks(req: Request, res: Response) {
+  static async getAllBooks(req: Request, res: Response) {
     const filters = req.query as any as BooksFilters;
 
     const current = filters?.current ? Number(filters.current) : 1;
     const size = filters?.size ? Number(filters.size) : 10;
 
     try {
-      const result = BookModel.findAll(req.userId!, {
+      const result = await BookModel.findAll(req.userId!, {
         ...filters,
         current,
         size,
@@ -33,9 +33,9 @@ export class BookController {
     }
   }
 
-  static getOneBook(req: Request, res: Response) {
+  static async getOneBook(req: Request, res: Response) {
     const { id } = req.params;
-    const result = BookModel.findOneById(id, req.userId!);
+    const result = await BookModel.findOneById(id, req.userId!);
 
     if (result) {
       res.status(200).json(result);
@@ -44,9 +44,9 @@ export class BookController {
     }
   }
 
-  static setBook(req: Request, res: Response) {
+  static async setBook(req: Request, res: Response) {
     try {
-      const { changes } = BookModel.create({ ...req.body, userId: req.userId });
+      const { changes } = await BookModel.create({ ...req.body, userId: req.userId });
 
       if (changes) {
         res.status(201).json({ message: 'Libro creado exitosamente.' });
@@ -57,19 +57,22 @@ export class BookController {
         });
       }
     } catch (error) {
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      }
+      const expected = ['El usuario no existe.', 'No se pudo crear el libro. Inténtalo de nuevo más tarde.'];
+      res.status(500).json({
+        error: error instanceof Error && expected.includes(error.message)
+          ? error.message
+          : 'Error interno del servidor. Por favor, inténtelo más tarde.',
+      });
     }
   }
 
-  static updateBook(req: Request, res: Response) {
+  static async updateBook(req: Request, res: Response) {
     const { id } = req.params;
 
     try {
-      const { changes } = BookModel.update(id, {
+      const { changes } = await BookModel.update(id, {
         ...req.body,
-        userId: req.userId,
+        userId: req.userId!,
       });
 
       if (changes) {
@@ -81,16 +84,19 @@ export class BookController {
         });
       }
     } catch (error) {
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      }
+      const expected = ['No se proporcionaron campos para actualizar.', 'No se pudo actualizar el libro. Inténtalo de nuevo más tarde.'];
+      res.status(500).json({
+        error: error instanceof Error && expected.includes(error.message)
+          ? error.message
+          : 'Error interno del servidor. Por favor, inténtelo más tarde.',
+      });
     }
   }
 
-  static deleteBook(req: Request, res: Response) {
+  static async deleteBook(req: Request, res: Response) {
     const { id } = req.params;
 
-    const { changes } = BookModel.delete(id, req.userId!);
+    const { changes } = await BookModel.delete(id, req.userId!);
 
     if (changes) {
       res.status(200).json({ message: 'Libro borrado exitosamente.' });
@@ -102,11 +108,11 @@ export class BookController {
     }
   }
 
-  static exportBookToCSV(req: Request, res: Response) {
+  static async exportBookToCSV(req: Request, res: Response) {
     const { id } = req.params;
 
     try {
-      const book = BookModel.findOneById(id, req.userId!);
+      const book = await BookModel.findOneById(id, req.userId!);
 
       if (!book) {
         res.status(404).json({ error: 'Este libro no está disponible' });

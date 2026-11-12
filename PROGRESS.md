@@ -1,10 +1,18 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** PostgreSQL schema foundation qualified acceptance; not a production-release or security approval.
+**Current phase:** `DB-04B` SQLite asynchronous data-access preparation; not a production-release or security approval.
 **Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` application integration and fail-closed startup readiness and `DB-05` repeatable synthetic initialization/reset remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-04B local implementation handoff
+
+- Added typed promise-based user, book and review data-access contracts, adapted the existing SQLite models and awaited them in controllers. SQL, owner predicates, schema and import-time SQLite initialization remain unchanged. These interfaces do not make `better-sqlite3` or bcrypt nonblocking, implement PostgreSQL, select a provider or establish startup readiness.
+- Express 4 route wrappers sanitize unexpected asynchronous failures; existing expected endpoint-specific responses remain, while previously hanging or raw-error cases now return safe 500 responses. Added rejection coverage for every affected route, including non-Error rejection, and authentication/token-owner checks; existing tests cover cross-user reads, mutations, reviews, aggregates and exports.
+- From `backend/` on Node 22: `fnm exec --using 22 npm run build` passed; `fnm exec --using 22 npm test` passed 94/94; `fnm exec --using 22 npm run test:security` passed 3/3. Tests use synthetic fixtures and isolated temporary or in-memory SQLite databases; migration tests use mocks. Existing Node MockTimers experimental warning remains. No PostgreSQL service or production system was contacted.
+- Changed `backend/src/models/`, `backend/src/controllers/`, `backend/src/routes/`, `backend/src/middlewares/async-handler.ts`, `backend/src/app.ts`, `backend/tests/async-data-access.test.ts`, `backend/package.json`, `README.md`, and this handoff. `PLAN.md`, migrations, schema, frontend and production configuration are intentionally untouched. The pre-existing `backend/library.db` modification was neither inspected nor intentionally changed.
+- `DB-04` remains open: PostgreSQL application data access, provider configuration/selection, fail-closed startup schema readiness and compatibility validation remain; `DB-05` synthetic initialization/reset and later staging, recovery and cutover gates also remain. No commit, push or deployment is authorized by this handoff.
 
 ## DB-03 qualified acceptance
 

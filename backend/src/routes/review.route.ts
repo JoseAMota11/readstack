@@ -1,3 +1,4 @@
+import { asyncHandler } from '../middlewares/async-handler';
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/book.middleware';
 import { ReviewController } from '../controllers/review.controller';
@@ -9,24 +10,24 @@ const reviewRouter = Router();
 reviewRouter.get(
   '/reviews/:bookId',
   authMiddleware,
-  ReviewController.getAllReviews
+  asyncHandler(ReviewController.getAllReviews)
 );
 reviewRouter.post(
   '/reviews',
   authMiddleware,
   validateReviewsData,
-  ReviewController.setReview
+  asyncHandler(ReviewController.setReview)
 );
 reviewRouter.put(
   '/reviews/:id',
   authMiddleware,
   validateReviewsData,
-  ReviewController.updateReview
+  asyncHandler(ReviewController.updateReview)
 );
 reviewRouter.delete(
   '/reviews/:id',
   authMiddleware,
-  ReviewController.deleteReview
+  asyncHandler(ReviewController.deleteReview)
 );
 
 export default reviewRouter;

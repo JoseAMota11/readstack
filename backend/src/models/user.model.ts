@@ -1,3 +1,4 @@
+import { UserDataAccess } from './data-access';
 import { config } from '../config/config';
 import db from '../config/db';
 import { User } from '../types/user.type';
@@ -8,7 +9,7 @@ import jwt from 'jsonwebtoken';
 const DUMMY_PASSWORD_HASH = '$2b$10$gcjnO0Jf9YpGNkK2F3e2fOaPOLP9HvXACl/KXS7u.Ze3ygT8cXOOW';
 
 export class UserModel {
-  static create(user: User) {
+  static async create(user: User) {
     const { username, email, password } = user;
     const id = crypto.randomUUID();
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -22,7 +23,7 @@ export class UserModel {
     return { id, changes: Boolean(info.changes) };
   }
 
-  static find(user: Pick<User, 'email' | 'password'>) {
+  static async find(user: Pick<User, 'email' | 'password'>) {
     const { email, password } = user;
 
     const stmt = db.prepare(`SELECT * FROM Users WHERE email = ?`);
@@ -43,3 +44,5 @@ export class UserModel {
     return { token };
   }
 }
+
+UserModel satisfies UserDataAccess;

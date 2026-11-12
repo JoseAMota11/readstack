@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import { ReviewModel } from '../models/review.model';
 
 export class ReviewController {
-  static getAllReviews(req: Request, res: Response) {
+  static async getAllReviews(req: Request, res: Response) {
     const { bookId } = req.params;
-    const result = ReviewModel.findAll(bookId, req.userId!);
+    const result = await ReviewModel.findAll(bookId, req.userId!);
 
     if (result) {
       res.status(200).json(result);
@@ -13,9 +13,9 @@ export class ReviewController {
     }
   }
 
-  static setReview(req: Request, res: Response) {
+  static async setReview(req: Request, res: Response) {
     try {
-      const { changes } = ReviewModel.create({
+      const { changes } = await ReviewModel.create({
         ...req.body,
         userId: req.userId,
       });
@@ -26,17 +26,20 @@ export class ReviewController {
         res.status(404).json({ error: 'Recurso no disponible.' });
       }
     } catch (error) {
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      }
+      const expected = ['No se pudo guardar la reseña. Inténtalo de nuevo más tarde.'];
+      res.status(500).json({
+        error: error instanceof Error && expected.includes(error.message)
+          ? error.message
+          : 'Error interno del servidor. Por favor, inténtelo más tarde.',
+      });
     }
   }
 
-  static updateReview(req: Request, res: Response) {
+  static async updateReview(req: Request, res: Response) {
     const { id } = req.params;
 
     try {
-      const { changes } = ReviewModel.update(id, {
+      const { changes } = await ReviewModel.update(id, {
         ...req.body,
         userId: req.userId,
       });
@@ -47,16 +50,19 @@ export class ReviewController {
         res.status(404).json({ error: 'Recurso no disponible.' });
       }
     } catch (error) {
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      }
+      const expected = ['No se pudo actualizar la reseña. Inténtalo de nuevo más tarde.'];
+      res.status(500).json({
+        error: error instanceof Error && expected.includes(error.message)
+          ? error.message
+          : 'Error interno del servidor. Por favor, inténtelo más tarde.',
+      });
     }
   }
 
-  static deleteReview(req: Request, res: Response) {
+  static async deleteReview(req: Request, res: Response) {
     const { id } = req.params;
 
-    const { changes } = ReviewModel.delete(id, req.userId!);
+    const { changes } = await ReviewModel.delete(id, req.userId!);
 
     if (changes) {
       res.status(200).json({ message: 'Reseña borrada exitosamente.' });
