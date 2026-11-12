@@ -102,13 +102,19 @@ Remove inherited `PG*` variables first; the CLI rejects them. It does not load d
 
 Migrations are forward-only and tracked with checksums. Operational safeguards:
 
-- A disposable reset requires explicit approval, independently verified target identity, and confirmation that all target data is synthetic and disposable. No reset command has been tested; repeatable initialization and reset remain `DB-05` work.
+- A disposable reset requires explicit approval, independently verified target identity, and confirmation that all target data is synthetic and disposable. No reset command is implemented or tested; repeatable initialization and reset remain `DB-05` work.
 - After a failed migration, stop, preserve evidence, and independently verify the ledger and schema. The runner attempts rollback, but rollback is not guaranteed in every failure.
 - On a checksum mismatch, never edit the ledger or an already applied migration to force compatibility. Prefer reviewed sequential forward-fix migrations over destructive down-migrations.
 - On lock contention, do not forcibly unlock or terminate unidentified sessions.
 - If COMMIT's outcome is uncertain, do not blindly retry. Verify the actual schema and ledger from an independent connection; stop if they are inconsistent. Live connection-loss recovery during COMMIT has not been validated.
 
 Application rollback is not database recovery: rolling code back does not restore data or reverse database writes. No tested backup, restore, recovery procedure, production readiness, or provider connectivity is implied by this CLI.
+
+### DB-05 synthetic fixture preparation
+
+`backend/src/migrations/synthetic-fixtures.ts` contains a fixed, disconnected fixture and a pure initialization planner, not a database workflow. It describes exactly 2 users, 3 books, 2 reviews and 2 favorites; both users own books and reviews. Fixed IDs and timestamps make the fixture deterministic. Password fields are deliberately unusable for login; this fixture cannot validate authentication. The planner requires explicit opt-in, accepts an empty snapshot or an exact ordered fixture snapshot, and rejects partial or changed data. It executes no SQL. `npm run test:synthetic` runs disconnected tests only.
+
+There is **no seed or reset command**. Reset always refuses in this preparation; neither ordinary builds nor tests reset databases. A future implementation must separately identify and obtain owner authorization for the exact disposable target before any migration or synthetic writes, use the existing migration runner for an empty schema, and implement a guarded, transactional seed with serialization and normalized complete-state checks. A destructive reset needs separate explicit authorization, independently verified target identity and confirmation that all affected data is disposable. Its proposed scope must be made explicit before approval: removal of all rows in `public.reviews`, `public.books` and `public.users`, not the migration ledger; unexpected foreign keys, triggers, other tables or schema changes require stopping rather than assuming that scope. No reset or initialization has been validated on PostgreSQL; DB-05 remains open.
 
 ### Frontend
 

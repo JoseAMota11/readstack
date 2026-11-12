@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** `DB-04` qualified acceptance; next migration milestone is `DB-05`, subject to applicable approvals. This is not a production-release or security approval.
+**Current phase:** `DB-05` disconnected fixture/reset preparation; real initialization and reset remain unimplemented and unvalidated. This is not a production-release or security approval.
 **Active task:** `DB-03` and `DB-04` are complete within their bounded foundation and provider-access scopes; `DB-05` repeatable synthetic initialization/reset remains open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-05 disconnected preparation
+
+- Prepared a deterministic pure fixture and planning function: 2 synthetic users, 3 books, 2 reviews and 2 favorites, fixed identifiers and timestamps, non-login password fields, and matching book/review owners. Planning requires explicit opt-in, distinguishes empty from an exact ordered fixture snapshot, and rejects other nonempty snapshots. Repeated initialization is simulated in memory only; no PostgreSQL seed exists. The reset function unconditionally refuses and no target-identity guard or executable reset is implemented. Exact snapshot comparison requires future database normalization, serialization and complete schema checks; it is not itself a database safety guard.
+- From `backend/` on Node 22: `fnm exec --using 22 npm run build` passed; `fnm exec --using 22 npm test` passed 145/145; `fnm exec --using 22 npm run test:security` passed 3/3; `fnm exec --using 22 npm run test:synthetic` passed 4/4. These tests use synthetic isolated SQLite, fake clients and pure in-memory data; they do not validate PostgreSQL SQL, real constraints, reset, or concurrent initialization. No Docker, PostgreSQL, migrations, synthetic database writes to PostgreSQL, shared services or production were accessed.
+- `DB-05` remains open. Next implement a separately opt-in, independently verified disposable-target adapter with explicit owner authorization, existing migration runner, serialized transactional seeding and separately authorized reset; then obtain separate permission for the exact target and validate empty initialization, counts/relationships, repeated initialization and repeated reset on real disposable PostgreSQL. Prior DB-04 resources are not approved for reuse. The proposed destructive scope and stop conditions are in `README.md`; no destructive command is provided. No SQLite records are transferred.
+- Changed `README.md`, `PROGRESS.md`, `backend/package.json`; added `backend/src/migrations/synthetic-fixtures.ts` and `backend/tests/synthetic-fixtures.test.ts`. Application behavior, migrations, deployment configuration, frontend and the pre-existing modified `backend/library.db` remain intentionally untouched. Changes are unstaged and uncommitted.
 
 ## DB-04 qualified acceptance and owner-reported DB-04I result
 
