@@ -139,7 +139,7 @@ body {
 .auth-field label { font-weight: 600; }
 .auth-field > .ant-input-lg, .auth-field > .ant-input-affix-wrapper-lg { min-height: 2.75rem; }
 .auth-field .ant-input::placeholder { color: var(--text-secondary); opacity: 1; }
-.auth-error { display: flex; align-items: flex-start; gap: 0.25rem; color: var(--error); font-size: 0.75rem; line-height: 1.4; }
+.auth-error { display: flex; align-items: flex-start; gap: 0.25rem; color: var(--error); font-size: 0.875rem; line-height: 1.4; }
 .auth-error .anticon { display: inline-flex; align-items: center; flex: none; height: 1.4em; }
 .auth-form > .ant-btn { min-height: 2.75rem; margin-top: 0.25rem; }
 .auth-alternate { text-align: center; }

@@ -38,9 +38,25 @@ test('navigation keeps the beta badge alongside the application name and actions
   const nav = Navbar();
   const [brand, actions] = nav.props.children;
   assert.equal(nav.type, 'nav');
-  assert.equal(brand.props.children[0].props.children, 'Biblioteca Personal');
+  assert.equal(brand.props.children[0].props.children, 'ReadStack');
   assert.equal(brand.props.children[1].props.children, 'BETA');
   assert.equal(actions.props.className, 'library-nav-actions');
+});
+
+test('root metadata uses the ReadStack name and description', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../app/layout.tsx'), 'utf8');
+  const file = ts.createSourceFile('layout.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const declaration = file.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => statement.declarationList.declarations)
+    .find((item) => item.name.getText(file) === 'metadata');
+  assert.ok(declaration && ts.isObjectLiteralExpression(declaration.initializer));
+  const values = Object.fromEntries(declaration.initializer.properties.map((property) => {
+    assert.ok(ts.isPropertyAssignment(property) && ts.isStringLiteral(property.initializer));
+    return [property.name.getText(file), property.initializer.text];
+  }));
+  assert.equal(values.title, 'ReadStack');
+  assert.equal(values.description, 'ReadStack es una aplicación para catalogar, organizar y reseñar tus libros. Construye tu biblioteca personal y lleva un registro de tus lecturas.');
 });
 
 test('library notice is persistent, non-interactive and precedes the filters', () => {

@@ -145,3 +145,28 @@ test('a timed-out or unmounted check cannot redirect and leaves a usable fallbac
     global.window = original.window;
   }
 });
+
+test('successful login returns to the requested private deep link with its query', async () => {
+  const original = { useState: React.useState, useRef: React.useRef, useCallback: React.useCallback, useEffect: React.useEffect, window: global.window };
+  global.window = { location: { search: '?returnTo=%2Fbook%2F123%2Fedit%3Ftab%3Dreviews' },
+    setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
+  destinations = [];
+  saved = undefined;
+  verify = async () => 'anonymous';
+  login = async () => [undefined, 'synthetic'];
+  try {
+    const app = harness();
+    app.render();
+    app.mount();
+    await new Promise(setImmediate);
+    const form = find(app.render(), (node) => node.type === 'form');
+    assert.equal(form.props.style.display, undefined);
+    await form.props.onSubmit({});
+    assert.equal(saved, 'synthetic');
+    assert.deepEqual(destinations, ['/book/123/edit?tab=reviews']);
+    app.unmount();
+  } finally {
+    Object.assign(React, { useState: original.useState, useRef: original.useRef, useCallback: original.useCallback, useEffect: original.useEffect });
+    global.window = original.window;
+  }
+});
