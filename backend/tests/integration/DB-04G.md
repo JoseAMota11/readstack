@@ -1,6 +1,6 @@
 # DB-04G: opt-in PostgreSQL startup and shutdown validation
 
-Prepared, **not live-validated**. DB-04 stays open. This harness must not be included in the normal test suite. It uses the DB-04F target only if its identity and current safety are independently reconfirmed; its historical existence, state and authorization are not assumed.
+The owner reports a successful disposable live run and independent post-check; see `PROGRESS.md` for its scope and limitations. DB-04 has qualified foundation acceptance, not production readiness. This harness must not be included in the normal test suite. It uses the DB-04F target only if its identity and current safety are independently reconfirmed; its historical existence, state and authorization are not assumed.
 
 ## Authorization and safety boundaries
 
