@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test, { TestContext } from 'node:test';
 import { discoverMigrations, planPendingMigrations } from '../src/migrations/discovery';
+import { MigrationClient, runMigrations } from '../src/migrations/runner';
 
 async function fixture(t: TestContext, files: Record<string, string | Buffer> = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'readstack-migrations-'));
@@ -84,4 +85,135 @@ test('rejects changed, renamed, missing, unknown, duplicated and out-of-order le
     assert.throws(() => planPendingMigrations(migrations, ledger), /ledger mismatch/);
   }
   assert.throws(() => planPendingMigrations(migrations.slice(0, 1), migrations), /ledger mismatch/);
+});
+
+class FakeClient implements MigrationClient {
+  calls: { sql: string; params?: string[] }[] = [];
+  rows: Record<string, unknown>[] = [];
+  locked = true;
+  unlocked = true;
+  failures = new Set<string>();
+  ended = false;
+
+  async query(sql: string, params?: string[]) {
+    this.calls.push({ sql, params });
+    const operation = sql.startsWith('SELECT pg_try_') ? 'lock' :
+      sql.startsWith('SELECT pg_advisory_unlock') ? 'unlock' :
+      sql.startsWith('CREATE TABLE IF NOT EXISTS') ? 'create' :
+      sql.startsWith('SELECT version') ? 'ledger' :
+      sql.startsWith('INSERT INTO') ? 'insert' : sql;
+    if (this.failures.has(operation)) throw new Error('secret connection string and SQL');
+    if (operation === 'lock') return { rows: [{ locked: this.locked }] };
+    if (operation === 'unlock') return { rows: [{ unlocked: this.unlocked }] };
+    if (operation === 'ledger') return { rows: this.rows };
+    return { rows: [] };
+  }
+
+  async end() {
+    this.ended = true;
+    if (this.failures.has('end')) throw new Error('secret cleanup details');
+  }
+}
+
+function operations(client: FakeClient) {
+  return client.calls.map(({ sql }) => sql.startsWith('SELECT pg_try_') ? 'lock' :
+    sql.startsWith('SELECT pg_advisory_unlock') ? 'unlock' :
+    sql.startsWith('CREATE TABLE IF NOT EXISTS') ? 'create' :
+    sql.startsWith('SELECT version') ? 'ledger' :
+    sql.startsWith('INSERT INTO') ? 'insert' : sql);
+}
+
+test('runner locks, validates and applies each exact SQL snapshot with an atomic ledger entry', async (t) => {
+  const dir = await fixture(t, { '0001_first.sql': '\ufefffirst\r\n', '0002_second.sql': 'second' });
+  const migrations = await discoverMigrations(dir);
+  const client = new FakeClient();
+  await runMigrations(client, dir);
+  assert.deepEqual(operations(client), ['lock', 'create', 'ledger', 'BEGIN', '\ufefffirst\r\n', 'insert', 'COMMIT', 'BEGIN', 'second', 'insert', 'COMMIT', 'unlock']);
+  assert.deepEqual(client.calls.filter(({ sql }) => sql.startsWith('INSERT')).map(({ params }) => params),
+    migrations.map(({ version, filename, checksum }) => [version, filename, checksum]));
+  assert.deepEqual(client.calls[0].params, client.calls[client.calls.length - 1].params);
+  assert.equal(client.ended, true);
+});
+
+test('runner skips an applied prefix and performs a no-op when fully applied', async (t) => {
+  const dir = await fixture(t, { '0001_first.sql': 'first', '0002_second.sql': 'second' });
+  const migrations = await discoverMigrations(dir);
+  const client = new FakeClient();
+  client.rows = [migrations[0]];
+  await runMigrations(client, dir);
+  assert.deepEqual(operations(client), ['lock', 'create', 'ledger', 'BEGIN', 'second', 'insert', 'COMMIT', 'unlock']);
+  const noop = new FakeClient();
+  noop.rows = migrations;
+  await runMigrations(noop, dir);
+  assert.deepEqual(operations(noop), ['lock', 'create', 'ledger', 'unlock']);
+  assert.equal(noop.ended, true);
+});
+
+test('runner fails closed on lock contention and ledger mismatch', async (t) => {
+  const dir = await fixture(t, { '0001_first.sql': 'first' });
+  const busy = new FakeClient();
+  busy.locked = false;
+  await assert.rejects(runMigrations(busy, dir), { message: 'Migration lock acquisition failed' });
+  assert.deepEqual(operations(busy), ['lock', 'unlock']);
+  assert.equal(busy.ended, true);
+  const mismatch = new FakeClient();
+  mismatch.rows = [{ version: '0001', filename: 'wrong', checksum: 'wrong' }];
+  await assert.rejects(runMigrations(mismatch, dir), { message: 'Migration ledger validation failed' });
+  assert.deepEqual(operations(mismatch), ['lock', 'create', 'ledger', 'unlock']);
+  assert.equal(mismatch.ended, true);
+});
+
+test('runner stops and rolls back on migration or ledger insert failure, preserving failure if rollback fails', async (t) => {
+  const dir = await fixture(t, { '0001_first.sql': 'first', '0002_second.sql': 'second' });
+  for (const failed of ['BEGIN', 'first', 'insert']) {
+    const client = new FakeClient();
+    client.failures = new Set([failed, 'ROLLBACK', 'unlock', 'end']);
+    await assert.rejects(runMigrations(client, dir), { message: 'Migration execution failed' });
+    assert.deepEqual(operations(client).slice(-2), ['ROLLBACK', 'unlock']);
+    assert.equal(operations(client).includes('second'), false);
+    assert.equal(operations(client).includes('COMMIT'), false);
+    assert.equal(client.ended, true);
+  }
+});
+
+test('runner never retries an uncertain COMMIT and attempts rollback and cleanup', async (t) => {
+  const dir = await fixture(t, { '0001_first.sql': 'first', '0002_second.sql': 'second' });
+  const client = new FakeClient();
+  client.failures.add('COMMIT');
+  await assert.rejects(runMigrations(client, dir), { message: 'Migration commit outcome is uncertain', stack: undefined });
+  assert.deepEqual(operations(client), ['lock', 'create', 'ledger', 'BEGIN', 'first', 'insert', 'COMMIT', 'ROLLBACK', 'unlock']);
+  assert.equal(client.ended, true);
+});
+
+test('runner reports sanitized unlock and cleanup failures and always ends the client', async (t) => {
+  const dir = await fixture(t, { '0001_first.sql': 'first' });
+  for (const failure of ['unlock', 'end', 'unlocked-false']) {
+    const client = new FakeClient();
+    if (failure === 'unlocked-false') client.unlocked = false;
+    else client.failures.add(failure);
+    await assert.rejects(runMigrations(client, dir), {
+      message: failure === 'end' ? 'Migration client cleanup failed' : 'Migration unlock failed',
+    });
+    assert.equal(client.ended, true);
+  }
+});
+
+test('runner sanitizes discovery and client failures and attempts cleanup even before lock acquisition', async (t) => {
+  const empty = await fixture(t);
+  const client = new FakeClient();
+  await assert.rejects(runMigrations(client, empty), { message: 'Migration discovery failed' });
+  assert.deepEqual(operations(client), ['unlock']);
+  assert.equal(client.ended, true);
+  const invalid = await fixture(t, { '0001_first.sql': Buffer.from([0xff]) });
+  const badBytes = new FakeClient();
+  await assert.rejects(runMigrations(badBytes, invalid), { message: 'Migration discovery failed' });
+  assert.deepEqual(operations(badBytes), ['unlock']);
+  const dir = await fixture(t, { '0001_first.sql': 'first' });
+  for (const [failed, message] of [['lock', 'Migration lock acquisition failed'], ['create', 'Migration ledger setup failed'], ['ledger', 'Migration ledger validation failed']]) {
+    const failing = new FakeClient();
+    failing.failures.add(failed);
+    await assert.rejects(runMigrations(failing, dir), { message });
+    assert.equal(operations(failing).at(-1), 'unlock');
+    assert.equal(failing.ended, true);
+  }
 });
