@@ -73,7 +73,9 @@ These limits do not stop attempts spread across many accounts, instances, or res
 
 ### PostgreSQL startup readiness (not a supported runtime)
 
-PostgreSQL repositories are not implemented: selecting `postgres` **never starts the API**, including when readiness succeeds; it exits with an unsupported-runtime error until `DB-04D`. Do not change production configuration or connect to any service on the basis of this foundation. SQLite remains the default and `DATABASE_PATH` is unchanged.
+Standalone PostgreSQL user, book and review repositories exist behind injected clients and have fake-client tests, but are not wired into the application. Provider composition and runtime pool management remain unimplemented. Selecting `postgres` **never starts the API**, including when readiness succeeds; it exits with an unsupported-runtime error. PostgreSQL SQL, collation, authentication parity and runtime behavior have not been validated against a real server. Do not change production configuration or connect to any service on the basis of this foundation. SQLite remains the default and `DATABASE_PATH` is unchanged.
+
+Book title, author and genre elements and review comments reject embedded U+0000 at request validation. Genre elements also reject unpaired UTF-16 surrogates, while valid pairs are accepted. These rules apply to both providers; existing stored records are not changed. PostgreSQL search, wildcard and JSONB genre parity remain unverified against a real server.
 
 The PostgreSQL readiness configuration requires `DATABASE_URL` with a `postgres` or `postgresql` URL containing host, database, username and password, and `POSTGRES_TLS=verify-full`. URL query parameters and inherited `PG*` variables are rejected. TLS uses certificate and hostname verification with the Node trust store; no insecure TLS mode is provided. Do not log or publish the URL. The client has five-second connection, query and server statement timeouts; each readiness operation and cleanup also has a five-second bound. A stalled cleanup is reported as a failure, not proof that an unresponsive underlying client closed.
 

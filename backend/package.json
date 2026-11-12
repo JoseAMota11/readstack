@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "npx tsc",
-    "test": "node --import tsx --test tests/config.test.ts tests/auth.test.ts tests/auth.rate-limit.test.ts tests/auth.ip-rate-limit.test.ts tests/books.ownership.test.ts tests/books.filters-pagination.test.ts tests/books.export.test.ts tests/reviews.ownership.test.ts tests/async-data-access.test.ts tests/compressed-json.test.ts tests/migrations.test.ts tests/migration-cli.test.ts tests/database-readiness.test.ts",
+    "test": "node --import tsx --test tests/config.test.ts tests/auth.test.ts tests/auth.rate-limit.test.ts tests/auth.ip-rate-limit.test.ts tests/books.ownership.test.ts tests/books.filters-pagination.test.ts tests/books.export.test.ts tests/reviews.ownership.test.ts tests/async-data-access.test.ts tests/compressed-json.test.ts tests/migrations.test.ts tests/migration-cli.test.ts tests/database-readiness.test.ts tests/postgres-user.test.ts tests/postgres-review.test.ts tests/postgres-book.test.ts tests/database-text-compatibility.test.ts",
     "migrate:local:ts": "node --import tsx src/migrations/cli.ts",
     "migrate:local": "node dist/migrations/cli.js",
     "test:security": "node --import tsx --test tests/security/sec04-review-ownership.probes.test.ts"
