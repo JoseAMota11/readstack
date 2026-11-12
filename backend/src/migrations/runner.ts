@@ -8,7 +8,7 @@ export interface MigrationClient {
 }
 
 // Fixed signed bigint advisory-lock namespace for ReadStack migrations (ASCII "READSTAK").
-const LOCK_KEY = '5928216246214738251';
+export const MIGRATION_LOCK_KEY = '5928216246214738251';
 
 function safeError(message: string): Error {
   const error = new Error(message);
@@ -29,7 +29,7 @@ export async function runMigrations(client: MigrationClient, directory: string):
     const sql = migrations.map((migration) => decoder.decode(migration.bytes));
 
     stage = 'Migration lock acquisition failed';
-    const lock = await client.query('SELECT pg_try_advisory_lock($1::bigint) AS locked', [LOCK_KEY]);
+    const lock = await client.query('SELECT pg_try_advisory_lock($1::bigint) AS locked', [MIGRATION_LOCK_KEY]);
     if (lock.rows.length !== 1 || lock.rows[0].locked !== true) throw new Error();
     locked = true;
 
@@ -69,7 +69,7 @@ export async function runMigrations(client: MigrationClient, directory: string):
   } finally {
     // Also attempt unlock after an uncertain acquisition, or after contention.
     try {
-      const result = await client.query('SELECT pg_advisory_unlock($1::bigint) AS unlocked', [LOCK_KEY]);
+      const result = await client.query('SELECT pg_advisory_unlock($1::bigint) AS unlocked', [MIGRATION_LOCK_KEY]);
       if (locked && (result.rows.length !== 1 || result.rows[0].unlocked !== true)) throw new Error();
     } catch {
       if (!failure) failure = safeError('Migration unlock failed');

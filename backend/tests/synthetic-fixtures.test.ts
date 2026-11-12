@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { planSyntheticInitialization, refuseSyntheticReset, syntheticFixtures } from '../src/migrations/synthetic-fixtures';
+import { planSyntheticInitialization, syntheticFixtures } from '../src/migrations/synthetic-fixtures';
 
 const approved = 'I_APPROVE_SYNTHETIC_PLANNING';
 
@@ -35,8 +35,4 @@ test('fixtures have unique identifiers, ownership relationships, reviews and fav
   for (const book of books) assert.ok(users.some((user) => user.id === book.user_id));
   for (const review of reviews) assert.ok(books.some((book) => book.id === review.book_id && book.user_id === review.user_id));
   assert.ok(users.every((user) => books.some((book) => book.user_id === user.id) && reviews.some((review) => review.user_id === user.id)));
-});
-
-test('reset always refuses, irrespective of any purported target or authorization', () => {
-  assert.throws(() => refuseSyntheticReset(), /not implemented/);
 });

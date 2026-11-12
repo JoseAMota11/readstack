@@ -1,4 +1,4 @@
-// DB-05 preparation only: pure data and planning, deliberately no database client or CLI.
+// Pure fixture and planning logic; database operations are separate and opt-in.
 // These non-login accounts must never be used for authentication testing.
 const time = '2026-01-01T00:00:00.000Z';
 const alice = '00000000-0000-4000-8000-000000000001';
@@ -27,8 +27,8 @@ export function syntheticFixtures() {
 
 export type SyntheticSnapshot = ReturnType<typeof syntheticFixtures>;
 
-// Exact ordered snapshots only. A future database adapter must normalize types/order,
-// verify the complete schema and target independently, and serialize check and write.
+// Exact ordered snapshots only. Callers must normalize types/order, verify the schema
+// and target independently, and serialize check and write.
 export function planSyntheticInitialization(optIn: unknown, snapshot: SyntheticSnapshot): 'insert' | 'unchanged' {
   if (optIn !== 'I_APPROVE_SYNTHETIC_PLANNING') throw new Error('Synthetic planning not approved');
   if (!snapshot || !Array.isArray(snapshot.users) || !Array.isArray(snapshot.books) || !Array.isArray(snapshot.reviews)) {
@@ -37,9 +37,4 @@ export function planSyntheticInitialization(optIn: unknown, snapshot: SyntheticS
   if (!snapshot.users.length && !snapshot.books.length && !snapshot.reviews.length) return 'insert';
   if (JSON.stringify(snapshot) === JSON.stringify(syntheticFixtures())) return 'unchanged';
   throw new Error('Nonempty or changed synthetic snapshot rejected');
-}
-
-// There is intentionally no destructive operation until target verification is implemented.
-export function refuseSyntheticReset(): never {
-  throw new Error('Synthetic reset is not implemented; target cannot be independently verified');
 }
