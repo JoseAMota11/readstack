@@ -2,11 +2,20 @@
 
 **Last updated:** 2026-11-12
 **Current phase:** Persistence architecture design; not a production-release or security approval.
-**Active task:** `DB-03` technical architecture and initial schema specification approved under `D-022`; implementation authorization and acceptance remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Active task:** `DB-03` remains open: initial PostgreSQL migration tooling is committed and owner-reported disposable integration validation is recorded below; acceptance remains incomplete. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
-## DB-03 product and technical decision handoff
+## DB-03B.4 owner-reported PostgreSQL integration validation
+
+- The initial PostgreSQL migration, migration discovery, runner and local-only CLI are committed. The following observations are owner-reported manual evidence, not tests executed or independently verified by this agent.
+- The owner used disposable Ubuntu WSL2 container `readstack-db03b4` (ID prefix `e58e9fb15aa1`), image `postgres:17`, observed server version 17.11, endpoint `127.0.0.1:55483`, database `readstack_disposable_db03b4`, and role `readstack_db03b4_test`. No conventional Docker mounts were configured; data used a 256 MiB tmpfs at `/var/lib/postgresql/data`, automatic restart was disabled, and limits were 512 MiB memory and 1 CPU. The role was created via `POSTGRES_USER` and is a PostgreSQL superuser, **not** a least-privilege test role.
+- Before execution, the public schema contained zero tables. The initial CLI invocation completed successfully and produced `users`, `books`, `reviews` and `schema_migrations`. The ledger contained one entry: version `0001`, filename `0001_initial_schema.sql`, SHA-256 `eebd5434f261f2974edccc1eb8cc6c91137f1f5567fbe2d5273a6810a05bb085`, applied at `2026-11-12 16:44:34.555922+00`; the owner reported an exact checksum match with the repository SQL file. After a second invocation, the ledger still contained exactly one row with the original timestamp; the second process exit code was not independently confirmed.
+- The owner inspected the expected tables, eight observed indexes, primary and unique keys, JSON-array genre, reading-status and review-rating checks, composite review/book ownership foreign key, and `ON DELETE CASCADE` relationships. Column inspection confirmed UUID keys, `jsonb` genre, nullable description, `pending` reading-status and `false` favorite defaults, timestamp with time zone fields, and approved rating types.
+- In a synthetic transaction, a cross-owner review insertion was rejected with SQLSTATE `23503`, a same-owner review was accepted, and the transaction was rolled back; the owner reported a cleanup check of zero users, books and reviews. In a separate synthetic cascade transaction, deleting a user after inserting one user, book and review yielded zero of each, followed by `ROLLBACK`.
+- This evidence covers the observed disposable database structure and selected synthetic behavior, not all `DB-03` acceptance criteria. Migration failure and rollback, concurrent advisory locking, operational recovery/reset, provider connectivity, backups and production readiness remain untested or unverified. The next step is to scope the remaining `DB-03` validation and obtain authorization where required; no deployment is authorized. This update changes only `PROGRESS.md`; the pre-existing `backend/library.db` modification was not inspected or changed.
+
+## DB-03 product and technical decision handoff (historical)
 
 - The owner approved the exact initial PostgreSQL column types, nullability, defaults, relationships, checks and owner-scoped listing indexes recorded in `PLAN.md`. This clarifies the schema specification only; it does not implement or validate PostgreSQL, authorize provisioning or deployment, or complete `DB-03`. The initial migration, migration runner and isolated synthetic validation remain future work requiring authorization as applicable.
 - Owner-approved `D-021` records optional descriptions and reading status, including normalization, PATCH behavior, status values and default, edit-form changes, card display, owner-scoped filtering, and coordinated CSV export. Functional/API/UI work follows PostgreSQL infrastructure validation and separate feature-increment approval; existing responses, validation, CSV headers and UI behavior remain unchanged until then.
@@ -110,7 +119,7 @@ Functional modernization handoff: the locally committed FIX-02 work comprises A 
 - Frontend: Next.js 16.4.6, React 19.3.1, TypeScript, App Router, Ant Design 5.29.3, Tailwind CSS.
 - Backend: Express 4, TypeScript, Zod, bcrypt, JWT, and `better-sqlite3`.
 - SQLite uses relative path `library.db`; `backend/library.db` is tracked by Git.
-- Schema creation occurs at module load; no migrations exist.
+- SQLite schema creation occurs at module load; the initial PostgreSQL migration and local-only runner are now committed, as noted above.
 - Authentication uses a six-hour JWT in a JavaScript-readable `token` cookie, sent as a Bearer token.
 - Proxy covers `/` and `/book/*`; public authentication routes remain accessible. JWT claims are decoded only for navigation and expiry; API verification remains authoritative. The login page checks a plausible session with an authenticated API read and uses safe `replace` navigation after verification or login; verification failure offers recovery without deleting a valid session.
 - Review listing requires book ownership and filters reviews by owner. Creation, update, and deletion use token-derived identity and enforce the stored book relationship; inaccessible resources return a generic 404.
@@ -225,7 +234,7 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
-Obtain separate authorization before implementing the `D-022` schema and migration design in `PLAN.md`; resolve remaining operational details and validate with synthetic data. Then proceed with database access and synthetic validation before the separately approved `D-021` feature increment. Do not create schemas, provision services or implement migrations without separate authorization. `DB-03` remains open until its implementation and acceptance criteria are verified.
+The earlier handoff called for separate authorization before implementing the `D-022` schema and migration design. The initial migration tooling is now committed and the owner-reported disposable validation is recorded above. Scope remaining `DB-03` checks and operational details, obtaining separate authorization as applicable, before the separately approved `D-021` feature increment. `DB-03` remains open until its implementation and acceptance criteria are verified.
 
 The latest owner-reported Back/Forward check did not reproduce the earlier login flash. Further investigation of navigation or observable cross-user book and review mutation denial using synthetic accounts and isolated local services is optional for `TEST-02` and `SEC-05`; it does not authorize a deployment.
 Continue browser validation of the observer with synthetic accounts and isolated services, including suspended tabs, back-forward cache restoration, synthetic token expiry, deliberately missed channel delivery, and server-side revocation. Design a separate private-state exposure boundary before using the observer for filter retention; observer notifications alone do not guarantee that retained UI cannot flash or that all changes are detected.
