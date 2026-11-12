@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** `DB-04H` focused disconnected provider-parity and security assessment; not a production-release or security approval.
+**Current phase:** `DB-04I` opt-in live parity/security harness preparation; not live validation, a production-release or security approval.
 **Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` remains open for PostgreSQL repositories and integration, and `DB-05` repeatable synthetic initialization/reset remains open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-04I live parity/security harness preparation
+
+- Prepared `backend/tests/integration/postgres-parity-security.ts` and its separately authorized disposable-target procedure `backend/tests/integration/DB-04I.md`. The harness is excluded from ordinary tests. It shares the DB-04H SQLite matrix, compares synthetic in-memory SQLite with PostgreSQL repository queries, and prepares JSONB, case-sensitive email, malformed-ID, cross-user and one real database-error HTTP check. It uses a single transaction and savepoints with best-effort rollback, loopback listener, bounded operations and target/session guards. The deliberately induced division-by-zero replaces a repository query via an adapter and does not prove sanitization of every real failure or server log. No live execution or parity result is claimed.
+- From `backend/` on Node 22: `fnm exec --using 22 npm run build` passed; `fnm exec --using 22 npm test` passed 136/136 including disconnected DB-04I guard tests; `fnm exec --using 22 npm run test:security` passed 3/3; `fnm exec --using 22 npx tsc --noEmit --strict --esModuleInterop --skipLibCheck --target es2022 --module commonjs src/types/express.d.ts tests/integration/db04i-guard.ts tests/integration/db04i-guard.test.ts tests/integration/postgres-parity-security.ts` passed after correcting test-only filter casts. The ordinary tests use synthetic SQLite and fake clients. No Docker, PostgreSQL, migration, shared service or production was contacted; the live harness was not invoked.
+- DB-04 remains open: separately approved live execution, independent target and post-run verification, review of any parity mismatch, and assessment of remaining provider configuration, readiness, safe logging and model-boundary evidence are needed. The uncommitted single-client transaction cannot verify committed cross-session visibility or concurrent uniqueness; broad real-driver error coverage and production connectivity remain unverified. DB-05–DB-08 remain open and no deployment is authorized. Exact approvals and stop conditions are in `backend/tests/integration/DB-04I.md`.
+- Changed `README.md`, `PROGRESS.md`, `backend/package.json`, `backend/tests/provider-parity-security.test.ts`; added `backend/tests/helpers/parity-cases.ts` and the four DB-04I integration files. Application code, API, authentication, migrations, schema, frontend and deployment configuration are intentionally untouched. The pre-existing modified `backend/library.db` was neither inspected nor intentionally changed. Work is unstaged and uncommitted.
 
 ## DB-04H disconnected parity and security assessment
 

@@ -9,6 +9,7 @@ import { createApplication } from '../src/application';
 import { composePostgres } from '../src/database/postgres-composition';
 import { PostgresBookRepository } from '../src/database/postgres-book';
 import { BooksFilters } from '../src/types/book.type';
+import { parityCases, parityGenres } from './helpers/parity-cases';
 
 const owner = '00000000-0000-4000-8000-000000000001';
 const other = '00000000-0000-4000-8000-000000000002';
@@ -19,18 +20,8 @@ test('SQLite search baseline and PostgreSQL parameter construction, including co
   const db = new Database(':memory:');
   try {
     db.exec('CREATE TABLE fixture (title TEXT, author TEXT, year INTEGER, genre TEXT)');
-    const genres = ['Quote"here', 'Back\\slash', '100%', 'under_score', 'Été', '😀', 'control\nline'];
-    db.prepare('INSERT INTO fixture VALUES (?, ?, ?, ?)').run('AbC Éclair 100%_done', 'Writer', 2024, JSON.stringify(genres));
-    const cases: [string, string | number, boolean][] = [
-      ['title', 'bC', true], ['title', 'a_c', true], ['title', 'a%c', true],
-      ['title', '100%_', true], ['title', 'éclair', false], ['title', 'ÉCLAIR', true],
-      ['title', '😀', false], ['author', 'RIT', true], ['year', 24, true], ['year', 19, false],
-      ['genre', '100%', true], ['genre', 'under_score', true], ['genre', 'été', false],
-      ['genre', 'ÉTé', true], ['genre', '😀', true], ['genre', 'Quote"here', false],
-      ['genre', 'Back\\slash', false], ['genre', 'control\nline', false],
-      ['genre', 'Quote%', true], ['genre', 'Back%', true],
-    ];
-    for (const [field, value, expected] of cases) {
+    db.prepare('INSERT INTO fixture VALUES (?, ?, ?, ?)').run('AbC Éclair 100%_done', 'Writer', 2024, JSON.stringify(parityGenres));
+    for (const [field, value, expected] of parityCases) {
       const pattern = field === 'genre' ? `%"${value}"%` : `%${value}%`;
       const found = db.prepare(`SELECT count(*) AS n FROM fixture WHERE ${field} LIKE ?`).get(pattern) as { n: number };
       assert.equal(Boolean(found.n), expected, `${field}: ${JSON.stringify(value)}`);
