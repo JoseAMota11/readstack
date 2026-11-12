@@ -1,12 +1,20 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-12
-**Current phase:** Persistence architecture design; not a production-release or security approval.
-**Active task:** `DB-03` remains open: initial PostgreSQL migration tooling is committed and owner-reported disposable integration validation is recorded below; acceptance remains incomplete. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Current phase:** PostgreSQL schema foundation qualified acceptance; not a production-release or security approval.
+**Active task:** `DB-03` is complete within its bounded foundation scope; `DB-04` application integration and fail-closed startup readiness and `DB-05` repeatable synthetic initialization/reset remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
-## DB-03B.4 owner-reported concurrent migration locking validation
+## DB-03 qualified acceptance
+
+- The owner assigns schema, migration foundation and runner-level ledger validation to `DB-03`; fail-closed application startup schema readiness remains required under `D-022` and belongs to `DB-04`. Implementing and validating repeatable synthetic initialization/reset belongs to `DB-05`. `DB-04` through `DB-08` remain open; this acceptance is not PostgreSQL production readiness.
+- Source inspection of `backend/migrations/0001_initial_schema.sql` matches the approved initial schema specification, including relationships, indexes, timestamps and genre representation. Inspection of migration discovery and runner source shows sequential checksummed migrations, applied-prefix ledger validation, advisory locking, transactional migration and ledger writes, and attempted rollback. The runner is not application startup readiness, and source inspection is not live validation.
+- Owner-reported disposable PostgreSQL evidence below covers initial migration, selected constraints, cross-owner isolation, cascade behavior, a failed-migration rollback and lock contention; it was not independently executed or verified in this documentation session. The fresh-database/no-record-transfer boundary remains in force. `README.md` documents guarded reset and failure/forward-fix guidance without claiming a tested reset or recovery procedure.
+- A live connection loss during COMMIT and its recovery remain unverified; rollback is attempted, not universally guaranteed. Repeatable reset, provider connectivity, application integration, staging, backup/restore and production cutover remain unverified. There are no remaining blockers to the explicitly bounded `DB-03` acceptance; these later-phase and recovery gaps remain open.
+- This documentation-only closeout changes `README.md`, `PLAN.md` and `PROGRESS.md`. No tests, builds, migrations, SQL, external services or production were used; the pre-existing `backend/library.db` modification was neither inspected nor changed. Next: `DB-04`, subject to applicable approvals; no deployment is authorized.
+
+## DB-03B.4 owner-reported concurrent migration locking validation (historical)
 
 - The owner reports a successful manual concurrency test, not independently executed or verified by this agent: exit code 0 and `RESULTADO: prueba de concurrencia satisfactoria`. The target was independent container `readstack-db03b4-rollback` (ID prefix `c78dd2d66843`), PostgreSQL 17.11 at `127.0.0.1:55484`, database `readstack_disposable_db03b4_rollback_01`, role `readstack_rollback_runner`. An external temporary migration directory contained only an exact-byte copy of `0001_initial_schema.sql`; the advisory lock key was `5928216246214738251`.
 - The harness checked target identity and the existing `0001` ledger. Session A acquired the session advisory lock; session B's actual migration runner was rejected with the expected sanitized contention error. After A released the lock, a new runner invocation succeeded without applying a migration. An independent connection confirmed the unchanged `0001` ledger, checksum and application timestamp, with no `0002` entry. This supersedes the earlier statement below that concurrent locking was unverified for this disposable scenario.
@@ -123,6 +131,7 @@
 | `SEC-01` | Explicit 64-hex JWT secret enforced before startup and app initialization in all environments; synthetic configuration and isolated SQLite regression tests pass locally. Runtime validation cannot establish randomness or uniqueness. |
 | `DB-01` | Cited read-only comparison of Neon and Supabase documented; provider restore discrepancy and operational unknowns remain open. |
 | `DB-02` | Owner selected Neon PostgreSQL; decision, alternative, fresh-database implications and rollback limitations recorded under `D-015`. |
+| `DB-03` | Schema and migration foundation accepted with qualifications above; application startup readiness and repeatable reset remain later work. |
 
 Frontend migration work is locally committed: Next.js 16 / React 19 (`78699d1`), the Ant Design `destroyOnHidden` correction (`639b590`), the middleware-to-Proxy convention migration (`cee9e10`), and authenticated-login navigation and recovery (`9a3a17a`). These increments do not complete `UPG-03`; no deployment or database migration was performed. A limited backend dependency security refresh is locally validated; it does not complete `UPG-02`.
 

@@ -87,7 +87,15 @@ For an approved target, configure these process environment variables without pu
 
 Remove inherited `PG*` variables first; the CLI rejects them. It does not load dotenv files or use `DATABASE_URL` or `DATABASE_PATH`. From `backend/`, **only after approval**, `npm run migrate:local:ts` invokes the TypeScript CLI; `npm run build` followed by `npm run migrate:local` invokes the compiled CLI. Neither ordinary startup nor build runs migrations.
 
-Migrations are forward-only and tracked with checksums: modifying an applied migration causes validation to fail. A failed or uncertain commit is not automatically retried; investigate the exact database and ledger before any further action. No tested backup, restore, rollback, recovery procedure, production readiness, or provider connectivity is implied by this CLI.
+Migrations are forward-only and tracked with checksums. Operational safeguards:
+
+- A disposable reset requires explicit approval, independently verified target identity, and confirmation that all target data is synthetic and disposable. No reset command has been tested; repeatable initialization and reset remain `DB-05` work.
+- After a failed migration, stop, preserve evidence, and independently verify the ledger and schema. The runner attempts rollback, but rollback is not guaranteed in every failure.
+- On a checksum mismatch, never edit the ledger or an already applied migration to force compatibility. Prefer reviewed sequential forward-fix migrations over destructive down-migrations.
+- On lock contention, do not forcibly unlock or terminate unidentified sessions.
+- If COMMIT's outcome is uncertain, do not blindly retry. Verify the actual schema and ledger from an independent connection; stop if they are inconsistent. Live connection-loss recovery during COMMIT has not been validated.
+
+Application rollback is not database recovery: rolling code back does not restore data or reverse database writes. No tested backup, restore, recovery procedure, production readiness, or provider connectivity is implied by this CLI.
 
 ### Frontend
 
