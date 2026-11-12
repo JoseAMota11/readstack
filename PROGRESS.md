@@ -2,9 +2,15 @@
 
 **Last updated:** 2026-11-12
 **Current phase:** Persistence architecture design; not a production-release or security approval.
-**Active task:** `DB-01` and `DB-02` documentation closeout; `DB-03` architecture design is next. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Active task:** `DB-03` architecture design and owner review; implementation and acceptance remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-03 product decision and design handoff
+
+- Owner-approved `D-021` records optional descriptions and reading status, including normalization, PATCH behavior, status values and default, edit-form changes, card display, owner-scoped filtering, and coordinated CSV export. Functional/API/UI work follows PostgreSQL infrastructure validation and separate feature-increment approval; existing responses, validation, CSV headers and UI behavior remain unchanged until then.
+- `PLAN.md` records the proposed columns, composite review/book ownership foreign key, and versioned SQL migration approach separately from the product approval. Unicode counting, search parity, date serialization, email collation, migration-runner operations and safe reset/recovery remain unresolved. Schema and migration implementation have not been approved by this documentation update.
+- `DB-03` remains open; no PostgreSQL schema, migration, database access or validation has been performed. This documentation-only handoff changes `PLAN.md` and `PROGRESS.md`; the pre-existing `backend/library.db` modification was not inspected or changed. No production access, provisioning, staging, commit, push, merge or deployment occurred.
 
 ## DB-01 and DB-02 closeout
 
@@ -217,7 +223,7 @@ The theme increment changes `DESIGN.md`, `README.md`, `PROGRESS.md`, `frontend/a
 
 ## Next recommended task
 
-Design `DB-03`: specify the fresh PostgreSQL schema, ownership constraints, indexes, timestamps, genre representation and versioned migration/rollback approach, using synthetic data only. Design is authorized; do not create schemas, provision services or implement migrations without separate authorization. `DB-03` remains open until its implementation and acceptance criteria are verified.
+Review the proposed `DB-03` schema and migration design in `PLAN.md`, resolve its open decisions, and obtain separate authorization before implementation. Then proceed with the schema foundation, database access and synthetic validation before the separately approved `D-021` feature increment. Do not create schemas, provision services or implement migrations without separate authorization. `DB-03` remains open until its implementation and acceptance criteria are verified.
 
 The latest owner-reported Back/Forward check did not reproduce the earlier login flash. Further investigation of navigation or observable cross-user book and review mutation denial using synthetic accounts and isolated local services is optional for `TEST-02` and `SEC-05`; it does not authorize a deployment.
 Continue browser validation of the observer with synthetic accounts and isolated services, including suspended tabs, back-forward cache restoration, synthetic token expiry, deliberately missed channel delivery, and server-side revocation. Design a separate private-state exposure boundary before using the observer for filter retention; observer notifications alone do not guarantee that retained UI cannot flash or that all changes are detected.
