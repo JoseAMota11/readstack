@@ -1,5 +1,5 @@
 import { TextDecoder } from 'node:util';
-import { discoverMigrations, LedgerEntry, planPendingMigrations } from './discovery';
+import { discoverMigrations, LedgerEntry, Migration, planPendingMigrations } from './discovery';
 
 // The caller supplies one dedicated PostgreSQL session; end must close/discard it.
 export interface MigrationClient {
@@ -16,7 +16,11 @@ function safeError(message: string): Error {
   return error;
 }
 
-export async function runMigrations(client: MigrationClient, directory: string): Promise<void> {
+export async function runMigrations(client: MigrationClient, directory: string, guard?: {
+  manifest: (migrations: readonly Migration[]) => void;
+  preflight: (client: MigrationClient) => Promise<void>;
+  exclusivePublicLedger?: boolean;
+}): Promise<void> {
   let failure: Error | undefined;
   let stage = 'Migration discovery failed';
   let locked = false;
@@ -27,14 +31,20 @@ export async function runMigrations(client: MigrationClient, directory: string):
     // Decode losslessly before changing the database; checksum and execution use the same bytes.
     const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
     const sql = migrations.map((migration) => decoder.decode(migration.bytes));
+    guard?.manifest(migrations);
 
     stage = 'Migration lock acquisition failed';
     const lock = await client.query('SELECT pg_try_advisory_lock($1::bigint) AS locked', [MIGRATION_LOCK_KEY]);
     if (lock.rows.length !== 1 || lock.rows[0].locked !== true) throw new Error();
     locked = true;
 
+    if (guard) {
+      stage = 'Migration preflight failed';
+      await guard.preflight(client);
+    }
     stage = 'Migration ledger setup failed';
-    await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
+    const ledgerTable = guard?.exclusivePublicLedger ? 'public.schema_migrations' : 'IF NOT EXISTS schema_migrations';
+    await client.query(`CREATE TABLE ${ledgerTable} (
       version text PRIMARY KEY,
       filename text NOT NULL,
       checksum text NOT NULL,
