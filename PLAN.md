@@ -328,7 +328,7 @@ A push or merge to `main` is a production action because Vercel Production and R
 |---|---|---|---|
 | `D-016` | Authentication and session architecture, including cross-origin transport, CORS, SameSite, and CSRF | Pending | `SEC-02`, `SEC-06`, `OPT-02` |
 | `D-017` | Supported upgrade targets and order | Pending | `UPG-02`, `UPG-03`, `UPG-04`; owner approved only the limited Express 4 and compatible transitive security refresh, not Zod 4 or bcrypt 6 |
-| `D-018` | Staging strategy and topology | Pending | Owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database for `DB-06`; implementation, access control, data policy, validation scope and $0 feasibility remain pending under `GOV-04`. This selection authorizes no provisioning, configuration, migration, deployment or restart. `DB-06` and production validation remain blocked on applicable decisions and approvals. |
+| `D-018` | Staging strategy and topology | Pending | Owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database for `DB-06`; approved invitation-controlled registration and accepted public API/login exposure for the first synthetic-only staging deployment. Complete implementation, validation scope and $0 feasibility remain pending under `GOV-04`. This selection authorizes no provisioning, configuration, migration, deployment or restart. `DB-06` and production validation remain blocked on applicable decisions and approvals. |
 | `D-019` | Future public self-registration policy | Pending | `PUB-01`, and any later registration change |
 
 `DISC-01`, `AUD-01`, `DOC-01`, `TEST-01`, `SEC-04`, and `TEST-03` are complete. `AUD-02` remains pending.

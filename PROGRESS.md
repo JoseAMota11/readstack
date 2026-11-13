@@ -6,6 +6,12 @@
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
+## Disconnected staging registration preparation
+
+- The owner approved invitation-controlled registration and accepted public API/login exposure for the first synthetic-only staging deployment. Optional `STAGING_REGISTRATION_SECRET` gates registration before body parsing and validation, after the existing IP limiter; absent configuration retains the Beta registration path. The account limiter, login, JWT, ownership and health check remain unchanged. Secret checks reject malformed and obvious weak patterns, but cannot establish randomness; operator-only provisioning and limitations are documented in `README.md`.
+- On Node 22.23.4, from `backend/`, `env -i HOME="$HOME" PATH="$PATH" TMPDIR=/tmp/opencode fnm exec --using 22 npm run build` passed; the same isolated environment with `npm test` passed 162/162 and `npm run test:security` passed 3/3. Tests use temporary/in-memory synthetic SQLite, injected PostgreSQL fakes and loopback HTTP; no hosted service, live PostgreSQL, Docker, migration, seed or reset was used. The pre-existing modified `backend/library.db` was not inspected or changed.
+- `GOV-04`, `DB-06` and `TEST-05` remain open. Staging secret configuration, deployment, synthetic account creation and live validation require separate authorization. No frontend or production configuration changed; work is unstaged and uncommitted.
+
 ## Disconnected staging CORS preparation
 
 - Added optional `CORS_ALLOWED_ORIGINS` to restrict browser origins for a future staging deployment; absent configuration preserves unrestricted CORS, invalid configuration fails application creation, and requests without Origin continue normally. CORS is not authentication or staging access control. No deployment or hosted configuration was changed; DB-06 and its decisions remain open.

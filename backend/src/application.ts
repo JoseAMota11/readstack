@@ -6,6 +6,8 @@ import userRouter from './routes/user.route';
 import bookRouter from './routes/book.route';
 import reviewRouter from './routes/review.route';
 import { AsyncHandlerError } from './middlewares/async-handler';
+import { stagingRegistrationGate } from './middlewares/staging-registration.middleware';
+import { registerLimiters } from './middlewares/auth-rate-limit.middleware';
 
 export function createApplication(repositories: Repositories) {
   const app = express();
@@ -13,6 +15,11 @@ export function createApplication(repositories: Repositories) {
 
   // Middlewares
   app.use(configureCors(process.env.CORS_ALLOWED_ORIGINS));
+  const registrationGate = stagingRegistrationGate(process.env.STAGING_REGISTRATION_SECRET);
+  if (registrationGate) {
+    app.locals.stagingRegistrationGate = true;
+    app.post('/api/v1/register', registerLimiters.ip, registrationGate);
+  }
   app.use(express.json());
 
   // Routes
