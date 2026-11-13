@@ -29,6 +29,7 @@ ReadStack is a multiuser personal book catalog for organizing collections and re
 
 - **Frontend:** Next.js 16.4.6 with App Router, React 19.3.1, and TypeScript. Ant Design 5.29.3 and Tailwind CSS 3 support the interface; client services communicate with the API.
 - **Backend:** Node.js, Express 4, and TypeScript. The REST API is organized into routes, middleware, controllers, and models, with Zod input validation.
+- **Health check:** Unauthenticated `GET /healthz` returns HTTP 200 with `{"status":"ok"}`. It is a liveness check and does not query the database; PostgreSQL startup readiness is separate.
 - **Data:** SQLite is the default, using `better-sqlite3` and creating its tables at startup. Experimental PostgreSQL repositories are composed into the application after read-only readiness succeeds. User, book, and review operations expose typed asynchronous contracts; SQLite and bcrypt still execute synchronously. The separate experimental PostgreSQL migration CLI is not part of application startup.
 - **Authentication and authorization:** bcrypt password hashing and JWT authentication. The frontend stores the token in a JavaScript-readable cookie and sends it as a Bearer token. The API verifies the token and checks book and review ownership; frontend navigation protection does not replace those checks.
 

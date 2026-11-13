@@ -16,6 +16,9 @@ export function createApplication(repositories: Repositories) {
   app.use(express.json());
 
   // Routes
+  app.get('/healthz', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
   app.use('/api/v1', userRouter);
   app.use('/api/v1', bookRouter);
   app.use('/api/v1', reviewRouter);
