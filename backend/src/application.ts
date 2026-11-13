@@ -1,7 +1,7 @@
 import './config/config';
 import express, { ErrorRequestHandler } from 'express';
 import { Repositories } from './database/composition';
-import cors from 'cors';
+import { configureCors } from './config/cors';
 import userRouter from './routes/user.route';
 import bookRouter from './routes/book.route';
 import reviewRouter from './routes/review.route';
@@ -12,7 +12,7 @@ export function createApplication(repositories: Repositories) {
   app.locals.repositories = repositories;
 
   // Middlewares
-  app.use(cors());
+  app.use(configureCors(process.env.CORS_ALLOWED_ORIGINS));
   app.use(express.json());
 
   // Routes

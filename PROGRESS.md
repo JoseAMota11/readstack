@@ -6,6 +6,11 @@
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
+## Disconnected staging CORS preparation
+
+- Added optional `CORS_ALLOWED_ORIGINS` to restrict browser origins for a future staging deployment; absent configuration preserves unrestricted CORS, invalid configuration fails application creation, and requests without Origin continue normally. CORS is not authentication or staging access control. No deployment or hosted configuration was changed; DB-06 and its decisions remain open.
+- Node 22 backend build and disconnected CORS HTTP tests passed. The security suite and full backend suite were not run because they use SQLite and this task prohibits database access. No database, hosted service or production was accessed. The pre-existing modified `backend/library.db` remains untouched. Changes are unstaged and uncommitted.
+
 ## DB-06 owner-reported hosted schema and application role
 
 - The owner reports that one explicitly authorized execution of `migrate:staging-db06` completed successfully against dedicated Neon staging: project `sparkling-cherry-00280862`, branch `br-crimson-block-bcr4joma`, endpoint `ep-still-hall-bcrtmjpj`, database `neondb`, PostgreSQL 18.7. A separate owner-executed `psql` session using TLS `verify-full` reportedly confirmed the public tables `users`, `books`, `reviews` and `schema_migrations`, with zero rows in each application table.
