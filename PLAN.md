@@ -1,9 +1,24 @@
 # Modernization Plan — Biblioteca Personal
 
 **Status:** Active
-**Last updated:** 2026-11-09
+**Last updated:** 2026-11-14
 **Owner:** Repository owner
-**Scope:** Incremental modernization of the existing Next.js/Express application.
+**Scope:** Finish the existing Next.js/Express modernization as ReadStack Portfolio 1.0.
+
+## Portfolio 1.0 — finite completion scope
+
+**Owner decision (2026-11-14):** ReadStack is a learning and portfolio project, not a commercial product or a service for real users. Finish the existing modernization, demonstrate technical competence, and move on to other projects. Portfolio completion is not production readiness or approval to deploy. The historical roadmap, task IDs, decisions, acceptance criteria and evidence below remain intact; its production-oriented goals and priorities do not create additional Portfolio 1.0 requirements.
+
+Complete these four workstreams in order, using small, reviewable increments:
+
+1. **Demo boundary and material security risks.** Decide whether the portfolio uses a local synthetic-data demonstration and screenshots only or also offers a public interactive demo. Review the existing ownership and security evidence and the risks relevant to the chosen boundary. For a public demo, separately authorized verification must cover the actual intended deployment, including configured JWT signing, authentication abuse and rate limits, registration exposure, XSS and JavaScript-readable tokens, dependency vulnerabilities, server-side isolation, safe errors and request limits. Synthetic data and CORS alone do not prevent abuse. **Acceptance:** the owner-selected boundary, evidence and residual risks are recorded; material blockers are resolved within approved scope or the interactive demo is withheld. Hosted access, configuration, secrets, registration policy, session transport, API contract changes and deployment require separate authorization and applicable decisions.
+2. **Final Archival Modern UX/UI validation.** After the demo boundary is set, review the existing library, detail/reviews, authentication, book forms and dialogs in light and dark modes on desktop and narrow mobile. Check loading, error, empty and missing-cover states, UI-03.2, keyboard and focus, labels and announcements, reduced motion, representative contrast, 200% text resizing and 400% zoom/reflow. Fix only material usability, accessibility or visual defects. **Acceptance:** the owner signs off the representative walkthrough and UI-03.2; results and remaining minor limitations are recorded without claiming comprehensive accessibility certification.
+3. **Final functional and security regression.** After any necessary fixes, run the existing frontend lint, tests, type check and build, and backend build, tests and security probes with isolated synthetic data. Use `docs/RELEASE_SMOKE.md` for a bounded manual check of registration, login/logout, invalid/expired sessions, private routes, book CRUD, reviews, favorites, filters, pagination, per-book CSV, cross-user denial, and applicable retry and draft recovery. **Acceptance:** commands, results, environment and manual outcomes are recorded; material regressions are fixed and relevant checks rerun. Do not inspect or modify the tracked database; hosted checks require separate authorization. Prior owner-reported staging evidence is not a substitute for this final regression.
+4. **README, screenshots and portfolio presentation.** After validation, update the README and relevant project documentation with the current architecture, verified setup and test commands, chosen demo boundary and honest limitations. Review existing screenshots and replace or supplement only as needed to represent the finished desktop/mobile and light/dark interface using synthetic data. **Acceptance:** a reviewer can understand, see and locally run the project from accurate documentation; screenshots contain no credentials or private data; a public demo is linked only if separately authorized and validated.
+
+**Deferred, not waived:** Production recovery and cutover (`GOV-03`, `DB-07`, `DB-08`, `DB-09`, `DOC-03`), broader operational verification, and production-oriented authentication, CORS and dependency programs remain open as applicable if the project is ever used as a real service. Optional cosmetic polish, broad upgrades and future features are not portfolio completion gates. Qualified `DB-06` staging acceptance and prior owner-reported evidence remain limited to their recorded scope; neither they nor portfolio completion establish production readiness.
+
+**Stop scope expansion:** Do not add features, pursue architecture migrations or conduct broad technical investigations for Portfolio 1.0. View Transitions were deliberately abandoned after the feasibility stop condition and must not be reopened, including alternative implementations, fetching rewrites or animation workarounds. Existing public registration and security invariants remain in force unless separately approved.
 
 ## 1. How to use this plan
 
@@ -17,6 +32,8 @@ Status:
 - `[!]` Blocked
 
 Priority:
+
+The following labels describe the historical production-oriented roadmap, not Portfolio 1.0 completion priority.
 
 - **P0** — Required before a production database cutover or before relying on the application for real user data.
 - **P1** — Required for a maintainable, documented, upgradeable baseline.

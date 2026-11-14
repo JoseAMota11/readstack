@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
 **Last updated:** 2026-11-14
-**Current phase:** Behavior-preserving Archival Modern frontend UX/UI modernization may resume as previously approved; `TEST-05` and `DB-06` are complete within their documented scopes. This is not approval for production release, cutover or security.
-**Active task:** `DB-03` through `DB-06` are complete within their documented scopes. `DB-07` and `DB-08` remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
+**Current phase:** Portfolio 1.0 completion — finish the existing modernization as a learning and portfolio project, not a commercial product or service for real users.
+**Active task:** First workstream: decide the demo boundary and assess material security risks for that boundary. Then complete final Archival Modern UX/UI validation, functional and security regression, and README/screenshots/presentation, in that order; see `PLAN.md`. No workstream is completed by this documentation update.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## Portfolio 1.0 handoff
+
+- The owner confirmed the finite portfolio objective. The next decision is local synthetic-data demonstration and screenshots only versus a public interactive demo. A public demo needs separately authorized, target-specific security verification; if material risks cannot be resolved within approved scope, withhold it.
+- `TEST-05` and `DB-06` remain complete only within their documented scopes, with qualified owner-reported staging evidence. Portfolio completion is distinct from staging acceptance and does not establish production readiness, recovery, cutover or security certification. `DB-07` and `DB-08` remain open; `SEC-03` remains partial, `SEC-01` deployed configuration is unverified, and UI-03.2 awaits owner review.
+- View Transitions were deliberately abandoned and must not be reopened. Do not expand completion into new features, architecture migrations or broad investigations.
+- This handoff changes only `PLAN.md` and `PROGRESS.md`. Application code, deployment configuration and the pre-existing modified `backend/library.db` are intentionally untouched. No application tests, browser checks, hosted access or deployment were performed. Stop for owner review before starting the first workstream; hosted or production actions require separate authorization.
 
 ## View Transitions closeout
 
