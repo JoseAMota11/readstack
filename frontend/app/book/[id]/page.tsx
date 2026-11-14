@@ -345,7 +345,7 @@ function ActionBar({
           icon={book.isFavorite && !favoriteUncertain ? <StarFilled /> : <StarOutlined />}
           onClick={handleFavorite}
           disabled={pending || favoriteUncertain}
-        ><span className="book-detail-action-label">{favoriteUncertain ? 'Favorito' : book.isFavorite ? 'Favorito' : 'No favorito'}</span></Button>
+        ><span className="book-detail-action-label">Favorito</span></Button>
       {favoriteUncertain && <span className="book-detail-favorite-status">Estado sin confirmar</span>}
       {favoriteUncertain && <><span className="sr-only" role="status">No se pudo confirmar el cambio de favoritos. Recarga el estado para comprobarlo.</span><Button onClick={handleFavoriteRecovery} disabled={pending}>Recargar estado</Button></>}
     </div>
