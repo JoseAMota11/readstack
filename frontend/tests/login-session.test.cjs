@@ -39,6 +39,7 @@ Module._load = function (request, parent, ...args) {
   return load.call(this, request, parent, ...args);
 };
 const Login = require('../app/login/page.tsx').default;
+const LoadingStatus = require('../components/loading-status.tsx').default;
 
 function find(node, predicate) {
   if (!node || typeof node !== 'object') return null;
@@ -85,8 +86,13 @@ test('login checks session, redirects safely, and provides recovery and replace 
   try {
     const app = harness();
     let tree = app.render();
+    const status = find(tree, (node) => node.type === LoadingStatus);
+    assert.equal(status.props.message, 'Comprobando sesión...');
+    assert.equal(LoadingStatus(status.props).props.role, 'status');
+    assert.ok(find(tree, (node) => node.props?.id === 'login-session-status'));
     assert.equal(find(tree, (node) => node.type === 'form').props.style.display, 'none');
     app.mount();
+    assert.ok(find(app.render(), (node) => node.type === LoadingStatus));
     resolveCheck('unavailable');
     await new Promise(setImmediate);
     tree = app.render();

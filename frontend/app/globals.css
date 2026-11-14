@@ -185,6 +185,14 @@ body {
   padding: clamp(1rem, 4vw, 2rem);
 }
 
+.edit-book-loading {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+
 .edit-book-page .create-book-form {
   padding: clamp(1rem, 4vw, 2rem);
   border: 1px solid var(--border-subtle);
@@ -914,6 +922,30 @@ body {
 .library-state p {
   max-width: 36rem;
   overflow-wrap: anywhere;
+}
+
+.library-loading-icon {
+  color: var(--accent);
+  font-size: 1.75rem;
+}
+
+.content-loading-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .library-loading-icon {
+    animation: library-loading-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes library-loading-pulse {
+  50% { opacity: 0.55; }
 }
 
 .library-state-error {

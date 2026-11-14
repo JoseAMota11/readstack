@@ -14,7 +14,7 @@ import {
   StarFilled,
   StarOutlined,
 } from '@ant-design/icons';
-import { Button, Modal, Spin, Tag } from 'antd';
+import { Button, Modal, Tag } from 'antd';
 import { Dispatch, SetStateAction, use, useEffect, useRef, useState, ViewTransition } from 'react';
 import booksGenresOptions from '@/books-genres.json';
 import { useMessage } from '@/context/message.context';
@@ -23,6 +23,7 @@ import Reviews from '@/components/reviews';
 import { coverTransitionName } from '@/utils/cover-transition';
 import Link from 'next/link';
 import ReviewAverage from '@/components/review-average';
+import LoadingStatus from '@/components/loading-status';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -92,7 +93,7 @@ function BookDetails({ id }: { id: string }) {
       <div className="book-detail-navigation">
         <Link href="/" className="book-detail-return"><span aria-hidden="true">←</span> Volver a la biblioteca</Link>
       </div>
-      {loadError ? <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div> : !book ? <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div> : (
+      {loadError ? <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div> : !book ? <LoadingStatus className="content-loading-status" message="Cargando libro..." /> : (
       <div className="book-detail">
         <ViewTransition name={coverTransitionName(book.id)} default="none" share="book-cover">
           <DetailCover key={book.coverImage} src={book.coverImage} title={book.title} />

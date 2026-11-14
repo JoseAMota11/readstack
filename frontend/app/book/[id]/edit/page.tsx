@@ -6,7 +6,8 @@ import { getOneBook, updateBook } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Checkbox, ConfigProvider, Input, InputNumber, Modal, Select, Spin } from 'antd';
+import { Button, Checkbox, ConfigProvider, Input, InputNumber, Modal, Select } from 'antd';
+import LoadingStatus from '@/components/loading-status';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -110,7 +111,11 @@ function EditBook({ id }: { id: string }) {
   }, [id, retry, setValue]);
 
   if (loadError) return <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div>;
-  if (!loaded) return <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div>;
+  if (!loaded) return (
+    <main className="edit-book-page edit-book-loading">
+      <LoadingStatus className="content-loading-status" message="Cargando libro..." />
+    </main>
+  );
 
   return (
     <main className="edit-book-page">

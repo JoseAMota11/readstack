@@ -5,6 +5,7 @@ import { getTokenDecoded } from '@/utils/cookies-handlers';
 import { Button, Input, Rate } from 'antd';
 import { AriaAttributes, cloneElement, isValidElement, ReactElement, useCallback, useEffect, useRef, useState } from 'react';
 import ReviewCard from './review-card';
+import LoadingStatus from './loading-status';
 import { deleteReview, getAllReviews, postReview } from '@/services/review.service';
 import { useMessage } from '@/context/message.context';
 import { readReviewDraft, writeReviewDraft } from '@/utils/review-draft';
@@ -185,8 +186,8 @@ function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: 
         </div>
       </div>
       <div className="review-published">
-        {uncertain && <div><p role="alert">No se pudo confirmar el resultado: puede que el cambio ya se haya aplicado. Actualiza y revisa las reseñas antes de volver a intentarlo manualmente. Si editaste el borrador durante el envío, puede ser distinto de lo enviado.</p><Button loading={refreshing} disabled={refreshing} onClick={() => void refreshForInspection()}>Actualizar reseñas</Button>{refreshing && <span role="status"> Actualizando reseñas...</span>}{inspected && !refreshing && <Button onClick={acknowledge}>Ya revisé las reseñas</Button>}</div>}
-        {listState === 'loading' && <p role="status">Cargando reseñas...</p>}
+        {uncertain && <div><p role="alert">No se pudo confirmar el resultado: puede que el cambio ya se haya aplicado. Actualiza y revisa las reseñas antes de volver a intentarlo manualmente. Si editaste el borrador durante el envío, puede ser distinto de lo enviado.</p><Button loading={refreshing} disabled={refreshing} onClick={() => void refreshForInspection()}>Actualizar reseñas</Button>{refreshing && listState !== 'loading' && <span role="status"> Actualizando reseñas...</span>}{inspected && !refreshing && <Button onClick={acknowledge}>Ya revisé las reseñas</Button>}</div>}
+        {listState === 'loading' && <LoadingStatus className="content-loading-status" message="Cargando reseñas..." />}
         {(listState === 'error' || listState === 'stale') && <div role={uncertain ? undefined : 'alert'}><p>{listState === 'stale' ? 'Las reseñas mostradas podrían no estar actualizadas.' : 'No se pudieron cargar las reseñas.'}</p>{!uncertain && <Button onClick={() => { if (!hasLoaded.current) setListState('loading'); void getReviews(); }}>Reintentar</Button>}</div>}
         {hasLoadedReviews && (reviews.length === 0 ? (
           listState === 'loaded' && <p className="review-empty">No has reseñado este libro. Expresa lo que piensas de él.</p>

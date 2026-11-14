@@ -2,6 +2,7 @@
 
 import AuthIdentity from '@/components/auth-identity';
 import AuthFieldError from '@/components/auth-field-error';
+import LoadingStatus from '@/components/loading-status';
 import { useMessage } from '@/context/message.context';
 import { loginSchema } from '@/schemas/login.schema';
 import { loginUser } from '@/services/login.service';
@@ -102,7 +103,7 @@ function LoginPage() {
         <style>{'#login-form { display: block !important; } #login-session-status { display: none !important; }'}</style>
         <p role="alert">Activa JavaScript para iniciar sesión.</p>
       </noscript>
-      {sessionState === 'checking' && <p id="login-session-status" role="status">Comprobando sesión...</p>}
+      {sessionState === 'checking' && <div id="login-session-status"><LoadingStatus className="content-loading-status" message="Comprobando sesión..." /></div>}
       {sessionState === 'unavailable' && (
         <div role="alert">
           <p>No se pudo comprobar la sesión.</p>

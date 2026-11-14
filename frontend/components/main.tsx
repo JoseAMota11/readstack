@@ -5,7 +5,8 @@ import Card from './card';
 import { useEffect, useState } from 'react';
 import { Book } from '@/types/book.type';
 import { useFilters } from '@/context/filters.context';
-import { Button, Pagination, Spin } from 'antd';
+import { Button, Pagination } from 'antd';
+import LoadingStatus from './loading-status';
 
 function Main() {
   const { filters, handleSetFilters, refresh } = useFilters();
@@ -51,7 +52,7 @@ function BookList({ filterKey, handleSetFilters }: { filterKey: string; handleSe
     </div>
   );
 
-  if (!result) return <div className="library-state" role="status" aria-label="Cargando libros"><Spin /> Cargando libros...</div>;
+  if (!result) return <LoadingStatus className="library-state" message="Cargando libros…" />;
 
   const { books, pagination } = result;
   const filters = JSON.parse(filterKey);

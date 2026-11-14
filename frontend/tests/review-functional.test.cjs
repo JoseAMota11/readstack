@@ -33,6 +33,7 @@ Module._load = function (request, parent, ...args) {
   return load.call(this, request, parent, ...args);
 };
 const Reviews = require('../components/reviews.tsx').default;
+const LoadingStatus = require('../components/loading-status.tsx').default;
 const ReviewCard = require('../components/review-card.tsx').default;
 const { formatReviewDate } = require('../utils/review-date.ts');
 const service = require('../services/review.service.ts');
@@ -47,6 +48,7 @@ function findAll(element, type) {
 function text(element) {
   if (typeof element === 'string') return element;
   if (!element || typeof element !== 'object') return '';
+  if (element.type === LoadingStatus) return text(LoadingStatus(element.props));
   return React.Children.toArray(element.props?.children).map(text).join(' ');
 }
 function button(tree, label) { return findAll(tree, Button).find((item) => text(item).includes(label)); }
@@ -317,6 +319,7 @@ for (const kind of ['create', 'delete']) {
         tree = h.render();
         assert.equal(loads, 2);
         assert.equal(findAll(tree, Card)[0].props.id, item.id);
+        assert.equal(findAll(tree, LoadingStatus).length, 0);
         assert.doesNotMatch(text(tree), /podrían no estar actualizadas|No se pudieron cargar/);
         assert.equal(button(tree, 'Reintentar'), undefined);
 
@@ -360,12 +363,15 @@ test('review list distinguishes initial loading, failure, and successful empty l
   services.getAllReviews = () => ++loads === 1 ? initial.promise : retry.promise;
   const h = harness(); try {
     let tree = h.render();
+    assert.equal(findAll(tree, LoadingStatus)[0].props.message, 'Cargando reseñas...');
+    assert.equal(LoadingStatus(findAll(tree, LoadingStatus)[0].props).props.role, 'status');
     assert.match(text(tree), /Cargando reseñas/);
     assert.doesNotMatch(text(tree), /No has reseñado/);
     initial.resolve(['offline', undefined]); await flush(); tree = h.render();
     assert.match(text(tree), /No se pudieron cargar/);
     assert.doesNotMatch(text(tree), /No has reseñado/);
     button(tree, 'Reintentar').props.onClick(); tree = h.render();
+    assert.equal(findAll(tree, LoadingStatus)[0].props.message, 'Cargando reseñas...');
     assert.match(text(tree), /Cargando reseñas/);
     retry.resolve([undefined, []]); await flush(); tree = h.render();
     assert.match(text(tree), /No has reseñado/);
@@ -486,8 +492,8 @@ test('uncertain creation has one guarded recovery action and keeps later draft e
 });
 
 test('uncertain initial load error has one recovery control and failed refresh cannot unlock it', async () => {
-  const store = setup(); let loads = 0;
-  services.getAllReviews = async () => { loads++; return ['offline', undefined]; };
+  const store = setup(); let loads = 0; const refresh = deferred();
+  services.getAllReviews = () => ++loads === 1 ? Promise.resolve(['offline', undefined]) : refresh.promise;
   services.postReview = async () => { throw new Error('offline'); };
   const h = harness(); try {
     h.render(); await flush(); let tree = h.render();
@@ -497,7 +503,10 @@ test('uncertain initial load error has one recovery control and failed refresh c
     assert.match(text(tree), /No se pudieron cargar/);
     assert.equal(button(tree, 'Reintentar'), undefined);
     assert.equal(findAll(tree, Button).filter((b) => text(b).includes('Actualizar reseñas')).length, 1);
-    button(tree, 'Actualizar reseñas').props.onClick(); await flush(); tree = h.render();
+    button(tree, 'Actualizar reseñas').props.onClick(); tree = h.render();
+    assert.equal(findAll(tree, LoadingStatus).length, 1);
+    assert.doesNotMatch(text(tree), /Actualizando reseñas/);
+    refresh.resolve(['offline', undefined]); await flush(); tree = h.render();
     assert.equal(loads, 2);
     assert.equal(button(tree, 'Ya revisé'), undefined);
     assert.equal(button(tree, 'Publicar').props.disabled, true);
