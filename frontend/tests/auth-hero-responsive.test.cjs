@@ -19,6 +19,6 @@ test('shared authentication hero separates and left-aligns its copy when stacked
   assert.match(responsive, /\.auth-statement br\s*\{\s*display:\s*none/);
   assert.doesNotMatch(css.slice(0, css.indexOf('@media (max-width: 767px)')), /\.auth-statement br\s*\{/);
   for (const page of ['login', 'register']) {
-    assert.match(fs.readFileSync(path.join(__dirname, `../app/${page}/page.tsx`), 'utf8'), /<AuthIdentity\s*\/>/);
+    assert.match(fs.readFileSync(path.join(__dirname, `../app/${page}/page.tsx`), 'utf8'), /<AuthIdentity editorial\s*\/>/);
   }
 });

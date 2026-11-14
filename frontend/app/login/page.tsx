@@ -95,7 +95,7 @@ function LoginPage() {
 
   return (
     <main className="auth-page">
-      <AuthIdentity />
+      <AuthIdentity editorial />
       <section className="auth-content">
         <div className="auth-content-inner">
       <noscript>

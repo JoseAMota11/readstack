@@ -15,7 +15,7 @@ test('shared authentication branding keeps its icon and uses the library beta ba
 
   for (const page of ['login', 'register']) {
     const pageSource = fs.readFileSync(path.join(__dirname, `../app/${page}/page.tsx`), 'utf8');
-    assert.match(pageSource, /<AuthIdentity\s*\/>/);
+    assert.match(pageSource, /<AuthIdentity editorial\s*\/>/);
   }
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(css, /\.auth-brand\s*\{[^}]*flex-wrap:\s*wrap/);

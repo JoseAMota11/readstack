@@ -107,6 +107,19 @@ body {
   line-height: 1.6;
 }
 
+.auth-editorial {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.auth-editorial-rule {
+  display: block;
+  width: 2.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
 .auth-statement {
   margin-bottom: 1.5rem;
   color: var(--text-primary);
