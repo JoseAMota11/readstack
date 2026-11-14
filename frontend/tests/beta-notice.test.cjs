@@ -26,7 +26,7 @@ Module._load = function (request, parent, ...args) {
     if (request === '@/utils/cookies-handlers') return { removeToken() {} };
     if (request === 'next/navigation') return { useRouter: () => ({}) };
     if (request === 'antd') return { Button: 'button' };
-    if (request === './theme-switcher') return { __esModule: true, default: 'theme-switcher' };
+    if (request === './user-panel') return { __esModule: true, default: 'user-panel' };
   }
   return load.call(this, request, parent, ...args);
 };

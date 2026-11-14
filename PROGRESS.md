@@ -6,6 +6,12 @@
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
+## UI-03.2B user panel handoff
+
+- Replaced the library navbar's separate theme and logout buttons with a compact disclosure panel containing a labeled dark-mode switch and the existing logout handler. It uses the existing theme context, keeps the panel open during theme changes, and supports outside-pointer and Escape dismissal. The custom disclosure avoids the installed Ant Design Popover's tooltip role for interactive content; it does not add account functionality or change other routes.
+- On Node 22, frontend focused tests passed 8/8, full tests 146/146, lint passed with two existing `reviews.tsx` warnings, TypeScript and production build passed. In an isolated backend copy without `library.db`, build passed, tests passed 162/162 and security probes passed 3/3. Tests use mocked component handlers rather than a real browser; owner review of appearance, keyboard/focus, reduced motion, persistence and logout remains required.
+- Changed `frontend/components/navbar.tsx`, added `frontend/components/user-panel.tsx` and `frontend/tests/user-panel.test.cjs`, updated `frontend/app/globals.css`, `frontend/tests/beta-notice.test.cjs` and this handoff. Existing theme provider, authentication contracts and the pre-existing modified `backend/library.db` remain untouched. No hosted access, commit, push, merge or deployment occurred.
+
 ## Governance decisions and handoff
 
 - The owner approved `D-010`, `D-011` and `D-018`, including staging latency targets. `docs/ENVIRONMENT_GOVERNANCE.md` records the production branch, release authorization and qualified application rollback procedure, plus the staging topology, synthetic-only policy, access, validation scope and conditional approximately $0 feasibility.
