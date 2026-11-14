@@ -1,10 +1,17 @@
 # Progress — Biblioteca Personal
 
-**Last updated:** 2026-11-12
-**Current phase:** `DB-05` qualified acceptance; `DB-06` staging validation is the next database milestone, subject to its dependencies and approvals. This is not a production-release or security approval.
+**Last updated:** 2026-11-14
+**Current phase:** `DB-05` qualified acceptance; `DB-06` staging validation is in progress, subject to its remaining criteria, dependencies and approvals. This is not a production-release or security approval.
 **Active task:** `DB-03`, `DB-04` and `DB-05` are complete within their documented scopes. `DB-06`, `DB-07` and `DB-08` remain open. `SEC-03` remains partial; `SEC-01` production configuration and deployment remain unverified. UI-03.2 awaits owner review.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
+
+## DB-06 owner-reported staging validation
+
+- The owner reports manual browser and curl checks on branch `modernization`, using Vercel modernization Preview, Render Staging and Neon PostgreSQL with two authorized synthetic accounts, A and B. Books created by both persisted after reload and each library displayed only its owner's books. A's review persisted after reload and was not visible in B's own book.
+- The owner reports that B's direct GET of A's book returned HTTP 404; cross-user PATCH and DELETE book returned HTTP 400 with the expected controller error. A's book remained unchanged after PATCH, and the book and review remained intact after DELETE. Cross-user PUT and DELETE review returned HTTP 404 with `Recurso no disponible.`; A's review retained its original comment and rating after PUT, and A's book and review still existed after reload following DELETE.
+- The owner reports that frontend commit `9918945` corrected the transient stale-review warning and that the fix was manually validated in the updated Vercel Preview. These results are owner-reported observations, not automated evidence or independently executed or verified by this agent.
+- `DB-06` remains open: full functional smoke and multiuser isolation across all relevant operations, authentication, reviews, favorites, filters, pagination and CSV still require assessment beyond the cases reported above; latency, free-tier limits and approximately $0 cost remain unverified. Dependencies `TEST-03`, `TEST-05` and `GOV-04` also require assessment. Earlier deployment and validation statements below are historical. No hosted access or tests occurred in this documentation update; only `PROGRESS.md` was changed, and the pre-existing modified `backend/library.db` was untouched. Stop for owner review; no deployment or production action is authorized.
 
 ## Disconnected staging registration preparation
 
