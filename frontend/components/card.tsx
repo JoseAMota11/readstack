@@ -1,10 +1,9 @@
 'use client';
 
 import { Book } from '@/types/book.type';
-import { coverTransitionName } from '@/utils/cover-transition';
 import { BookOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { useState, ViewTransition } from 'react';
+import { useState } from 'react';
 import ReviewAverage from './review-average';
 
 function Cover({ src }: { src?: string }) {
@@ -28,9 +27,7 @@ function Cover({ src }: { src?: string }) {
 function Card({ id, title, author, year, coverImage, reviewAverageRating, reviewRatingCount, isFavorite }: Book) {
   return (
     <Link href={`/book/${id}`} className="library-card">
-      <ViewTransition name={coverTransitionName(id)} default="none" share="book-cover">
-        <Cover key={coverImage} src={coverImage} />
-      </ViewTransition>
+      <Cover key={coverImage} src={coverImage} />
       <div className="library-card-content">
         <h2 className="library-card-title">{title}</h2>
         <p className="library-card-author">{author}</p>

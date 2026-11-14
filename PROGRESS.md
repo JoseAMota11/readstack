@@ -6,6 +6,19 @@
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
+## View Transitions closeout
+
+- The owner deliberately abandoned View Transitions after the feasibility stop condition: bidirectional visual quality and safe data coordination could not be established at reasonable complexity. Ordinary navigation is retained; alternative implementations, fetching rewrites and animation workarounds are out of scope. The diagnostic handoff below is historical.
+- Removed committed cover transition wrappers, naming utility, VT-only styling and tests, as well as the uncommitted share counter and neutral loading placeholder. Existing loading, retry, stale-response and cover fallback behavior remains. No isolated lab files were found by a filename search; unrelated fixtures were not removed.
+- On Node 22.23.4, from `frontend/`: `fnm exec --using 22 node --test tests/library-card.test.cjs tests/book-loading.test.cjs` passed 24/24; `fnm exec --using 22 npm test` passed 148/148; `fnm exec --using 22 npm run lint` passed with the two existing `reviews.tsx` warnings; `fnm exec --using 22 npx tsc --noEmit` and `fnm exec --using 22 npm run build` passed. The full test suite emitted Node's experimental MockTimers warning. These are not browser tests.
+- Changed `PLAN.md`, `PROGRESS.md`, `frontend/app/book/[id]/page.tsx`, `frontend/app/globals.css`, `frontend/components/card.tsx`, `frontend/tests/book-loading.test.cjs`, `frontend/tests/library-card.test.cjs`; removed `frontend/utils/cover-transition.ts`. Fetching, API, authentication, deployment configuration and the pre-existing modified `backend/library.db` were not intentionally changed. Stop for owner browser testing and diff review; no commit, push, merge or deployment.
+
+## Cover transition diagnostic handoff
+
+- Added a decorative neutral, book-ID-named cover boundary to the detail loading state, retaining the accessible loading status and existing authenticated fetch, error and retry behavior. This is a reversible pairing experiment, not final UX approval or proof of a working transition.
+- On Node 22.23.4, frontend focused tests passed 29/29, full tests passed 153/153, lint passed with two existing `reviews.tsx` warnings, TypeScript passed and the production build passed. The tests do not exercise a browser. Owner review and local browser observation of `onShare`, loading, accessibility and reduced motion remain necessary; history navigation is not verified.
+- Changed `frontend/app/book/[id]/page.tsx`, `frontend/tests/book-loading.test.cjs` and this handoff. No CSS, navigation, fetching, API or authentication changes were made. The pre-existing modified `backend/library.db` was not inspected or changed. No hosted access, commit, push, merge or deployment occurred; stop for owner review.
+
 ## UI-03.2B user panel handoff
 
 - Replaced the library navbar's separate theme and logout buttons with a compact disclosure panel containing a labeled dark-mode switch and the existing logout handler. It uses the existing theme context, keeps the panel open during theme changes, and supports outside-pointer and Escape dismissal. The custom disclosure avoids the installed Ant Design Popover's tooltip role for interactive content; it does not add account functionality or change other routes.

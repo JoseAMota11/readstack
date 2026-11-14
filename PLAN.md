@@ -294,6 +294,8 @@ A push or merge to `main` is a production action because Vercel Production and R
 
 ### Approved
 
+**Owner decision (2026-11-14):** View Transitions are out of scope. The feasibility investigation reached its stop condition: bidirectional visual quality and safe data coordination could not be established at reasonable complexity. Remove the prototype and retain ordinary navigation; do not pursue alternative implementations, fetching rewrites or animation workarounds. Historical investigation evidence remains in `PROGRESS.md`.
+
 | ID | Decision | Status | Notes |
 |---|---|---|---|
 | `D-001` | Preserve existing working functionality, especially multiuser registration, login, and per-user isolation | Approved | Confirmed requirement |
