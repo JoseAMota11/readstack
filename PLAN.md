@@ -130,10 +130,10 @@ Prerequisites:
 | `AUD-01` | Static security audit | P0 | `[x]` | — | Findings mapped to remediation tasks | Completed statically; runtime and production checks marked pending |
 | `AUD-02` | Runtime and production verification | P0 | `[ ]` | — | Verified runtime and deployment baseline | Registration, login, CRUD, reviews, favorites, filters, CSV, and cross-user denial tested; persistence checked only with owner-approved disposable data; no secrets or destructive production actions; environment and date recorded |
 | `DOC-01` | Author and refine planning documents | P1 | `[x]` | — | `AGENTS.md`, `PLAN.md`, `PROGRESS.md` | Owner approved content; all three files created and verified on 2026-11-07; no implementation claimed |
-| `GOV-01` | Document production guardrails | P0 | `[ ]` | — | Written branch-to-environment and deployment procedure | Confirms Vercel Production/Preview and Render Auto-Deploy behavior; any `main` push is treated as production; authorization and rollback steps documented |
+| `GOV-01` | Document production guardrails | P0 | `[x]` | — | Written branch-to-environment and deployment procedure | Confirms Vercel Production/Preview and Render Auto-Deploy behavior; any `main` push is treated as production; authorization and rollback steps documented. Evidence: `docs/ENVIRONMENT_GOVERNANCE.md`; recovery capabilities remain unverified |
 | `GOV-02` | Inventory environment variables and rotation | P0 | `[x]` | — | Variable names, owners, and rotation procedure by service | No secret values recorded; all services covered; rotation and revocation steps documented. Evidence: `docs/ENVIRONMENT_GOVERNANCE.md`; deployed settings remain unverified |
 | `GOV-03` | Create recovery and rollback runbook | P0 | `[ ]` | `GOV-01`, `GOV-02` | Operational runbook for application, environment, and new database recovery | Distinguishes verified capability from assumptions; states current SQLite recovery is unverified; covers app rollback, fresh-database restore, and decision authority; no destructive production test |
-| `GOV-04` | Decide staging strategy | P0 | `[ ]` | — | Owner-approved staging ADR | Topology, access control, data policy, validation scope, and $0 feasibility documented; synthetic data only |
+| `GOV-04` | Decide staging strategy | P0 | `[x]` | — | Owner-approved staging ADR | Topology, access control, data policy, validation scope, and $0 feasibility documented; synthetic data only. Evidence: `docs/ENVIRONMENT_GOVERNANCE.md`; costs and quotas remain subject to monitoring |
 
 ### M1 — Tests, CI, and repeatable validation
 
@@ -305,7 +305,10 @@ A push or merge to `main` is a production action because Vercel Production and R
 | `D-007` | Demo records, including current production demo data, may be discarded | Approved | No deletion during planning; deletion requires explicit approval |
 | `D-008` | Documentation, agent instructions, and agent responses are English | Approved | Spanish UI copy remains product behavior |
 | `D-009` | Start PostgreSQL with a fresh schema; do not migrate SQLite records | Approved | Synthetic fixtures and integration validation replace record migration |
+| `D-010` | `main` is production; `modernization` is integration and development | Approved | Short-lived task branches are optional; each production deployment requires explicit owner authorization. See `docs/ENVIRONMENT_GOVERNANCE.md`. |
+| `D-011` | Agreed CI checks are mandatory before merges | Approved | Lint, build and tests as applicable; `TEST-04` is complete. This decision does not claim branch protection is configured. |
 | `D-015` | Select Neon PostgreSQL as the database provider | Approved | Owner decision for `DB-02`; rationale, alternative, migration implications, and rollback limits in the `DB-02` section |
+| `D-018` | Staging strategy and topology | Approved | Vercel modernization Preview, separate Render Staging and Neon PostgreSQL; synthetic-only access, validation scope, cost objective and limits are documented in the `GOV-04` ADR. Approval authorizes no operational action. |
 | `D-020` | Environment and JWT governance | Approved | Owner is sole policy owner/operator; JWT keys use 32 cryptographically random bytes encoded as exactly 64 hex characters; tests use an explicit synthetic key of the same format; keys are distinct across local, test, production and future staging. Rotate after suspected exposure or documented operational necessity, not on a mandatory schedule. Production inspection, configuration changes, rotation and deployment each require separate explicit owner authorization. Never record secret values; replacement invalidates previous JWTs under the single-key model. `SEC-01` implements enforcement later. |
 | `D-021` | Add optional book descriptions and reading status after PostgreSQL infrastructure validation | Approved | Description is optional, maximum 2,000 characters; empty or whitespace-only descriptions normalize to null; PATCH null clears and omission preserves. Status values are `pending`, `reading`, `finished`, `abandoned`, defaulting to `pending`; initially changed via book edit, displayed on cards, and available as an owner-scoped filter. Include both fields in CSV with coordinated backend and frontend validation. Product scope approval does not approve the proposed schema details or authorize implementation; see `DB-03`. |
 | `D-022` | Approve the `DB-03` technical architecture decisions | Approved | Search and wildcard compatibility, case-sensitive email, timestamps, genre arrays, UUID handling, deterministic tie ordering, Unicode scalar counting, versioned migration safety, and composite review ownership with cascades are specified in the `DB-03` section. This does not authorize implementation, provisioning, migrations, or deployment; parity and operational behavior remain unverified. |
@@ -316,8 +319,6 @@ A push or merge to `main` is a production action because Vercel Production and R
 
 | ID | Proposal | Status | Notes |
 |---|---|---|---|
-| `D-010` | `main` is production; `modernization` is integration; implementation uses short-lived task branches | Proposed | Requires confirmation of branch workflow |
-| `D-011` | Require lint, build, and tests as CI gates before merging modernization work | Proposed | Depends on `TEST-04` |
 | `D-012` | Complete security stabilization before production database cutover | Proposed | Reflected in `DB-08` dependencies |
 | `D-013` | Use synthetic fixtures only for database and isolation validation | Proposed | No production data |
 | `D-014` | Preserve per-book CSV export and add library-wide export separately | Proposed | Avoids breaking current behavior |
@@ -328,7 +329,6 @@ A push or merge to `main` is a production action because Vercel Production and R
 |---|---|---|---|
 | `D-016` | Authentication and session architecture, including cross-origin transport, CORS, SameSite, and CSRF | Pending | `SEC-02`, `SEC-06`, `OPT-02` |
 | `D-017` | Supported upgrade targets and order | Pending | `UPG-02`, `UPG-03`, `UPG-04`; owner approved only the limited Express 4 and compatible transitive security refresh, not Zod 4 or bcrypt 6 |
-| `D-018` | Staging strategy and topology | Pending | Owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database for `DB-06`; approved invitation-controlled registration and accepted public API/login exposure for the first synthetic-only staging deployment. Complete implementation, validation scope and $0 feasibility remain pending under `GOV-04`. This selection authorizes no provisioning, configuration, migration, deployment or restart. `DB-06` and production validation remain blocked on applicable decisions and approvals. |
 | `D-019` | Future public self-registration policy | Pending | `PUB-01`, and any later registration change |
 
 `DISC-01`, `AUD-01`, `DOC-01`, `TEST-01`, `SEC-04`, and `TEST-03` are complete. `AUD-02` remains pending.

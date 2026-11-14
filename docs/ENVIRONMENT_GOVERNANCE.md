@@ -2,7 +2,25 @@
 
 ## Purpose and authority
 
-This policy covers repository-defined application configuration for the backend and frontend, their tests, local development, production, and any future staging environment. The project owner is currently the sole policy owner and authorized operator. This document authorizes no operational action: production configuration changes, secret inspection, rotation, and deployment each require separate explicit owner authorization. Do not access production systems to complete this documentation task.
+This policy covers repository-defined application configuration for the backend and frontend, their tests, local development, production, and staging. The project owner is currently the sole policy owner and authorized operator. This document authorizes no operational action: production configuration changes, secret inspection, rotation, and deployment each require separate explicit owner authorization. Do not access production systems to complete this documentation task.
+
+## Branches, deployment and application rollback (`GOV-01`)
+
+`main` is the production branch; `modernization` is the integration and development branch, with optional short-lived task branches. The owner confirms Vercel Production tracks `main`, Vercel Preview covers other branches, and production Render tracks `main` with Auto-Deploy. Therefore every push or merge to `main` is a production deployment action, not merely a Git change. Agreed CI checks, including lint, builds and tests as applicable, are mandatory before merges; existing CI does not itself establish branch protection.
+
+Before a release, the owner reviews the candidate, agreed CI results, staging evidence, known risks and rollback limitations, and explicitly authorizes the specific production action. The authorized operator verifies the intended branch and commit before executing it, then records the deployment and validates only within separately authorized scope. Stop and consult the owner if checks fail or the target is uncertain. This procedure does not change hosting settings or grant authorization.
+
+For an application incident, the operator stops further releases, records the affected service, deployment and symptoms without secrets, and notifies the owner. The owner decides whether to roll back and separately authorizes the specific production action. The operator identifies a known previous application version and, only if available and authorized, uses the applicable provider's verified rollback mechanism or a separately authorized deployment of that version; then checks the affected application within authorized scope and records the outcome. If the prior version or mechanism is unavailable, stop and escalate rather than assume recovery. An application rollback does not restore database state or necessarily undo schema or configuration changes. Current production SQLite persistence and recovery are unverified; no backup is assumed. `GOV-03` remains open for the broader recovery runbook.
+
+## Staging strategy ADR (`GOV-04`, `D-018`)
+
+The owner approved Vercel `modernization` Preview connected to a separate Render Staging backend and Neon PostgreSQL staging database. Only authorized operators and synthetic accounts and data are permitted. Continue invitation-controlled staging registration and the previously accepted limited public API/login exposure; CORS is not an authorization mechanism. Staging's Neon branch name `production` is a provider label, not evidence that it is the production application database.
+
+The intended validation scope is bounded synthetic functional, persistence, cross-user isolation and latency checks on staging. Production data, production credentials, destructive operations, migrations, configuration changes and deployments require separate explicit authorization; this ADR grants none. Production remains unchanged until separately authorized.
+
+The objective is approximately $0 per month; paid usage is not authorized. Review provider usage and billing during significant testing sessions and before relevant deployments; stop and seek owner direction if free limits or charges are at risk. Owner-reported November 2026 observations: Render Hobby accumulated and projected charges were each $0.00; Neon Free was $0/month, with usage since November 12 of 0.78 CU-hours, 32.03 MB storage, 771.57 kB history and 204.93 kB network transfer. These limited point-in-time observations support approximate $0 feasibility for light use, not future cost, quota or availability guarantees. Provider terms and actual use can change.
+
+For `DB-06`, the owner approved this staging latency target: after one unmeasured warm-up, five successful warm authenticated database-backed reads must have median latency at most 1 second and no request over 2 seconds. Record a cold-start request separately after an identifiable idle period; its staging acceptance target is at most 30 seconds. Record endpoint, idle period, outcomes and timings; investigate failures without assuming their cause. Owner-reported preliminary GET `/api/v1/` timings of 21.479, 0.422 and 0.556 seconds were HTTP 404 responses, not authenticated database-backed reads, and do not satisfy the warm criterion. The first is consistent with a cold start, but its cause is unconfirmed.
 
 ## Inventory and evidence
 

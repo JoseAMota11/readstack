@@ -6,6 +6,13 @@
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
+## Governance decisions and handoff
+
+- The owner approved `D-010`, `D-011` and `D-018`, including staging latency targets. `docs/ENVIRONMENT_GOVERNANCE.md` records the production branch, release authorization and qualified application rollback procedure, plus the staging topology, synthetic-only policy, access, validation scope and conditional approximately $0 feasibility.
+- `GOV-01` is complete against its documented branch mapping, deployment authorization and rollback-documentation criteria; application rollback and SQLite recovery are not claimed to be verified. `GOV-04` is complete against its documented owner-approved ADR criteria; point-in-time cost evidence is not a future guarantee. `GOV-03` remains open for the broader recovery runbook.
+- `TEST-05` remains open for its repeatable recorded smoke procedure, including registration. `DB-06` remains open for its dependencies and remaining staging validation, including relevant cross-user isolation, database-backed latency, and assessment of free-tier limits and cost. The owner-reported root 404 timings do not meet the approved database-backed latency criterion.
+- This is documentation only; no tests, hosted access, configuration changes, deployment or database operations were performed. The pre-existing modified `backend/library.db` remains untouched. Next: owner review; any further hosted validation or production action requires separate authorization.
+
 ## DB-06 owner-reported staging validation
 
 - The owner reports manual browser and curl checks on branch `modernization`, using Vercel modernization Preview, Render Staging and Neon PostgreSQL with two authorized synthetic accounts, A and B. Books created by both persisted after reload and each library displayed only its owner's books. A's review persisted after reload and was not visible in B's own book.
