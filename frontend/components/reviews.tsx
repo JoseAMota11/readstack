@@ -13,7 +13,7 @@ function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: 
   const [token] = useState(getTokenDecoded);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [review, setReview] = useState({ rating: 0, comment: '' });
-  const [listState, setListState] = useState<'loading' | 'loaded' | 'error' | 'stale'>('loading');
+  const [listState, setListState] = useState<'loading' | 'loaded' | 'refreshing' | 'error' | 'stale'>('loading');
   const [hasLoadedReviews, setHasLoadedReviews] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(false);
@@ -120,9 +120,9 @@ function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: 
         }
         messageApi.success(message);
         onAggregateChange?.();
-        // Invalidate any older load immediately, and mark the displayed list stale.
+        // Invalidate any older load immediately while refreshing the displayed list.
         sequence.current++;
-        setListState(hasLoaded.current ? 'stale' : 'loading');
+        setListState(hasLoaded.current ? 'refreshing' : 'loading');
         void getReviews();
       }
     } catch {

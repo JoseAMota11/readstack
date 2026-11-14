@@ -300,6 +300,45 @@ test('creation blocks rapid duplicates, shows pending and preserves later edits'
   } finally { h.unmount(); teardown(); }
 });
 
+for (const kind of ['create', 'delete']) {
+  for (const outcome of ['success', 'failure', 'invalid']) {
+    test(`${kind} keeps reviews visible during refresh and handles ${outcome}`, async () => {
+      setup(); const refresh = deferred(); let loads = 0;
+      services.getAllReviews = () => ++loads === 1 ? Promise.resolve([undefined, [item]]) : refresh.promise;
+      const h = harness(); try {
+        h.render(); await flush(); let tree = h.render();
+        if (kind === 'create') {
+          findAll(tree, TextArea)[0].props.onChange({ target: { value: 'new review' } });
+          findAll(tree, Rate)[0].props.onChange(5);
+          await button(h.render(), 'Publicar').props.onClick();
+        } else {
+          await findAll(tree, Card)[0].props.onDelete();
+        }
+        tree = h.render();
+        assert.equal(loads, 2);
+        assert.equal(findAll(tree, Card)[0].props.id, item.id);
+        assert.doesNotMatch(text(tree), /podrían no estar actualizadas|No se pudieron cargar/);
+        assert.equal(button(tree, 'Reintentar'), undefined);
+
+        if (outcome === 'success') {
+          const updated = kind === 'create' ? [{ ...item, id: 'review-new' }] : [];
+          refresh.resolve([undefined, updated]); await flush(); tree = h.render();
+          assert.deepEqual(findAll(tree, Card).map((card) => card.props.id), updated.map((review) => review.id));
+          assert.doesNotMatch(text(tree), /podrían no estar actualizadas|No se pudieron cargar/);
+          assert.equal(button(tree, 'Reintentar'), undefined);
+        } else {
+          if (outcome === 'failure') refresh.resolve(['offline', undefined]);
+          else refresh.reject(new Error('Invalid review list'));
+          await flush(); tree = h.render();
+          assert.equal(findAll(tree, Card)[0].props.id, item.id);
+          assert.match(text(tree), /podrían no estar actualizadas/);
+          assert.ok(button(tree, 'Reintentar'));
+        }
+      } finally { h.unmount(); teardown(); }
+    });
+  }
+}
+
 test('delete pending blocks duplicates and failed refresh marks stale with retry', async () => {
   setup(); const deletion = deferred(); let calls = 0, loads = 0, aggregateRefreshes = 0;
   services.getAllReviews = async () => { loads++; return loads === 2 ? ['error', undefined] : [undefined, [item]]; };
