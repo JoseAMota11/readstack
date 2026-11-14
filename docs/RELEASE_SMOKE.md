@@ -14,3 +14,9 @@ Record date, operator, environment, deployed revision, each check and outcome, r
 - [ ] Isolation: confirm A and B see only their own libraries. Using B, attempt to read, edit and delete A's book, list/create/update/delete reviews on A's book, and export A's book. Confirm denial without foreign data or CSV, and verify A's book and reviews remain unchanged. Record each operation and status independently.
 
 For staging `DB-06`, also record the separate warm and cold latency checks and provider usage against the approved targets in [environment governance](ENVIRONMENT_GOVERNANCE.md#staging-strategy-adr-gov-04-d-018). Review quotas and costs without assuming future free usage. Prior owner-reported results and unresolved gaps are linked from [PROGRESS.md](../PROGRESS.md#test-05-and-db-06-staging-evidence-assessment); do not treat earlier results as evidence for a different release or environment.
+
+## Owner-reported staging registration evidence
+
+The owner reports that registration without an invitation and with an incorrect invitation each returned HTTP 403. Using a valid invitation, the owner registered a new synthetic staging account; `POST /api/v1/register` returned HTTP 200. The owner confirms that this newly registered account signed in through the modernization Vercel Preview, accessed its own empty library and signed out. These observations were not independently verified. The date and deployed revision were not supplied; record them when available. Protected-access denial after logout is not explicitly confirmed. Do not record credentials or invitation values.
+
+The owner also reports an authenticated `GET /api/v1/books` returned HTTP 200 in 21.964122 seconds after approximately 20 minutes of estimated inactivity. This is below the 30-second target, but Render suspension and a cold start were not established. See the linked assessment for warm timings, isolation coverage and remaining `DB-06` evidence.
