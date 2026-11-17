@@ -12,14 +12,14 @@ function hasOnlyPairedSurrogates(value: string): boolean {
 }
 
 export const bookSchema = z.object({
-  title: z.string().min(1, 'El título es obligatorio').refine((value) => !value.includes('\u0000'), 'No se permite el carácter NUL.'),
-  author: z.string().min(1, 'El autor es obligatorio').refine((value) => !value.includes('\u0000'), 'No se permite el carácter NUL.'),
+  title: z.string().min(1, 'El título es obligatorio').max(500).refine((value) => !value.includes('\u0000'), 'No se permite el carácter NUL.'),
+  author: z.string().min(1, 'El autor es obligatorio').max(500).refine((value) => !value.includes('\u0000'), 'No se permite el carácter NUL.'),
   year: z.number().int().min(1000).max(9999),
-  genre: z.array(z.string()
+  genre: z.array(z.string().max(100)
     .refine((value) => !value.includes('\u0000'), 'No se permite el carácter NUL.')
     .refine(hasOnlyPairedSurrogates, 'El género contiene un carácter Unicode no válido.'))
-    .min(1, 'Debe incluir al menos un género'),
-  coverImage: z.string().url().optional(),
+    .min(1, 'Debe incluir al menos un género').max(20),
+  coverImage: z.string().max(2048).url().optional(),
   rating: z.number().min(0).max(5).optional(),
   isFavorite: z.boolean(),
   userId: z.string().uuid(),

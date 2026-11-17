@@ -43,6 +43,10 @@ export const validateBooksData = (
   res: Response,
   next: NextFunction
 ) => {
+  if (Array.isArray(req.body?.genre) && req.body.genre.length > 20) {
+    res.status(400).json({ message: 'Demasiados géneros.' });
+    return;
+  }
   try {
     bookSchema.parse(req.body);
     next();
@@ -63,6 +67,10 @@ export const validateBooksDataPartial = (
   res: Response,
   next: NextFunction
 ) => {
+  if (Array.isArray(req.body?.genre) && req.body.genre.length > 20) {
+    res.status(400).json({ message: 'Demasiados géneros.' });
+    return;
+  }
   try {
     bookSchemaPartial.parse(req.body);
     next();

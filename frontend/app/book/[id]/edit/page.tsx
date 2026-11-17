@@ -21,6 +21,17 @@ import booksGenresOptions from '@/books-genres.json';
 
 const editFields = ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite'] as const;
 
+function editFieldSnapshot(key: typeof editFields[number], value: unknown) {
+  if (key === 'coverImage' && (value == null || (typeof value === 'string' && value.trim() === ''))) {
+    return undefined;
+  }
+  if (key === 'isFavorite' && value === undefined) return JSON.stringify(false);
+  // Genres are selections, not ranked items. Compare contents without mutating
+  // the form's array; preserve duplicate counts rather than silently deduplicating.
+  if (key === 'genre' && Array.isArray(value)) return JSON.stringify([...value].sort());
+  return JSON.stringify(value);
+}
+
 function EditBookPage() {
   const { id } = useParams();
   return <EditBook key={id as string} id={id as string} />;
@@ -54,18 +65,24 @@ function EditBook({ id }: { id: string }) {
   }, []);
 
   const onValid: SubmitHandler<FieldValues> = async (values) => {
-    if (submitting.current) return;
+    if (submitting.current || !loaded) return;
+    const changedFields = editFields.filter((key, index) =>
+      editFieldSnapshot(key, values[key]) !== loadedValues.current[index]);
+    if (changedFields.includes('coverImage') && editFieldSnapshot('coverImage', values.coverImage) === undefined) {
+      messageApi.error('No se puede quitar la portada por ahora. Introduce otra URL o conserva la actual.');
+      return;
+    }
+    if (changedFields.length === 0) {
+      messageApi.info('No hay cambios para guardar.');
+      return;
+    }
+    const data: Partial<Book> = {};
+    for (const key of changedFields) Object.assign(data, { [key]: values[key] });
     submitting.current = true;
     setPending(true);
     let navigating = false;
     try {
-      const data = {
-        title: values.title, author: values.author, year: values.year,
-        genre: values.genre, coverImage: values.coverImage, isFavorite: values.isFavorite,
-        userId: id,
-      };
-
-      const [error, message] = await updateBook(id as string, data as Book);
+      const [error, message] = await updateBook(id, data);
       if (!mounted.current) return;
 
       if (error) {
@@ -98,7 +115,7 @@ function EditBook({ id }: { id: string }) {
         }
         const formBook = { ...book };
         if ('coverImage' in formBook) formBook.coverImage = formBook.coverImage ?? undefined;
-        loadedValues.current = editFields.map((key) => JSON.stringify(key === 'isFavorite' && !(key in formBook) ? false : formBook[key]));
+        loadedValues.current = editFields.map((key) => editFieldSnapshot(key, formBook[key]));
         for (const key of editFields) {
           if (key in formBook) setValue(key, formBook[key]);
         }
@@ -131,7 +148,7 @@ function EditBook({ id }: { id: string }) {
             return;
           }
           const current = getValues();
-          if (editFields.some((key, index) => JSON.stringify(current[key]) !== loadedValues.current[index])) {
+          if (editFields.some((key, index) => editFieldSnapshot(key, current[key]) !== loadedValues.current[index])) {
             event.preventDefault();
             setReturnOpen(true);
           }

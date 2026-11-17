@@ -3,12 +3,29 @@ import { repositoriesFor } from '../database/composition';
 import { BooksFilters } from '../types/book.type';
 import { Parser } from 'json2csv';
 
+function csvCell(value: string): string {
+  return /^[\s\uFEFF]*[=+\-@\t\r\n\uFF1D\uFF0B\uFF0D\uFF20]/u.test(value) ? `'${value}` : value;
+}
+
 export class BookController {
   static async getAllBooks(req: Request, res: Response) {
     const filters = req.query as any as BooksFilters;
 
-    const current = filters?.current ? Number(filters.current) : 1;
-    const size = filters?.size ? Number(filters.size) : 10;
+    const parsePage = (value: unknown, fallback: number, max: number): number | null => {
+      if (value === undefined) return fallback;
+      if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null;
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) && parsed <= max ? parsed : null;
+    };
+    const current = parsePage(req.query.current, 1, 10000);
+    const size = parsePage(req.query.size, 10, 100);
+    if (current === null || size === null || ['title', 'author', 'year', 'genre'].some((key) => {
+      const value = req.query[key];
+      return value !== undefined && (typeof value !== 'string' || value.length > 500);
+    })) {
+      res.status(400).json({ error: 'Filtros o paginación no válidos.' });
+      return;
+    }
 
     try {
       const result = await repositoriesFor(req).books.findAll(req.userId!, {
@@ -121,11 +138,11 @@ export class BookController {
 
       const data = {
         id: book.id,
-        title: book.title,
-        author: book.author,
+        title: csvCell(book.title),
+        author: csvCell(book.author),
         year: book.year,
-        genre: book.genre.join(', '),
-        coverImage: book.coverImage || '',
+        genre: csvCell(book.genre.join(', ')),
+        coverImage: csvCell(book.coverImage || ''),
         rating: book.rating || '',
         isFavorite: book.isFavorite ? 'Sí' : 'No',
         userId: book.userId,

@@ -47,7 +47,7 @@ const ui = { Button, Modal, ConfigProvider, Checkbox: () => null, Input: () => n
 Module._load = function (request, parent, ...args) {
   if (request === 'antd') return ui;
   if (request === 'next/link') return { __esModule: true, default: Link };
-  if (request === '@/context/message.context') return { useMessage: () => ({ error: (text) => messages.push(['error', text]), success: (text) => messages.push(['success', text]) }) };
+  if (request === '@/context/message.context') return { useMessage: () => ({ error: (text) => messages.push(['error', text]), success: (text) => messages.push(['success', text]), info: (text) => messages.push(['info', text]) }) };
   if (request === '@/context/filters.context') return { useFilters: () => ({ refreshData: () => refreshed++ }) };
   if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() {} };
   if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: (url) => { navigated++; replaced = url; }, push: (url) => { pushed = url; } }) };
@@ -213,7 +213,7 @@ test('edit: loaded fields use the accessible responsive form presentation', asyn
   formErrors = {}; h.unmount();
 });
 
-test('edit: absent cover validates and is omitted from the update; existing URLs remain intact', async () => {
+test('edit: unchanged absent or existing cover is omitted from the update', async () => {
   const { editBookSchema } = require('../schemas/book.shema.ts');
   const { zodResolver } = original.load.call(Module, '@hookform/resolvers/zod', module);
   const validate = zodResolver(editBookSchema);
@@ -237,8 +237,7 @@ test('edit: absent cover validates and is omitted from the update; existing URLs
     assert.deepEqual(result.errors, {});
     await find(tree, 'form').props.onSubmit();
     assert.equal(payload.title, 'Changed');
-    if (coverImage == null) assert.equal(Object.hasOwn(payload, 'coverImage'), false);
-    else assert.equal(payload.coverImage, coverImage);
+    assert.deepEqual(payload, { title: 'Changed' });
     h.unmount();
   }
   for (const coverImage of ['not a url', null]) {
@@ -288,6 +287,134 @@ test('edit: invalid cover can be cleared and submits as absent', async () => {
   }
 });
 
+test('edit: sends only the changed year despite unchanged oversized legacy fields', async () => {
+  const stored = {
+    title: 't'.repeat(501), author: 'a'.repeat(501), year: 2000,
+    genre: Array(21).fill('g'.repeat(101)), isFavorite: false,
+    coverImage: `https://example.test/${'c'.repeat(2048)}`,
+    id: 'book-a', userId: 'owner-a', rating: 4,
+  };
+  values = {}; formErrors = {}; validateSubmission = true; navigated = 0;
+  const payloads = [];
+  global.fetch = (_url, init) => {
+    if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+    payloads.push(JSON.parse(init.body));
+    assert.equal(init.method, 'PATCH');
+    return Promise.resolve(response('{"message":"ok"}'));
+  };
+  const h = harness('edit');
+  try {
+    h.render(); await flush();
+    values.year = 2001;
+    await find(h.render(), 'form').props.onSubmit();
+    assert.deepEqual(payloads, [{ year: 2001 }]);
+    assert.equal(values.title, stored.title);
+    assert.deepEqual(values.genre, stored.genre);
+    assert.equal(navigated, 1);
+  } finally {
+    validateSubmission = false; formErrors = {}; h.unmount();
+  }
+});
+
+test('edit: no changes or equivalent normalized values never submit an empty PATCH', async () => {
+  for (const coverImage of [null, undefined, '']) {
+    const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['B', 'A'], coverImage };
+    values = {}; messages.length = 0; navigated = 0; validateSubmission = true;
+    let mutations = 0;
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+      mutations++; return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness('edit');
+    try {
+      h.render(); await flush();
+      // Mirror the checkbox's default and the resolver's optional-cover normalization.
+      values.isFavorite = false;
+      values.coverImage = '  \t';
+      values.genre = ['A', 'B'];
+      values.title = 'Temporary'; values.title = stored.title;
+      let tree = h.render();
+      let prevented = false;
+      find(tree, Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+      assert.equal(prevented, false);
+      await find(tree, 'form').props.onSubmit();
+      assert.equal(mutations, 0);
+      assert.equal(navigated, 0);
+      assert.deepEqual(messages.at(-1), ['info', 'No hay cambios para guardar.']);
+      tree = h.render();
+      assert.equal(find(tree, ConfigProvider).props.componentDisabled, false);
+      assert.equal(values.coverImage, '  \t');
+    } finally {
+      validateSubmission = false; formErrors = {}; h.unmount();
+    }
+  }
+});
+
+test('edit: genre content changes survive failure and retry without changing the loaded baseline', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A', 'B'], isFavorite: false };
+  values = {}; messages.length = 0; navigated = 0; validateSubmission = true;
+  const payloads = [];
+  global.fetch = (_url, init) => {
+    if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+    payloads.push(JSON.parse(init.body));
+    return Promise.resolve(payloads.length === 1
+      ? response('{"error":"No se pudo guardar"}', 400) : response('{"message":"ok"}'));
+  };
+  const h = harness('edit');
+  try {
+    h.render(); await flush();
+    values.genre = ['B', 'A']; // Same selections in a different array/order.
+    await find(h.render(), 'form').props.onSubmit();
+    assert.equal(payloads.length, 0);
+    // Mutate in place to demonstrate that the baseline does not alias the form array.
+    values.genre.push('C');
+    await find(h.render(), 'form').props.onSubmit();
+    assert.deepEqual(payloads, [{ genre: ['B', 'A', 'C'] }]);
+    assert.deepEqual(values.genre, ['B', 'A', 'C']);
+    assert.equal(navigated, 0);
+    let prevented = false;
+    find(h.render(), Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+    assert.equal(prevented, true);
+    await find(h.render(), 'form').props.onSubmit();
+    assert.deepEqual(payloads[1], payloads[0]);
+    assert.equal(navigated, 1);
+  } finally {
+    validateSubmission = false; formErrors = {}; h.unmount();
+  }
+});
+
+test('edit: clearing a stored cover stays visible and unsaved; replacing it uses the existing PATCH contract', async () => {
+  for (const blank of ['', ' \t']) {
+    const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false, coverImage: 'https://example.test/old' };
+    values = {}; messages.length = 0; navigated = 0; validateSubmission = true;
+    const payloads = [];
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+      payloads.push(JSON.parse(init.body)); return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness('edit');
+    try {
+      h.render(); await flush();
+      values.coverImage = blank;
+      await find(h.render(), 'form').props.onSubmit();
+      assert.deepEqual(payloads, []);
+      assert.equal(values.coverImage, blank);
+      assert.equal(navigated, 0);
+      assert.match(messages.at(-1)[1], /No se puede quitar la portada/);
+      let prevented = false;
+      find(h.render(), Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+      assert.equal(prevented, true);
+      assert.equal(find(h.render(), ConfigProvider).props.componentDisabled, false);
+      values.coverImage = 'https://example.test/new';
+      await find(h.render(), 'form').props.onSubmit();
+      assert.deepEqual(payloads, [{ coverImage: values.coverImage }]);
+      assert.equal(navigated, 1);
+    } finally {
+      validateSubmission = false; formErrors = {}; h.unmount();
+    }
+  }
+});
+
 test('edit: return guards changed fields and preserves the form on cancellation', async () => {
   const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
   values = {}; pushed = undefined; replaced = undefined;
@@ -299,7 +426,7 @@ test('edit: return guards changed fields and preserves the form on cancellation'
   assert.equal(find(tree, Link).props.href, '/book/book-a');
   assert.equal(find(tree, Link).props.replace, true);
   navigate(); assert.equal(prevented, false);
-  for (const [key, changed] of Object.entries({ title: 'Changed', author: 'Other', year: 2001, genre: ['B'], coverImage: '', isFavorite: true })) {
+  for (const [key, changed] of Object.entries({ title: 'Changed', author: 'Other', year: 2001, genre: ['B'], coverImage: 'https://example.test/new', isFavorite: true })) {
     const old = values[key]; values[key] = changed;
     navigate(); assert.equal(prevented, true, key);
     tree = h.render();
@@ -357,13 +484,14 @@ for (const kind of ['create', 'edit']) {
     if (kind === 'edit') {
       for (const key of ['rating', 'reviewAverageRating', 'reviewRatingCount']) assert.equal(Object.hasOwn(values, key), false);
       Object.assign(values, { rating: 0, reviewAverageRating: 4.25, reviewRatingCount: 2 });
+      values.title = 'Changed title';
     }
     const form = find(h.render(), 'form');
     assert.equal(find(form, Controller, (node) => node.props.name === 'rating'), null);
     assert.equal(find(form, 'label', (node) => node.props.htmlFor === 'rating'), null);
     await form.props.onSubmit();
     for (const key of ['rating', 'reviewAverageRating', 'reviewRatingCount']) assert.equal(Object.hasOwn(payload, key), false);
-    assert.equal(payload.title, stored.title);
+    assert.equal(payload.title, kind === 'edit' ? 'Changed title' : stored.title);
     assert.equal(({ ...stored, ...payload }).rating, 0);
     h.unmount();
   });
@@ -412,6 +540,8 @@ for (const kind of ['create', 'edit']) {
     };
     const h = harness(kind);
     h.render(); await flush();
+    if (kind === 'edit') values.title = 'Changed title';
+    const submitted = { ...values };
     let tree = h.render();
     const submit = find(tree, 'form').props.onSubmit;
     const request = submit();
@@ -427,7 +557,7 @@ for (const kind of ['create', 'edit']) {
       assert.equal(closed, 0);
     }
     finish.reject(new Error('network')); await request;
-    assert.deepEqual(values, initial);
+    assert.deepEqual(values, submitted);
     assert.equal(resets + closed + refreshed + navigated, 0);
     assert.match(messages.at(-1)[1], /No se pudo confirmar/);
     assert.equal(find(h.render(), ConfigProvider).props.componentDisabled, false);
@@ -435,13 +565,13 @@ for (const kind of ['create', 'edit']) {
     for (const body of ['not json', 'null', '{}', '{"message":null}']) {
       const pending = find(h.render(), 'form').props.onSubmit();
       finish.resolve(response(body, kind === 'create' ? 201 : 200)); await pending;
-      assert.deepEqual(values, initial);
+      assert.deepEqual(values, submitted);
       assert.equal(resets + closed + refreshed + navigated, 0);
       assert.match(messages.at(-1)[1], /No se pudo confirmar/);
     }
     const error = find(h.render(), 'form').props.onSubmit();
     finish.resolve(response('{"error":"No se pudo guardar"}', 400)); await error;
-    assert.deepEqual(values, initial);
+    assert.deepEqual(values, submitted);
     assert.equal(messages.at(-1)[1], 'No se pudo guardar');
     assert.equal(resets + closed + refreshed + navigated, 0);
     assert.equal(find(h.render(), ConfigProvider).props.componentDisabled, false);
@@ -475,6 +605,7 @@ for (const kind of ['create', 'edit']) {
       ? response(JSON.stringify(values))
       : response('{"message":"Mensaje confirmado"}', kind === 'create' ? 201 : 200));
     const h = harness(kind); h.render(); await flush();
+    if (kind === 'edit') values.title = 'Changed title';
     await find(h.render(), 'form').props.onSubmit();
     assert.deepEqual(messages.at(-1), ['success', 'Mensaje confirmado']);
     if (kind === 'create') assert.deepEqual([resets, closed, refreshed, navigated], [1, 1, 1, 0]);
@@ -491,6 +622,7 @@ test('edit ignores a mutation response after unmount', async () => {
     ? Promise.resolve(response(JSON.stringify(values)))
     : new Promise((resolve) => { finish = resolve; });
   const h = harness('edit'); h.render(); await flush();
+  values.title = 'Changed title';
   const request = find(h.render(), 'form').props.onSubmit();
   h.unmount(); finish(response('{"message":"ok"}')); await request;
   assert.equal(navigated, 0);
