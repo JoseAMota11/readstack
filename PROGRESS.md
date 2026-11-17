@@ -1,17 +1,18 @@
 # Progress — Biblioteca Personal
 
-**Last updated:** 2026-11-14
+**Last updated:** 2026-11-17
 **Current phase:** Portfolio 1.0 completion — finish the existing modernization as a learning and portfolio project, not a commercial product or service for real users.
-**Active task:** First workstream: decide the demo boundary and assess material security risks for that boundary. Then complete final Archival Modern UX/UI validation, functional and security regression, and README/screenshots/presentation, in that order; see `PLAN.md`. No workstream is completed by this documentation update.
+**Active task:** First workstream remains open: determine the remaining demo boundaries and assess material security risks. The proposed next assessment is a disconnected local security baseline, subject to separate authorization. Then complete final Archival Modern UX/UI validation, functional and security regression, and README/screenshots/presentation, in that order; see `PLAN.md`. No workstream is completed by this documentation update.
 **Branch:** `modernization`
 **Production:** ReadStack v0.1.0-beta.1 is publicly released, per owner; further production deployments are paused. Production was not accessed or changed in this documentation update.
 
 ## Portfolio 1.0 handoff
 
-- The owner confirmed the finite portfolio objective. The next decision is local synthetic-data demonstration and screenshots only versus a public interactive demo. A public demo needs separately authorized, target-specific security verification; if material risks cannot be resolved within approved scope, withhold it.
+- The owner selected a recruiter-facing interactive demo. A separately isolated environment is the preferred candidate, subject to cost, technical feasibility and owner approval; the target is approximately $0 and no paid services are authorized. Demo data must be synthetic and disposable. Individual provisioned accounts and controlled public registration are under consideration; the access model remains undecided.
+- Existing Beta and staging environments are not authorized for general recruiter access. Public deployment, provisioning, hosted testing and publication remain unapproved. Separately authorized, target-specific security verification and material-risk remediation are required before public access; if material risks cannot be resolved within approved scope, withhold the interactive demo.
 - `TEST-05` and `DB-06` remain complete only within their documented scopes, with qualified owner-reported staging evidence. Portfolio completion is distinct from staging acceptance and does not establish production readiness, recovery, cutover or security certification. `DB-07` and `DB-08` remain open; `SEC-03` remains partial, `SEC-01` deployed configuration is unverified, and UI-03.2 awaits owner review.
 - View Transitions were deliberately abandoned and must not be reopened. Do not expand completion into new features, architecture migrations or broad investigations.
-- This handoff changes only `PLAN.md` and `PROGRESS.md`. Application code, deployment configuration and the pre-existing modified `backend/library.db` are intentionally untouched. No application tests, browser checks, hosted access or deployment were performed. Stop for owner review before starting the first workstream; hosted or production actions require separate authorization.
+- This handoff changes only `PLAN.md` and `PROGRESS.md`. Application code, deployment configuration and the pre-existing modified `backend/library.db` are intentionally untouched. No application tests, browser checks, hosted access or deployment were performed. Stop for owner review; the proposed disconnected local security baseline and any hosted or production actions require separate authorization.
 
 ## View Transitions closeout
 
