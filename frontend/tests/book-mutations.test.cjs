@@ -8,7 +8,7 @@ const React = require('react');
 const reactHookForm = require('react-hook-form');
 
 const root = path.resolve(__dirname, '..');
-const original = { resolve: Module._resolveFilename, load: Module._load, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, fetch: global.fetch };
+const original = { resolve: Module._resolveFilename, load: Module._load, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, fetch: global.fetch, getComputedStyle: global.getComputedStyle };
 Module._resolveFilename = function (request, ...args) {
   return original.resolve.call(this, request.startsWith('@/') ? path.join(root, request.slice(2)) : request, ...args);
 };
@@ -38,6 +38,7 @@ let refreshed;
 let navigated;
 let pushed;
 let replaced;
+let removed = 0;
 let submitFactoryCalls = 0;
 let invalidSubmission = false;
 let validateSubmission = false;
@@ -47,9 +48,9 @@ const ui = { Button, Modal, ConfigProvider, Checkbox: () => null, Input: () => n
 Module._load = function (request, parent, ...args) {
   if (request === 'antd') return ui;
   if (request === 'next/link') return { __esModule: true, default: Link };
-  if (request === '@/context/message.context') return { useMessage: () => ({ error: (text) => messages.push(['error', text]), success: (text) => messages.push(['success', text]) }) };
+  if (request === '@/context/message.context') return { useMessage: () => ({ error: (text) => messages.push(['error', text]), success: (text) => messages.push(['success', text]), info: (text) => messages.push(['info', text]) }) };
   if (request === '@/context/filters.context') return { useFilters: () => ({ refreshData: () => refreshed++ }) };
-  if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() {} };
+  if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() { removed++; } };
   if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: (url) => { navigated++; replaced = url; }, push: (url) => { pushed = url; } }) };
   if (request === 'react-hook-form') return { ...reactHookForm, Controller, useForm: (options) => { formOptions = options; return { control: {}, formState: { errors: formErrors }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return async (event) => { submittedEvent = event; if (validateSubmission) { const result = await options.resolver(values, {}, {}); formErrors = result.errors; return Object.keys(result.errors).length ? invalid(result.errors) : valid(result.values); } return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue, getValues: () => values }; } };
   if (request === '@hookform/resolvers/zod') return { zodResolver: (schema) => original.load.call(Module, '@hookform/resolvers/zod', module).zodResolver(schema) };
@@ -63,6 +64,7 @@ after(() => {
   Module._resolveFilename = original.resolve; Module._load = original.load;
   Object.assign(React, { useState: original.useState, useRef: original.useRef, useEffect: original.useEffect });
   global.fetch = original.fetch;
+  global.getComputedStyle = original.getComputedStyle;
 });
 
 // Lightweight hook/handler harness, not a DOM or browser renderer.
@@ -99,6 +101,18 @@ function find(element, type, predicate = () => true) {
     const result = find(child, type, predicate); if (result) return result;
   }
   return null;
+}
+function count(element, predicate) {
+  if (!element || typeof element !== 'object') return 0;
+  return (predicate(element) ? 1 : 0) + React.Children.toArray(element.props?.children).reduce((sum, child) => sum + count(child, predicate), 0);
+}
+function editNavbar(tree) {
+  return find(tree, require('../components/navbar.tsx').default);
+}
+function requestEditLogout(tree) {
+  const navbar = editNavbar(tree);
+  const rendered = navbar.type(navbar.props);
+  find(rendered, require('../components/user-panel.tsx').default).props.onLogout();
 }
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const response = (body, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
@@ -213,7 +227,7 @@ test('edit: loaded fields use the accessible responsive form presentation', asyn
   formErrors = {}; h.unmount();
 });
 
-test('edit: absent cover validates and is omitted from the update; existing URLs remain intact', async () => {
+test('edit: unchanged absent or existing cover is omitted from the update', async () => {
   const { editBookSchema } = require('../schemas/book.shema.ts');
   const { zodResolver } = original.load.call(Module, '@hookform/resolvers/zod', module);
   const validate = zodResolver(editBookSchema);
@@ -237,8 +251,7 @@ test('edit: absent cover validates and is omitted from the update; existing URLs
     assert.deepEqual(result.errors, {});
     await find(tree, 'form').props.onSubmit();
     assert.equal(payload.title, 'Changed');
-    if (coverImage == null) assert.equal(Object.hasOwn(payload, 'coverImage'), false);
-    else assert.equal(payload.coverImage, coverImage);
+    assert.deepEqual(payload, { title: 'Changed' });
     h.unmount();
   }
   for (const coverImage of ['not a url', null]) {
@@ -288,6 +301,134 @@ test('edit: invalid cover can be cleared and submits as absent', async () => {
   }
 });
 
+test('edit: sends only the changed year despite unchanged oversized legacy fields', async () => {
+  const stored = {
+    title: 't'.repeat(501), author: 'a'.repeat(501), year: 2000,
+    genre: Array(21).fill('g'.repeat(101)), isFavorite: false,
+    coverImage: `https://example.test/${'c'.repeat(2048)}`,
+    id: 'book-a', userId: 'owner-a', rating: 4,
+  };
+  values = {}; formErrors = {}; validateSubmission = true; navigated = 0;
+  const payloads = [];
+  global.fetch = (_url, init) => {
+    if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+    payloads.push(JSON.parse(init.body));
+    assert.equal(init.method, 'PATCH');
+    return Promise.resolve(response('{"message":"ok"}'));
+  };
+  const h = harness('edit');
+  try {
+    h.render(); await flush();
+    values.year = 2001;
+    await find(h.render(), 'form').props.onSubmit();
+    assert.deepEqual(payloads, [{ year: 2001 }]);
+    assert.equal(values.title, stored.title);
+    assert.deepEqual(values.genre, stored.genre);
+    assert.equal(navigated, 1);
+  } finally {
+    validateSubmission = false; formErrors = {}; h.unmount();
+  }
+});
+
+test('edit: no changes or equivalent normalized values never submit an empty PATCH', async () => {
+  for (const coverImage of [null, undefined, '']) {
+    const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['B', 'A'], coverImage };
+    values = {}; messages.length = 0; navigated = 0; validateSubmission = true;
+    let mutations = 0;
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+      mutations++; return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness('edit');
+    try {
+      h.render(); await flush();
+      // Mirror the checkbox's default and the resolver's optional-cover normalization.
+      values.isFavorite = false;
+      values.coverImage = '  \t';
+      values.genre = ['A', 'B'];
+      values.title = 'Temporary'; values.title = stored.title;
+      let tree = h.render();
+      let prevented = false;
+      find(tree, Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+      assert.equal(prevented, false);
+      await find(tree, 'form').props.onSubmit();
+      assert.equal(mutations, 0);
+      assert.equal(navigated, 0);
+      assert.deepEqual(messages.at(-1), ['info', 'No hay cambios para guardar.']);
+      tree = h.render();
+      assert.equal(find(tree, ConfigProvider).props.componentDisabled, false);
+      assert.equal(values.coverImage, '  \t');
+    } finally {
+      validateSubmission = false; formErrors = {}; h.unmount();
+    }
+  }
+});
+
+test('edit: genre content changes survive failure and retry without changing the loaded baseline', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A', 'B'], isFavorite: false };
+  values = {}; messages.length = 0; navigated = 0; validateSubmission = true;
+  const payloads = [];
+  global.fetch = (_url, init) => {
+    if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+    payloads.push(JSON.parse(init.body));
+    return Promise.resolve(payloads.length === 1
+      ? response('{"error":"No se pudo guardar"}', 400) : response('{"message":"ok"}'));
+  };
+  const h = harness('edit');
+  try {
+    h.render(); await flush();
+    values.genre = ['B', 'A']; // Same selections in a different array/order.
+    await find(h.render(), 'form').props.onSubmit();
+    assert.equal(payloads.length, 0);
+    // Mutate in place to demonstrate that the baseline does not alias the form array.
+    values.genre.push('C');
+    await find(h.render(), 'form').props.onSubmit();
+    assert.deepEqual(payloads, [{ genre: ['B', 'A', 'C'] }]);
+    assert.deepEqual(values.genre, ['B', 'A', 'C']);
+    assert.equal(navigated, 0);
+    let prevented = false;
+    find(h.render(), Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+    assert.equal(prevented, true);
+    await find(h.render(), 'form').props.onSubmit();
+    assert.deepEqual(payloads[1], payloads[0]);
+    assert.equal(navigated, 1);
+  } finally {
+    validateSubmission = false; formErrors = {}; h.unmount();
+  }
+});
+
+test('edit: clearing a stored cover stays visible and unsaved; replacing it uses the existing PATCH contract', async () => {
+  for (const blank of ['', ' \t']) {
+    const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false, coverImage: 'https://example.test/old' };
+    values = {}; messages.length = 0; navigated = 0; validateSubmission = true;
+    const payloads = [];
+    global.fetch = (_url, init) => {
+      if (init.method === 'GET') return Promise.resolve(response(JSON.stringify(stored)));
+      payloads.push(JSON.parse(init.body)); return Promise.resolve(response('{"message":"ok"}'));
+    };
+    const h = harness('edit');
+    try {
+      h.render(); await flush();
+      values.coverImage = blank;
+      await find(h.render(), 'form').props.onSubmit();
+      assert.deepEqual(payloads, []);
+      assert.equal(values.coverImage, blank);
+      assert.equal(navigated, 0);
+      assert.match(messages.at(-1)[1], /No se puede quitar la portada/);
+      let prevented = false;
+      find(h.render(), Link).props.onNavigate({ preventDefault: () => { prevented = true; } });
+      assert.equal(prevented, true);
+      assert.equal(find(h.render(), ConfigProvider).props.componentDisabled, false);
+      values.coverImage = 'https://example.test/new';
+      await find(h.render(), 'form').props.onSubmit();
+      assert.deepEqual(payloads, [{ coverImage: values.coverImage }]);
+      assert.equal(navigated, 1);
+    } finally {
+      validateSubmission = false; formErrors = {}; h.unmount();
+    }
+  }
+});
+
 test('edit: return guards changed fields and preserves the form on cancellation', async () => {
   const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
   values = {}; pushed = undefined; replaced = undefined;
@@ -299,7 +440,7 @@ test('edit: return guards changed fields and preserves the form on cancellation'
   assert.equal(find(tree, Link).props.href, '/book/book-a');
   assert.equal(find(tree, Link).props.replace, true);
   navigate(); assert.equal(prevented, false);
-  for (const [key, changed] of Object.entries({ title: 'Changed', author: 'Other', year: 2001, genre: ['B'], coverImage: '', isFavorite: true })) {
+  for (const [key, changed] of Object.entries({ title: 'Changed', author: 'Other', year: 2001, genre: ['B'], coverImage: 'https://example.test/new', isFavorite: true })) {
     const old = values[key]; values[key] = changed;
     navigate(); assert.equal(prevented, true, key);
     tree = h.render();
@@ -308,12 +449,194 @@ test('edit: return guards changed fields and preserves the form on cancellation'
     modal.props.onCancel(); tree = h.render();
     assert.deepEqual(values[key], changed);
     assert.equal(find(tree, Modal).props.open, false);
+    find(tree, Modal).props.afterClose(); tree = h.render();
     values[key] = old;
   }
   navigate(); assert.equal(prevented, false);
   values.title = 'Changed'; navigate(); tree = h.render();
   find(tree, Modal).props.onOk();
   assert.equal(replaced, '/book/book-a'); assert.equal(pushed, undefined);
+  h.unmount();
+});
+
+test('edit: one shared navbar outside one main is present while loading, on error and after retry', async () => {
+  values = {}; removed = 0;
+  let finish;
+  global.fetch = () => new Promise((resolve) => { finish = resolve; });
+  const h = harness('edit');
+  const check = (tree) => {
+    const navbar = editNavbar(tree);
+    assert.ok(navbar);
+    assert.equal(count(tree, (node) => node.type === navbar.type), 1);
+    assert.equal(count(tree, (node) => node.type === 'main'), 1);
+    assert.equal(find(find(tree, 'main'), navbar.type), null);
+  };
+  check(h.render());
+  finish(response('{"error":"failed"}', 400)); await flush();
+  let tree = h.render(); check(tree);
+  find(tree, Button).props.onClick(); check(h.render());
+  finish(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false }))); await flush();
+  tree = h.render(); check(tree);
+  assert.equal(removed, 0);
+  h.unmount();
+});
+
+test('edit: clean logout uses the existing navbar logout path', async () => {
+  values = {}; removed = 0; pushed = undefined; messages.length = 0;
+  global.fetch = () => Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })));
+  const h = harness('edit'); h.render(); await flush();
+  const tree = h.render();
+  requestEditLogout(tree);
+  assert.equal(removed, 1);
+  assert.equal(pushed, '/login');
+  assert.deepEqual(messages.at(-1), ['info', 'Cierre de sesión satisfactorio.']);
+  assert.equal(find(h.render(), Modal).props.open, false);
+  h.unmount();
+});
+
+test('edit: dirty logout preserves session and draft on cancel and removes token only on confirmation', async () => {
+  values = {}; removed = 0; pushed = undefined;
+  global.fetch = () => Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })));
+  const h = harness('edit'); h.render(); await flush();
+  values.title = 'Changed';
+  requestEditLogout(h.render());
+  let tree = h.render();
+  let modal = find(tree, Modal);
+  assert.equal(modal.props.open, true);
+  assert.equal(modal.props.title, '¿Cerrar sesión?');
+  assert.equal(modal.props.cancelButtonProps.autoFocus, true);
+  assert.equal(modal.props.focusTriggerAfterClose, false);
+  assert.equal(editNavbar(tree).props.suspendPanelDismiss, true);
+  assert.equal(removed, 0); assert.equal(pushed, undefined);
+  modal.props.onCancel();
+  tree = h.render();
+  assert.equal(find(tree, Modal).props.open, false);
+  assert.equal(editNavbar(tree).props.suspendPanelDismiss, true);
+  assert.equal(values.title, 'Changed');
+  assert.equal(removed, 0); assert.equal(pushed, undefined);
+  find(tree, Modal).props.afterClose();
+  tree = h.render();
+  assert.equal(editNavbar(tree).props.suspendPanelDismiss, false);
+  requestEditLogout(tree);
+  modal = find(h.render(), Modal);
+  assert.equal(removed, 0);
+  modal.props.onOk();
+  assert.equal(removed, 1); assert.equal(pushed, '/login');
+  h.unmount();
+});
+
+test('edit: canceled confirmations restore focus only after close, to the corresponding usable trigger', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  for (const kind of ['return', 'logout']) {
+    for (const dismissal of ['cancel button', 'Escape']) {
+      values = {}; removed = 0; pushed = undefined; replaced = undefined;
+      global.fetch = () => Promise.resolve(response(JSON.stringify(stored)));
+      global.getComputedStyle = () => ({ visibility: 'visible' });
+      const h = harness('edit'); h.render(); await flush();
+      values.title = 'Changed';
+      let tree = h.render();
+      let focused = 0;
+      const target = { isConnected: true, closest: () => null, matches: () => false, getClientRects: () => [1], focus: () => focused++ };
+      if (kind === 'return') {
+        find(tree, Link).props.ref.current = target;
+        find(tree, Link).props.onNavigate({ preventDefault() {} });
+      } else {
+        editNavbar(tree).props.logoutButtonRef.current = target;
+        requestEditLogout(tree);
+      }
+      tree = h.render();
+      const modal = find(tree, Modal);
+      assert.equal(modal.props.cancelButtonProps.autoFocus, true);
+      assert.equal(modal.props.focusTriggerAfterClose, false);
+      // Both Cancel and Escape invoke Ant Design's onCancel callback.
+      modal.props.onCancel({ type: dismissal });
+      tree = h.render();
+      assert.equal(find(tree, Modal).props.open, false);
+      assert.equal(focused, 0);
+      if (kind === 'logout') assert.equal(editNavbar(tree).props.suspendPanelDismiss, true);
+      find(tree, Modal).props.afterClose();
+      assert.equal(focused, 1);
+      tree = h.render();
+      assert.equal(editNavbar(tree).props.suspendPanelDismiss, false);
+      assert.equal(values.title, 'Changed'); assert.equal(removed, 0);
+      assert.equal(pushed, undefined); assert.equal(replaced, undefined);
+      h.unmount();
+    }
+  }
+});
+
+test('edit: closing does not focus hidden, inert, disabled or disconnected triggers or an unmounted page', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  for (const unavailable of ['disconnected', 'inert', 'disabled', 'hidden', 'visibility', 'unmounted']) {
+    values = {};
+    global.fetch = () => Promise.resolve(response(JSON.stringify(stored)));
+    global.getComputedStyle = () => ({ visibility: unavailable === 'visibility' ? 'hidden' : 'visible' });
+    const h = harness('edit'); h.render(); await flush();
+    values.title = 'Changed';
+    const tree = h.render();
+    let focused = 0;
+    find(tree, Link).props.ref.current = {
+      isConnected: unavailable !== 'disconnected',
+      closest: () => unavailable === 'inert' ? {} : null,
+      matches: () => unavailable === 'disabled',
+      getClientRects: () => unavailable === 'hidden' ? [] : [1],
+      focus: () => focused++,
+    };
+    find(tree, Link).props.onNavigate({ preventDefault() {} });
+    find(h.render(), Modal).props.onCancel();
+    const closing = find(h.render(), Modal);
+    if (unavailable === 'unmounted') h.unmount();
+    closing.props.afterClose();
+    assert.equal(focused, 0, unavailable);
+    if (unavailable !== 'unmounted') h.unmount();
+  }
+});
+
+test('edit: accepting either confirmation never restores focus on close', async () => {
+  for (const kind of ['return', 'logout']) {
+    values = {}; removed = 0; pushed = undefined; replaced = undefined;
+    global.fetch = () => Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })));
+    const h = harness('edit'); h.render(); await flush();
+    values.title = 'Changed';
+    const tree = h.render();
+    let focused = 0;
+    const target = { isConnected: true, closest: () => null, matches: () => false, getClientRects: () => [1], focus: () => focused++ };
+    if (kind === 'return') {
+      find(tree, Link).props.ref.current = target;
+      find(tree, Link).props.onNavigate({ preventDefault() {} });
+    } else {
+      editNavbar(tree).props.logoutButtonRef.current = target;
+      requestEditLogout(tree);
+    }
+    const modal = find(h.render(), Modal);
+    modal.props.onOk();
+    modal.props.afterClose();
+    assert.equal(focused, 0);
+    assert.equal(kind === 'return' ? replaced : pushed, kind === 'return' ? '/book/book-a' : '/login');
+    h.unmount();
+  }
+});
+
+test('edit: logout is denied during a pending update, including from an already-open confirmation', async () => {
+  values = {}; removed = 0; pushed = undefined; messages.length = 0;
+  let reject;
+  global.fetch = (_url, init) => init.method === 'GET'
+    ? Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })))
+    : new Promise((_, fail) => { reject = fail; });
+  const h = harness('edit'); h.render(); await flush();
+  values.title = 'Changed';
+  requestEditLogout(h.render());
+  const beforePending = h.render();
+  const request = find(beforePending, 'form').props.onSubmit();
+  requestEditLogout(beforePending);
+  find(beforePending, Modal).props.onOk();
+  assert.equal(removed, 0); assert.equal(pushed, undefined);
+  assert.match(messages.at(-1)[1], /Espera a que termine/);
+  reject(new Error('network')); await request;
+  assert.equal(values.title, 'Changed');
+  assert.match(messages.at(-1)[1], /No se pudo confirmar/);
+  find(h.render(), Modal).props.onCancel();
+  assert.equal(removed, 0);
   h.unmount();
 });
 
@@ -357,13 +680,14 @@ for (const kind of ['create', 'edit']) {
     if (kind === 'edit') {
       for (const key of ['rating', 'reviewAverageRating', 'reviewRatingCount']) assert.equal(Object.hasOwn(values, key), false);
       Object.assign(values, { rating: 0, reviewAverageRating: 4.25, reviewRatingCount: 2 });
+      values.title = 'Changed title';
     }
     const form = find(h.render(), 'form');
     assert.equal(find(form, Controller, (node) => node.props.name === 'rating'), null);
     assert.equal(find(form, 'label', (node) => node.props.htmlFor === 'rating'), null);
     await form.props.onSubmit();
     for (const key of ['rating', 'reviewAverageRating', 'reviewRatingCount']) assert.equal(Object.hasOwn(payload, key), false);
-    assert.equal(payload.title, stored.title);
+    assert.equal(payload.title, kind === 'edit' ? 'Changed title' : stored.title);
     assert.equal(({ ...stored, ...payload }).rating, 0);
     h.unmount();
   });
@@ -412,6 +736,8 @@ for (const kind of ['create', 'edit']) {
     };
     const h = harness(kind);
     h.render(); await flush();
+    if (kind === 'edit') values.title = 'Changed title';
+    const submitted = { ...values };
     let tree = h.render();
     const submit = find(tree, 'form').props.onSubmit;
     const request = submit();
@@ -427,7 +753,7 @@ for (const kind of ['create', 'edit']) {
       assert.equal(closed, 0);
     }
     finish.reject(new Error('network')); await request;
-    assert.deepEqual(values, initial);
+    assert.deepEqual(values, submitted);
     assert.equal(resets + closed + refreshed + navigated, 0);
     assert.match(messages.at(-1)[1], /No se pudo confirmar/);
     assert.equal(find(h.render(), ConfigProvider).props.componentDisabled, false);
@@ -435,13 +761,13 @@ for (const kind of ['create', 'edit']) {
     for (const body of ['not json', 'null', '{}', '{"message":null}']) {
       const pending = find(h.render(), 'form').props.onSubmit();
       finish.resolve(response(body, kind === 'create' ? 201 : 200)); await pending;
-      assert.deepEqual(values, initial);
+      assert.deepEqual(values, submitted);
       assert.equal(resets + closed + refreshed + navigated, 0);
       assert.match(messages.at(-1)[1], /No se pudo confirmar/);
     }
     const error = find(h.render(), 'form').props.onSubmit();
     finish.resolve(response('{"error":"No se pudo guardar"}', 400)); await error;
-    assert.deepEqual(values, initial);
+    assert.deepEqual(values, submitted);
     assert.equal(messages.at(-1)[1], 'No se pudo guardar');
     assert.equal(resets + closed + refreshed + navigated, 0);
     assert.equal(find(h.render(), ConfigProvider).props.componentDisabled, false);
@@ -475,6 +801,7 @@ for (const kind of ['create', 'edit']) {
       ? response(JSON.stringify(values))
       : response('{"message":"Mensaje confirmado"}', kind === 'create' ? 201 : 200));
     const h = harness(kind); h.render(); await flush();
+    if (kind === 'edit') values.title = 'Changed title';
     await find(h.render(), 'form').props.onSubmit();
     assert.deepEqual(messages.at(-1), ['success', 'Mensaje confirmado']);
     if (kind === 'create') assert.deepEqual([resets, closed, refreshed, navigated], [1, 1, 1, 0]);
@@ -491,6 +818,7 @@ test('edit ignores a mutation response after unmount', async () => {
     ? Promise.resolve(response(JSON.stringify(values)))
     : new Promise((resolve) => { finish = resolve; });
   const h = harness('edit'); h.render(); await flush();
+  values.title = 'Changed title';
   const request = find(h.render(), 'form').props.onSubmit();
   h.unmount(); finish(response('{"message":"ok"}')); await request;
   assert.equal(navigated, 0);

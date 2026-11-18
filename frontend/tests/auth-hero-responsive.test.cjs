@@ -10,6 +10,7 @@ test('shared authentication hero separates and left-aligns its copy when stacked
 
   assert.match(hero, /Tu biblioteca,\{' '\}<br\s*\/>a tu manera\./);
   assert.ok(responsive);
+  assert.match(css, /\.auth-page \.auth-identity-header \.theme-switcher\.ant-btn:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus\)/);
   assert.match(responsive, /\.auth-page\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(responsive, /\.auth-identity\s*\{[^}]*padding:\s*1\.5rem/);
   assert.match(css, /\.auth-content-inner\s*\{\s*width:\s*min\(100%,\s*27rem\);\s*\}/);
@@ -19,6 +20,6 @@ test('shared authentication hero separates and left-aligns its copy when stacked
   assert.match(responsive, /\.auth-statement br\s*\{\s*display:\s*none/);
   assert.doesNotMatch(css.slice(0, css.indexOf('@media (max-width: 767px)')), /\.auth-statement br\s*\{/);
   for (const page of ['login', 'register']) {
-    assert.match(fs.readFileSync(path.join(__dirname, `../app/${page}/page.tsx`), 'utf8'), /<AuthIdentity\s*\/>/);
+    assert.match(fs.readFileSync(path.join(__dirname, `../app/${page}/page.tsx`), 'utf8'), /<AuthIdentity editorial\s*\/>/);
   }
 });

@@ -1,3 +1,4 @@
+import { asyncHandler } from '../middlewares/async-handler';
 import { UserController } from '../controllers/user.controller';
 import {
   validateRegisterData,
@@ -9,7 +10,10 @@ import { loginLimiters, registerLimiters } from '../middlewares/auth-rate-limit.
 const userRouter = Router();
 
 // Routes
-userRouter.post('/register', registerLimiters.ip, validateRegisterData, registerLimiters.account, UserController.register);
-userRouter.post('/login', loginLimiters.ip, validateLoginData, loginLimiters.account, UserController.login);
+userRouter.post('/register', (req, res, next) => {
+  if (req.app.locals.stagingRegistrationGate) return next();
+  return registerLimiters.ip(req, res, next);
+}, validateRegisterData, registerLimiters.account, asyncHandler(UserController.register));
+userRouter.post('/login', loginLimiters.ip, validateLoginData, loginLimiters.account, asyncHandler(UserController.login));
 
 export default userRouter;

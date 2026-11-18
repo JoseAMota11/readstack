@@ -6,7 +6,9 @@ import { getOneBook, updateBook } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Checkbox, ConfigProvider, Input, InputNumber, Modal, Select, Spin } from 'antd';
+import { Button, Checkbox, ConfigProvider, Input, InputNumber, Modal, Select } from 'antd';
+import LoadingStatus from '@/components/loading-status';
+import Navbar from '@/components/navbar';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +21,17 @@ import {
 import booksGenresOptions from '@/books-genres.json';
 
 const editFields = ['title', 'author', 'year', 'genre', 'coverImage', 'isFavorite'] as const;
+
+function editFieldSnapshot(key: typeof editFields[number], value: unknown) {
+  if (key === 'coverImage' && (value == null || (typeof value === 'string' && value.trim() === ''))) {
+    return undefined;
+  }
+  if (key === 'isFavorite' && value === undefined) return JSON.stringify(false);
+  // Genres are selections, not ranked items. Compare contents without mutating
+  // the form's array; preserve duplicate counts rather than silently deduplicating.
+  if (key === 'genre' && Array.isArray(value)) return JSON.stringify([...value].sort());
+  return JSON.stringify(value);
+}
 
 function EditBookPage() {
   const { id } = useParams();
@@ -43,7 +56,11 @@ function EditBook({ id }: { id: string }) {
   const submitting = useRef(false);
   const mounted = useRef(false);
   const [pending, setPending] = useState(false);
-  const [returnOpen, setReturnOpen] = useState(false);
+  const [exitAction, setExitAction] = useState<{ kind: 'return' } | { kind: 'logout'; logout: () => void } | null>(null);
+  const [closingConfirmation, setClosingConfirmation] = useState(false);
+  const restoreFocus = useRef<'return' | 'logout' | null>(null);
+  const returnLinkRef = useRef<HTMLAnchorElement>(null);
+  const logoutButtonRef = useRef<HTMLButtonElement>(null);
   const loadedValues = useRef<(string | undefined)[]>([]);
   const detailUrl = `/book/${encodeURIComponent(id)}`;
 
@@ -53,18 +70,24 @@ function EditBook({ id }: { id: string }) {
   }, []);
 
   const onValid: SubmitHandler<FieldValues> = async (values) => {
-    if (submitting.current) return;
+    if (submitting.current || !loaded) return;
+    const changedFields = editFields.filter((key, index) =>
+      editFieldSnapshot(key, values[key]) !== loadedValues.current[index]);
+    if (changedFields.includes('coverImage') && editFieldSnapshot('coverImage', values.coverImage) === undefined) {
+      messageApi.error('No se puede quitar la portada por ahora. Introduce otra URL o conserva la actual.');
+      return;
+    }
+    if (changedFields.length === 0) {
+      messageApi.info('No hay cambios para guardar.');
+      return;
+    }
+    const data: Partial<Book> = {};
+    for (const key of changedFields) Object.assign(data, { [key]: values[key] });
     submitting.current = true;
     setPending(true);
     let navigating = false;
     try {
-      const data = {
-        title: values.title, author: values.author, year: values.year,
-        genre: values.genre, coverImage: values.coverImage, isFavorite: values.isFavorite,
-        userId: id,
-      };
-
-      const [error, message] = await updateBook(id as string, data as Book);
+      const [error, message] = await updateBook(id, data);
       if (!mounted.current) return;
 
       if (error) {
@@ -73,6 +96,7 @@ function EditBook({ id }: { id: string }) {
       }
       if (typeof message !== 'string') throw new Error('Invalid response');
       messageApi.success(message.trim() ? message : 'Libro actualizado exitosamente.');
+      restoreFocus.current = null;
       router.replace('/');
       navigating = true;
     } catch {
@@ -97,7 +121,7 @@ function EditBook({ id }: { id: string }) {
         }
         const formBook = { ...book };
         if ('coverImage' in formBook) formBook.coverImage = formBook.coverImage ?? undefined;
-        loadedValues.current = editFields.map((key) => JSON.stringify(key === 'isFavorite' && !(key in formBook) ? false : formBook[key]));
+        loadedValues.current = editFields.map((key) => editFieldSnapshot(key, formBook[key]));
         for (const key of editFields) {
           if (key in formBook) setValue(key, formBook[key]);
         }
@@ -109,26 +133,54 @@ function EditBook({ id }: { id: string }) {
     return () => { active = false; };
   }, [id, retry, setValue]);
 
-  if (loadError) return <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div>;
-  if (!loaded) return <div className="text-center" role="status" aria-label="Cargando libro"><Spin /> Cargando libro...</div>;
+  const hasChanges = () => {
+    const current = getValues();
+    return editFields.some((key, index) => editFieldSnapshot(key, current[key]) !== loadedValues.current[index]);
+  };
 
-  return (
+  const requestLogout = (logout: () => void) => {
+    if (submitting.current) {
+      messageApi.info('Espera a que termine la actualización antes de cerrar sesión.');
+      return;
+    }
+    if (exitAction) return;
+    if (loaded && hasChanges()) setExitAction({ kind: 'logout', logout });
+    else logout();
+  };
+
+  const shell = (content: React.ReactNode) => (
+    <div>
+      <div className="edit-book-nav">
+        <Navbar onLogoutRequest={requestLogout} suspendPanelDismiss={exitAction?.kind === 'logout'} logoutButtonRef={logoutButtonRef} />
+      </div>
+      {content}
+    </div>
+  );
+
+  if (loadError) return shell(<main className="edit-book-page"><div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div></main>);
+  if (!loaded) return shell(
+    <main className="edit-book-page edit-book-loading">
+      <LoadingStatus className="content-loading-status" message="Cargando libro..." />
+    </main>
+  );
+
+  return shell(
     <main className="edit-book-page">
       <Link
+        ref={returnLinkRef}
         href={detailUrl}
         replace
         className="book-detail-return edit-book-return"
         aria-disabled={pending || undefined}
         aria-describedby={pending ? 'edit-book-pending' : undefined}
         onNavigate={(event) => {
-          if (submitting.current) {
+          if (submitting.current || exitAction) {
             event.preventDefault();
             return;
           }
-          const current = getValues();
-          if (editFields.some((key, index) => JSON.stringify(current[key]) !== loadedValues.current[index])) {
+          if (hasChanges()) {
             event.preventDefault();
-            setReturnOpen(true);
+            setExitAction({ kind: 'return' });
           }
         }}
       >
@@ -136,10 +188,33 @@ function EditBook({ id }: { id: string }) {
       </Link>
       {pending && <p id="edit-book-pending" role="status">Espera a que termine la actualización antes de volver.</p>}
       <Modal
-        title="¿Volver al libro?"
-        open={returnOpen}
-        onOk={() => { if (!submitting.current) router.replace(detailUrl); }}
-        onCancel={() => setReturnOpen(false)}
+        title={exitAction?.kind === 'logout' ? '¿Cerrar sesión?' : '¿Volver al libro?'}
+        open={exitAction !== null && !closingConfirmation}
+        onOk={() => {
+          if (submitting.current) return;
+          restoreFocus.current = null;
+          if (exitAction?.kind === 'logout') exitAction.logout();
+          else if (exitAction?.kind === 'return') router.replace(detailUrl);
+        }}
+        onCancel={() => {
+          restoreFocus.current = exitAction?.kind ?? null;
+          setClosingConfirmation(true);
+        }}
+        focusTriggerAfterClose={false}
+        afterClose={() => {
+          const target = restoreFocus.current === 'logout' ? logoutButtonRef.current : returnLinkRef.current;
+          if (mounted.current && restoreFocus.current && !submitting.current && target?.isConnected &&
+            !target.closest('[inert], [hidden], [aria-hidden="true"], [aria-disabled="true"]') &&
+            !target.matches(':disabled') && target.getClientRects().length > 0 &&
+            getComputedStyle(target).visibility === 'visible') {
+            target.focus();
+          }
+          restoreFocus.current = null;
+          if (mounted.current) {
+            setExitAction(null);
+            setClosingConfirmation(false);
+          }
+        }}
         okText="Salir"
         cancelText="Seguir editando"
         okButtonProps={{ disabled: pending }}

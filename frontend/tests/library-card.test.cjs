@@ -22,42 +22,30 @@ Module._resolveFilename = function (request, ...args) {
 };
 
 const Card = require('../components/card.tsx').default;
-const { coverTransitionName } = require('../utils/cover-transition.ts');
 const book = { id: 'synthetic-id', title: 'Synthetic title', author: 'Synthetic author', year: 2024, isFavorite: false, reviewAverageRating: null, reviewRatingCount: 0 };
 const render = (props = {}) => renderToStaticMarkup(React.createElement(Card, { ...book, ...props }));
-
-test('cover names are deterministic, CSS-safe and distinct for different IDs', () => {
-  const ids = ['', 'a', 'A', 'a-b', 'a b', 'é', '😀', '\ud800', '00'];
-  const names = ids.map(coverTransitionName);
-  assert.equal(new Set(names).size, ids.length);
-  for (const name of names) assert.match(name, /^book-cover-[0-9a-f]*$/);
-  assert.equal(coverTransitionName('a-b'), coverTransitionName('a-b'));
-});
-
-test('catalog cover boundary opts into shared transitions only', () => {
-  const boundary = Card(book).props.children[0];
-  assert.equal(boundary.type, React.ViewTransition);
-  assert.equal(boundary.props.name, coverTransitionName(book.id));
-  assert.equal(boundary.props.default, 'none');
-  assert.equal(boundary.props.share, 'book-cover');
-});
-
-test('cover transition styling suppresses root and reduced-motion animations', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
-  assert.match(css, /::view-transition-old\(root\),\s*::view-transition-new\(root\)\s*\{\s*animation:\s*none/);
-  assert.match(css, /::view-transition-group\(\.book-cover\)\s*\{[^}]*animation-duration:\s*220ms/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)\s*\{\s*::view-transition-group\(\*\),\s*::view-transition-old\(\*\),\s*::view-transition-new\(\*\)\s*\{\s*animation:\s*none\s*!important/);
-});
 
 test('card links to book detail and preserves long titles and metadata', () => {
   const title = 'A'.repeat(300);
   const html = render({ title, coverImage: 'https://example.test/cover.png' });
   assert.match(html, /href="\/book\/synthetic-id"/);
   assert.ok(html.includes(title));
+  assert.match(html, /<h3 class="library-card-title">/);
   assert.match(html, /Synthetic author/);
   assert.match(html, /2024/);
   assert.match(html, /alt=""/);
   assert.doesNotMatch(html, /Sin portada/);
+});
+
+test('footer attribution is non-heading text with a semantic-token link', () => {
+  const Footer = require('../components/footer.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(Footer));
+  assert.match(html, /<footer><p class="site-attribution">/);
+  assert.match(html, /href="https:\/\/github\.com\/JoseAMota11"/);
+  assert.match(html, /José Mota/);
+  assert.doesNotMatch(html, /<h[1-6]|text-blue-500/);
+  const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  assert.match(css, /\.site-attribution a\s*\{[^}]*color:\s*var\(--accent\)/);
 });
 
 test('card uses review averages, including zero, and never the manual rating', () => {
@@ -81,7 +69,7 @@ test('missing and failed covers fall back, and a changed URL resets the cover st
   let failed = false;
   React.useState = () => [failed, (value) => { failed = value; }];
   function cover(src) {
-    const element = Card({ ...book, coverImage: src }).props.children[0].props.children;
+    const element = Card({ ...book, coverImage: src }).props.children[0];
     if (element.key !== key) { key = element.key; failed = false; }
     return element.type(element.props);
   }

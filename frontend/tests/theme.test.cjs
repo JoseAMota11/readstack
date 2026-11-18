@@ -74,3 +74,38 @@ test('provider switches document class, persistence, and Ant Design algorithm to
     global.document = oldDocument; global.localStorage = oldStorage;
   }
 });
+
+test('authentication theme button exposes the next Spanish action and delegates activation', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../components/theme-switcher.tsx'), 'utf8');
+  const compiled = ts.transpileModule(source, { compilerOptions: {
+    module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
+  } }).outputText;
+  const module = new Module(path.join(__dirname, '../components/theme-switcher-test.cjs'));
+  module.filename = path.join(__dirname, '../components/theme-switcher-test.cjs');
+  module.paths = Module._nodeModulePaths(path.dirname(module.filename));
+  const originalLoad = Module._load;
+  let theme = 'light', activations = 0;
+  Module._load = function (request, parent, ...args) {
+    if (request === '@/context/theme.context') return { useTheme: () => ({
+      theme, toggleTheme: () => { activations++; theme = theme === 'light' ? 'dark' : 'light'; },
+    }) };
+    return originalLoad.call(this, request, parent, ...args);
+  };
+  try {
+    module._compile(compiled, module.filename);
+    const Switcher = module.exports.default;
+    let button = Switcher();
+    assert.equal(button.props['aria-label'], 'Activar tema oscuro');
+    assert.equal(button.props.icon.props['aria-hidden'], 'true');
+    button.props.onClick();
+    button = Switcher();
+    assert.equal(activations, 1);
+    assert.equal(button.props['aria-label'], 'Activar tema claro');
+    assert.equal(button.props.icon.props['aria-hidden'], 'true');
+    button.props.onClick();
+    assert.equal(activations, 2);
+    assert.equal(Switcher().props['aria-label'], 'Activar tema oscuro');
+  } finally {
+    Module._load = originalLoad;
+  }
+});

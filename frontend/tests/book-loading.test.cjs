@@ -43,6 +43,7 @@ Module._load = function (request, parent, ...args) {
   if (request === '@/services/book.service') return service;
   if (request === '@/context/filters.context') return { useFilters: () => ({ filters, refresh, handleSetFilters: (value) => filterUpdates.push(value) }) };
   if (request === '@/context/message.context') return { useMessage: () => ({ info() {}, success() {}, error() {} }) };
+  if (request === '@/context/theme.context') return { useTheme: () => ({ theme: 'light', toggleTheme() {} }) };
   if (request === 'next/navigation') return { useParams: () => ({ id }), usePathname: () => `/book/${id}`, useRouter: () => ({ push() {}, replace() {} }) };
   if (request === 'next/link') return { __esModule: true, default: Link };
   if (request === 'react-hook-form') return { Controller: () => null, useForm: () => ({ control: {}, handleSubmit: () => () => {}, formState: { errors: {} }, setValue }) };
@@ -53,8 +54,10 @@ Module._load = function (request, parent, ...args) {
   return original.load.call(this, request, parent, ...args);
 };
 const Main = require('../components/main.tsx').default;
+const LoadingStatus = require('../components/loading-status.tsx').default;
 const Detail = require('../app/book/[id]/page.tsx').default;
 const Edit = require('../app/book/[id]/edit/page.tsx').default;
+const Navbar = require('../components/navbar.tsx').default;
 after(() => { Object.assign(React, { use: original.use, useState: original.useState, useRef: original.useRef, useEffect: original.useEffect }); Module._load = original.load; Module._resolveFilename = resolve; });
 
 // Approximate keyed remounts and effect cleanup; this is not a React renderer.
@@ -95,6 +98,7 @@ function harness(Component, props = () => ({})) {
 function find(element, predicate) {
   if (!element || typeof element !== 'object') return null;
   if (predicate(element)) return element;
+  if (element.type === LoadingStatus) return find(LoadingStatus(element.props), predicate);
   for (const child of React.Children.toArray(element.props?.children)) {
     const match = find(child, predicate);
     if (match) return match;
@@ -119,12 +123,14 @@ test('detail unwraps promised params with the React server renderer', async () =
 test('loaded detail presents the full title, author, cover and review section', async () => {
   reset(); const h = harness(Detail, detailProps); h.render();
   const title = 'Título largo '.repeat(30);
-  requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', coverImage: 'https://example.test/cover.png' }]); await flush();
+  requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', year: 2024, coverImage: 'https://example.test/cover.png' }]); await flush();
   const tree = h.render();
   const heading = byType(tree, 'h1');
   const cover = find(tree, (element) => element.props?.src === 'https://example.test/cover.png');
   assert.equal(heading.props.children, title);
   assert.match(JSON.stringify(tree), /Autora de prueba/);
+  assert.ok(byType(tree, 'main'));
+  assert.equal(find(tree, (element) => element.props?.className === 'book-detail-year').props.children, 2024);
   assert.equal(cover.props.src, 'https://example.test/cover.png');
   assert.equal(cover.props.title, title);
   assert.ok(find(tree, (element) => element.props?.bookId === 'a'));
@@ -165,23 +171,46 @@ test('detail provides a library link during loading, error, and success', async 
     assert.equal(arrow.props.children, '←');
     assert.equal(label.trim(), 'Volver a la biblioteca');
   }
-  let tree = h.render(); assert.ok(byRole(tree, 'status')); assertLink(tree);
+  const assertShell = (tree) => {
+    const count = (element, type) => !element || typeof element !== 'object' ? 0 :
+      (element.type === type ? 1 : 0) + React.Children.toArray(element.props?.children).reduce((sum, child) => sum + count(child, type), 0);
+    assert.equal(count(tree, Navbar), 1);
+    assert.equal(count(tree, 'main'), 1);
+  };
+  let tree = h.render(); assert.ok(find(tree, (element) => element.type === LoadingStatus && /library-state/.test(element.props.className))); assertShell(tree); assertLink(tree);
   requests.shift().reject(new Error('network')); await flush();
-  tree = h.render(); assert.ok(byRole(tree, 'alert')); assertLink(tree);
+  tree = h.render(); assert.match(byRole(tree, 'alert').props.className, /library-state-error/); assertShell(tree); assertLink(tree);
   byType(tree, Button).props.onClick(); h.render();
   requests.shift().resolve([undefined, book('a')]); await flush();
-  tree = h.render(); assert.ok(byType(tree, 'h1')); assertLink(tree);
+  tree = h.render(); assert.ok(byType(tree, 'h1')); assertShell(tree); assertLink(tree);
   h.unmount();
 });
 
-test('only loaded detail has a book-specific shared cover boundary', async () => {
-  reset(); const h = harness(Detail, detailProps);
-  assert.equal(find(h.render(), (element) => element.type === React.ViewTransition), null);
+test('detail logout synchronously observes independent operations without queuing logout', async () => {
+  reset(); const h = harness(Detail, detailProps); h.render();
   requests.shift().resolve([undefined, book('a')]); await flush();
-  const boundary = find(h.render(), (element) => element.type === React.ViewTransition);
-  assert.equal(boundary.props.name, require('../utils/cover-transition.ts').coverTransitionName('a'));
-  assert.equal(boundary.props.default, 'none');
-  assert.equal(boundary.props.share, 'book-cover');
+  const tree = h.render();
+  const navbar = byType(tree, Navbar);
+  const actionBar = find(tree, (element) => typeof element.props?.setBook === 'function');
+  const reviews = find(tree, (element) => element.props?.bookId === 'a');
+  let logouts = 0;
+  const logout = () => { logouts++; };
+  const status = (current) => find(current, (element) => element.props?.role === 'status' && element.props?.className === 'sr-only');
+  assert.equal(status(tree).props.children, false);
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 1);
+  const endBook = actionBar.props.beginOperation();
+  const endReview = reviews.props.beginOperation();
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 1);
+  let announcement = status(h.render()).props.children;
+  assert.match(announcement.props.children, /Espera a que terminen/);
+  const firstKey = announcement.key;
+  endBook(); endBook();
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 1);
+  announcement = status(h.render()).props.children;
+  assert.notEqual(announcement.key, firstKey);
+  endReview();
+  assert.equal(logouts, 1);
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 2);
   h.unmount();
 });
 
@@ -194,19 +223,26 @@ test('detail cover handles missing and failed images and resets on URL changes',
   let key; let failed = false;
   function cover() {
     tree = h.render();
-    const element = find(tree, (item) => item.type === React.ViewTransition).props.children;
+    const element = find(tree, (item) => item.type?.name === 'DetailCover');
     if (element.key !== key) { key = element.key; failed = false; }
     const useState = React.useState;
     React.useState = () => [failed, (value) => { failed = value; }];
     try { return element.type(element.props); } finally { React.useState = useState; }
   }
   const changeUrl = (url) => actionBar.props.setBook((previous) => ({ ...previous, coverImage: url }));
-  assert.equal(cover().props.children.props.children, 'Sin portada');
-  changeUrl(''); assert.equal(cover().props.children.props.children, 'Sin portada');
+  function assertFallback() {
+    const fallback = cover().props.children;
+    assert.match(fallback.props.className, /library-cover-placeholder/);
+    const [icon, label] = React.Children.toArray(fallback.props.children);
+    assert.equal(icon.props['aria-hidden'], 'true');
+    assert.equal(label.props.children, 'Sin portada');
+  }
+  assertFallback();
+  changeUrl(''); assertFallback();
   changeUrl('https://example.test/first.png');
   let image = cover().props.children;
   assert.equal(image.type, 'img'); assert.equal(image.props.alt, 'Book a');
-  image.props.onError(); assert.equal(cover().props.children.props.children, 'Sin portada');
+  image.props.onError(); assertFallback();
   changeUrl('https://example.test/second.png');
   image = cover().props.children;
   assert.equal(image.type, 'img'); assert.equal(image.props.src, 'https://example.test/second.png');
@@ -218,24 +254,46 @@ test('detail cover handles missing and failed images and resets on URL changes',
 
 test('library loading, empty, populated, failure and retry use current filters', async () => {
   reset(); const h = harness(Main);
-  assert.match(byRole(h.render(), 'status').props.className, /library-state/);
+  const assertLoading = (tree) => {
+    assert.equal(tree.type, LoadingStatus);
+    assert.equal(tree.props.message, 'Cargando libros…');
+    const status = tree.type(tree.props);
+    assert.match(status.props.className, /library-state/);
+    assert.equal(status.props['aria-label'], undefined);
+    const [icon, text] = React.Children.toArray(status.props.children);
+    assert.equal(icon.props.className, 'library-loading-icon');
+    assert.equal(icon.props['aria-hidden'], 'true');
+    assert.equal(text.props.children, 'Cargando libros…');
+    assert.equal(byType(status, ui.Spin), null);
+  };
+  assertLoading(h.render());
   requests.shift().resolve(list([])); await flush();
   assert.match(JSON.stringify(h.render()), /library-state.*Aún no tienes/);
   filters = { title: 'missing' };
-  assert.ok(byRole(h.render(), 'status'));
+  assertLoading(h.render());
   requests.shift().resolve(list([])); await flush();
   assert.match(JSON.stringify(h.render()), /library-state.*no hay resultados/);
   filters = { current: '2' };
-  h.render(); requests.shift().resolve(list([book('a')])); await flush();
+  assertLoading(h.render()); requests.shift().resolve(list([book('a')])); await flush();
   assert.ok(byType(h.render(), Card));
-  refresh = true; h.render(); requests.shift().reject(new Error('private details')); await flush();
+  refresh = true; assertLoading(h.render()); requests.shift().reject(new Error('private details')); await flush();
   const tree = h.render(); assert.match(byRole(tree, 'alert').props.className, /library-state-error/); assert.doesNotMatch(JSON.stringify(tree), /private details/);
-  byType(tree, Button).props.onClick(); assert.ok(byRole(h.render(), 'status'));
+  byType(tree, Button).props.onClick(); assertLoading(h.render());
   assert.deepEqual(requests[0].arg, { current: '2' });
   requests.shift().resolve(list([book('b')])); await flush();
   assert.equal(byType(h.render(), Card).props.id, 'b');
   filters = { current: '2' }; assert.equal(byType(h.render(), Card).props.id, 'b');
   assert.equal(requests.length, 0); h.unmount();
+});
+
+test('shared loading status displays the supplied message with a decorative icon', () => {
+  const status = LoadingStatus({ message: 'Cargando reseñas…' });
+  assert.equal(status.props.role, 'status');
+  assert.equal(status.props['aria-label'], undefined);
+  const [icon, text] = React.Children.toArray(status.props.children);
+  assert.equal(icon.props['aria-hidden'], 'true');
+  assert.equal(icon.props.className, 'library-loading-icon');
+  assert.equal(text.props.children, 'Cargando reseñas…');
 });
 
 test('empty page with matching books offers recovery without claiming the library is empty', async () => {
@@ -247,6 +305,12 @@ test('empty page with matching books offers recovery without claiming the librar
   assert.doesNotMatch(JSON.stringify(tree), /Aún no tienes|no hay resultados/);
   byType(tree, Button).props.onClick();
   assert.deepEqual(filterUpdates, [{ current: '1' }]); h.unmount();
+});
+
+test('loading icon pulses continuously only when reduced motion is not requested', () => {
+  const css = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*no-preference\)\s*\{\s*\.library-loading-icon\s*\{\s*animation:\s*library-loading-pulse 1\.5s ease-in-out infinite;/);
+  assert.match(css, /@keyframes library-loading-pulse\s*\{\s*50%\s*\{\s*opacity:\s*0\.55;/);
 });
 
 test('pagination keeps page navigation and resets both size-change callbacks to page one', async () => {
@@ -301,14 +365,26 @@ test('library ignores obsolete success and failure on filters, pages, refresh an
 for (const [label, Component, props] of [['detail', Detail, detailProps], ['edit', Edit, () => ({})]]) {
   test(`${label} gates content, retries generic failures, and ignores obsolete requests`, async () => {
     reset(); const h = harness(Component, props);
-    assert.ok(byRole(h.render(), 'status')); const a = requests.shift();
+    let loading = byType(h.render(), LoadingStatus);
+    assert.equal(loading.props.message, 'Cargando libro...');
+    assert.equal(LoadingStatus(loading.props).props.role, 'status');
+    if (label === 'edit') {
+      const tree = h.render();
+      const main = byType(tree, 'main');
+      assert.ok(main);
+      assert.match(main.props.className, /\bedit-book-page\b/);
+      assert.match(main.props.className, /\bedit-book-loading\b/);
+    }
+    const a = requests.shift();
     id = 'b'; assert.ok(byRole(h.render(), 'status')); const b = requests.shift();
     a.resolve([undefined, book('a')]); await flush();
     assert.ok(byRole(h.render(), 'status'));
     b.resolve(['sensitive server response', undefined]); await flush();
     let tree = h.render(); assert.ok(byRole(tree, 'alert')); assert.doesNotMatch(JSON.stringify(tree), /sensitive/);
     assert.equal(byType(tree, 'form'), null);
-    byType(tree, Button).props.onClick(); assert.ok(byRole(h.render(), 'status'));
+    byType(tree, Button).props.onClick();
+    loading = byType(h.render(), LoadingStatus);
+    assert.equal(loading.props.message, 'Cargando libro...');
     requests.shift().reject(new Error('network')); await flush(); assert.ok(byRole(h.render(), 'alert'));
     byType(h.render(), Button).props.onClick(); h.render(); requests.shift().resolve([undefined, book('b')]); await flush();
     tree = h.render();
@@ -319,6 +395,11 @@ for (const [label, Component, props] of [['detail', Detail, detailProps], ['edit
     if (label === 'edit') assert.equal(fields.title, 'Book b');
   });
 }
+
+test('edit loading layout uses padded viewport-aware centering', () => {
+  const css = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
+  assert.match(css, /\.edit-book-loading\s*\{[^}]*box-sizing:\s*border-box;[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;[^}]*display:\s*grid;[^}]*place-items:\s*center;/);
+});
 
 for (const [label, Component, props] of [['detail', Detail, detailProps], ['edit', Edit, () => ({})]]) {
   test(`${label} reloads a previously visited id and ignores the earlier response`, async () => {

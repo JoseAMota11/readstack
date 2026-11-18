@@ -1,20 +1,26 @@
 # ReadStack
 
-ReadStack is a multiuser personal book catalog for organizing collections and recording reviews. Search and filter your library, keep track of favorites, and revisit your impressions of each book. It is a catalog, not an ebook reader.
+ReadStack is a Spanish-language, multiuser personal book catalog: organize a collection, keep favorites, and record reviews. It is a learning and portfolio project, not an ebook reader or a production-ready service for real users.
 
 ## Screenshots
 
-### Library
+Representative captures of the current **Archival Modern** interface rendered in an isolated local environment using synthetic demo data:
 
-![Desktop view of the ReadStack library and book collection](docs/screenshots/library-desktop.png)
+### Library — light and dark themes
+
+![Desktop view of the ReadStack library in light theme showing real book covers, search and filter controls, ratings, and favorite badges](docs/screenshots/library-desktop-light.png)
+
+![Desktop view of the ReadStack library in dark theme showing the same collection and consistent editorial styling](docs/screenshots/library-desktop-dark.png)
 
 ### Book detail
 
-![Desktop book detail with cover, information, actions, and reviews](docs/screenshots/book-detail-desktop.png)
+![Desktop book detail view with the shared navigation bar, cover artwork, publication metadata, genre tags, actions, and a synthetic review](docs/screenshots/book-detail-desktop.png)
 
-| Mobile library | Add a book | Sign in |
-| --- | --- | --- |
-| ![ReadStack library on a mobile screen](docs/screenshots/library-mobile.png) | ![Add-book form displayed over the library](docs/screenshots/add-book-modal.png) | ![ReadStack sign-in screen on desktop](docs/screenshots/login-desktop.png) |
+### Responsive mobile library and sign-in
+
+| Mobile library | Sign in |
+| --- | --- |
+| ![Responsive mobile view of the ReadStack library with collapsible secondary filters and a two-column cover grid](docs/screenshots/library-mobile.png) | ![Desktop sign-in screen featuring the ReadStack identity panel, circular theme switcher, and login form](docs/screenshots/login-desktop.png) |
 
 ## Features
 
@@ -23,18 +29,19 @@ ReadStack is a multiuser personal book catalog for organizing collections and re
 - Search by title, filter by author, year, and genre, and browse paginated results.
 - Mark favorites and manage reviews and ratings on each book's detail page.
 - Export an individual book to CSV; full-library export is not implemented.
-- Responsive interface with light and dark themes; the browser stores the selected preference.
+- Archival Modern interface: editorial typography, cover-first layouts, responsive navigation, light and dark themes, and missing-cover, loading, error and retry states. The browser stores the theme preference.
 
 ## Technology and architecture
 
 - **Frontend:** Next.js 16.4.6 with App Router, React 19.3.1, and TypeScript. Ant Design 5.29.3 and Tailwind CSS 3 support the interface; client services communicate with the API.
 - **Backend:** Node.js, Express 4, and TypeScript. The REST API is organized into routes, middleware, controllers, and models, with Zod input validation.
-- **Data:** SQLite through `better-sqlite3` and parameterized SQL. Tables are created at startup; versioned migrations are not yet implemented.
+- **Health check:** Unauthenticated `GET /healthz` returns HTTP 200 with `{"status":"ok"}`. It is a liveness check and does not query the database; PostgreSQL startup readiness is separate.
+- **Data:** SQLite is the default, using `better-sqlite3` and creating its tables at startup. Experimental PostgreSQL repositories are composed into the application after read-only readiness succeeds. User, book, and review operations expose typed asynchronous contracts; SQLite and bcrypt still execute synchronously. The separate experimental PostgreSQL migration CLI is not part of application startup.
 - **Authentication and authorization:** bcrypt password hashing and JWT authentication. The frontend stores the token in a JavaScript-readable cookie and sends it as a Bearer token. The API verifies the token and checks book and review ownership; frontend navigation protection does not replace those checks.
 
 ## Design
 
-The approved **Archival Modern** direction combines a restrained editorial style with prominent book covers, generous space, and responsive layouts. Light and dark themes receive equal care. Implementation and visual and accessibility validation are ongoing; see [DESIGN.md](DESIGN.md) for the design principles and their limits.
+The approved **Archival Modern** direction combines restrained editorial styling with prominent book covers and responsive layouts. Representative local browser checks covered desktop and narrow mobile in both themes; owner sign-off and broader accessibility checks remain open. [DESIGN.md](DESIGN.md) is the initial design reference, not a current implementation or accessibility certification.
 
 ## Local setup
 
@@ -56,7 +63,10 @@ Configure the following environment variables for the backend process. The backe
 | --- | --- |
 | `SECRET_KEY` | Required. Use an independently generated local secret of exactly 64 hexadecimal characters. Do not publish it or store it in the repository. |
 | `DATABASE_PATH` | SQLite path. Use an isolated local path for synthetic data; otherwise it defaults to `library.db` relative to the working directory. Avoid modifying the tracked `backend/library.db`. |
+| `DATABASE_PROVIDER` | `sqlite` (default) or experimental `postgres`; all other values fail startup. Limited disposable PostgreSQL validation is owner-reported; comprehensive parity remains unverified. |
 | `PORT` | API port; defaults to `3000`. Set it to `4000` for the frontend configuration below. |
+| `CORS_ALLOWED_ORIGINS` | Optional comma-separated HTTP/HTTPS origins, without paths, credentials or wildcards. When absent, CORS remains unrestricted; an empty or malformed value fails application startup. |
+| `STAGING_REGISTRATION_SECRET` | Optional staging-only registration invitation; absent preserves public registration. See the operator procedure below. Never configure it in the Beta or frontend. |
 
 With those variables configured, start the server from `backend/`:
 
@@ -66,11 +76,112 @@ npm start
 
 With `PORT` set to `4000`, the API is available at `http://localhost:4000/api/v1`. See the [environment governance guide](docs/ENVIRONMENT_GOVERNANCE.md) for the full variable inventory, rate-limit options, and secret management. Keep secrets out of shell history and use distinct secrets for different environments; changing the signing key invalidates existing sessions.
 
+For a future separately approved staging deployment, set `CORS_ALLOWED_ORIGINS` to the exact established frontend origins, for example `https://frontend.example.com,http://localhost:3000`. Entries are trimmed and normalized (including hostname case and default ports); empty entries and paths, including a trailing slash, are invalid. Requests without an Origin continue normally. CORS is a browser policy, not authentication or staging access control: direct API requests remain possible. Do not change the existing Beta configuration or deploy it as part of staging preparation.
+
+## Operator and security reference
+
+The following procedures preserve operational detail, not permission to access or change any environment. Historical preparation below must be read alongside the newer staging evidence in [PROGRESS.md](PROGRESS.md).
+
+### Staging registration and operator provisioning
+
+The owner approved invitation-controlled registration for the first synthetic-only staging deployment; further configuration, deployment and account creation require separate authorization. Once authorized, generate a unique invitation from 32 cryptographically secure random bytes, encoded as exactly 64 lowercase hexadecimal characters, independent of all JWT keys and other environments. Provision it only as the staging backend's protected `STAGING_REGISTRATION_SECRET`; never set it in the public Beta, frontend, repository or build artifacts. Empty, malformed and obvious low-diversity values fail startup. Format and diversity checks cannot prove randomness: secure generation and protection are essential. The variable's absence leaves registration unchanged, so verify its presence and behavior after separately approved deployment without displaying its value.
+
+Only an authorized operator should provision synthetic accounts, after independently verifying the staging API endpoint and TLS and receiving specific authorization for the target and write. Use a trusted private HTTP client that keeps credentials in memory and does not record requests, headers or bodies. Send `POST /api/v1/register` with the existing JSON fields `username`, `email` and `password`, and supply the invitation in the `X-Staging-Registration-Secret` header. Use synthetic identities and independently generated passwords. Do not put the invitation, passwords or tokens in URLs, shell history, command-line arguments, logs, screenshots, repository files, browser frontend code or shared client collections; disable tracing and any client/proxy request-header logging. Protect and distribute credentials through an approved secret channel. Do not use browser developer tools or add an invitation UI. Confirm the response without recording secrets or private data. No account provisioning is authorized by this document.
+
+Missing or incorrect invitations receive the same generic 403 before body parsing, validation or database calls, unless the existing IP limiter has already rejected the request with 429. Ordinary CORS preflight is handled normally, but CORS is not access control. The public API and login endpoint remain reachable; this exposure is accepted only for synthetic-only staging. Existing account and direct-peer rate limits remain process-local; invalid invitations do not reach the account limiter. Rotating the invitation prevents use of the old invitation for future registrations but **does not revoke existing accounts or JWTs**. If it is exposed, separately authorize rotation and incident response; existing credentials and sessions require separate handling.
+
 Authentication rate limits are process-local, not distributed. Login and registration have per-account limits; the optional IP limit uses only the direct socket peer and is disabled by default. Enable it only after verifying that the direct peer is the actual client, not a proxy shared by clients. Render's ingress and client-IP behavior are unverified: do not enable this direct-peer limiter there on that assumption. A Render per-client limiter requires a separately verified, non-spoofable ingress/header trust boundary and a reviewed implementation; the current limiter deliberately ignores forwarded headers, even if Express proxy trust is enabled. Verify that clients cannot bypass the trusted ingress, how it sanitizes forwarding headers and identifies the client, and the correct trusted proxy configuration before designing such a change.
 
 These limits do not stop attempts spread across many accounts, instances, or restarts. Registration currently reveals an existing email through its 409 response; changing that contract requires a separate decision. Unknown-user logins perform a dummy bcrypt comparison to reduce a timing signal, not guarantee constant-time responses; this extra synchronous work also increases the risk of CPU exhaustion under abuse.
 
-### Frontend
+JSON bodies are limited to 102,400 bytes (100 KiB), including decompressed JSON; this makes the previous parser default explicit. Submitted book titles and authors are limited to 500 UTF-16 code units, genres to 20 entries of 100 code units, cover URLs to 2,048 code units, and review comments to 10,000 code units. New registrations limit email addresses to 254 and passwords to 1,024 code units. Login retains the previous email syntax and password minimum checks without those new maximums, so previously valid credentials remain usable within the existing request-body limit. No credential is truncated or normalized by these changes. Book listing accepts canonical positive decimal page numbers 1–10,000 and page sizes 1–100; leading zeros, whitespace, empty values and numeric shorthand are rejected. Search fields are limited to 500 code units.
+
+Out-of-range submitted data is rejected, rather than silently truncated or changed in storage. Existing oversized book fields remain readable, and partial updates that omit those fields still work. The book edit screen (`/book/[id]/edit`) compares normalized field snapshots against the loaded book and submits only modified fields via `PATCH`, preserving unchanged oversized legacy fields. Genre comparisons are order-insensitive without silently deduplicating entries; no-change submissions are blocked client-side with an informational message (`No hay cambios para guardar.`); and clearing an existing stored cover URL is blocked with a clear error until a replacement URL is entered or the original is kept, because the current `PATCH` contract ignores `undefined` fields rather than clearing stored columns. Editing an oversized legacy field itself still requires bringing that field within the current bounds; no backend grandfathering bypass or data rewrite is implemented.
+
+The book PATCH API returns HTTP 400 when the body contains no recognized mutable book field, including empty or owner-ID-only bodies.
+
+CSV exports prefix spreadsheet-formula-like cells with an apostrophe before normal CSV quoting. This intentionally also escapes some benign text, such as `- A memoir` or `@home`, including matching full-width prefixes and leading whitespace/control characters. Text outside the protected-prefix cases is preserved, including Unicode and embedded quotes. Spreadsheet import behavior varies, so exercise caution with untrusted exports.
+
+The browser-readable token can be stolen if script execution is compromised; its presence alone does not establish an XSS vulnerability. Logout removes the browser token but does not revoke an already copied JWT, which remains valid until expiration. bcrypt only considers the first 72 UTF-8 bytes of a password; changing existing credential behavior requires a separately reviewed compatibility decision. Before any public demo, verify actual ingress, abuse controls, dependencies, isolation and authentication behavior for the chosen deployment; the local controls are not a security certification.
+
+### Experimental PostgreSQL runtime and startup readiness
+
+PostgreSQL mode composes the user, book and review repositories explicitly and listens only after read-only readiness succeeds. It does not import the SQLite singleton or fall back to SQLite. The application pool is limited to five clients, with ten-second idle expiry and five-second connection, query and server statement timeouts. Startup failure attempts bounded pool cleanup; SIGINT/SIGTERM stop accepting requests, allow up to five seconds for draining, then close connections if needed and attempt bounded pool cleanup. A cleanup timeout does not prove an underlying client closed. The owner reports limited disposable PostgreSQL route, rollback, startup, pool-shutdown and targeted parity/security validation; these results were not independently agent-verified and do not establish comprehensive parity, hosted TLS or lifecycle behavior. `DB-04` has qualified foundation acceptance, not production readiness; see `PROGRESS.md`. Do not change production configuration or connect to any service on this basis. SQLite remains the default and `DATABASE_PATH` is unchanged.
+
+Book title, author and genre elements and review comments reject embedded U+0000 at request validation. Genre elements also reject unpaired UTF-16 surrogates, while valid pairs are accepted. These rules apply to both providers; existing stored records are not changed. The owner reports a passing targeted real-server comparison of search, wildcard and JSONB genre cases; broader parity remains unverified.
+
+`backend/tests/provider-parity-security.test.ts` records SQLite's ASCII-only LIKE folding, substring and wildcard behavior and compact JSON-text genre matching, and checks PostgreSQL parameters and HTTP security contracts with an injected fake client. Quotes, backslashes and control characters in genre elements are JSON-escaped in SQLite; the genre filter itself is not JSON-escaped, so an exact-looking filter may not match. The fake client does not execute PostgreSQL SQL or establish matching results. The owner reports a successful opt-in DB-04I comparison and independent pre/post checks; its separate approval, isolation and post-check requirements are documented in `backend/tests/integration/DB-04I.md`. It reuses the DB-04H matrix and is excluded from ordinary tests; it cannot verify committed multi-session behavior. No connection, writes or migrations are authorized by this documentation.
+
+The PostgreSQL readiness configuration requires `DATABASE_URL` with a `postgres` or `postgresql` URL containing host, database, username and password, and `POSTGRES_TLS=verify-full`. URL query parameters and inherited `PG*` variables are rejected. TLS uses certificate and hostname verification with the Node trust store; no insecure TLS mode is provided. Do not log or publish the URL. The client has five-second connection, query and server statement timeouts; each readiness operation and cleanup also has a five-second bound. A stalled cleanup is reported as a failure, not proof that an unresponsive underlying client closed.
+
+Readiness reads the packaged migration files from `backend/migrations` (which must accompany the compiled application), checks the existing `public.schema_migrations` ledger for an exact complete version, filename and checksum match, and uses PostgreSQL catalogs to check expected columns, types, nullability, primary/unique keys and cascading ownership foreign keys. It does not create a ledger, run migrations, or detect all drift: defaults, checks, indexes, collation, triggers, privileges and many other properties are outside this limited check. The owner reports limited local verified-TLS and readiness validation; hosted-provider connectivity and deployment remain unverified. Startup readiness is not a substitute for the later staging and security gates.
+
+### Experimental local PostgreSQL migrations
+
+Preparing this CLI is not authorization to execute it. Obtain separate owner approval for the **exact local PostgreSQL instance and disposable database** before running either command. Loopback does not guarantee a disposable target: a tunnel or proxy could forward to another system. Verify the target independently; the naming and acknowledgement checks do not establish safety. Do not use this CLI for Neon, Render, or production. SQLite remains the default and no SQLite records are transferred.
+
+For an approved target, configure these process environment variables without putting credentials in shell history or the repository (placeholders are not values to use):
+
+| Variable | Requirement |
+| --- | --- |
+| `READSTACK_MIGRATION_HOST` | Literal `127.0.0.1` or `::1` only. |
+| `READSTACK_MIGRATION_PORT` | Explicit decimal TCP port, 1–65535. |
+| `READSTACK_MIGRATION_DATABASE` | Explicit lowercase name beginning `readstack_disposable_`, followed by lowercase letters, digits or underscores; maximum 63 characters. |
+| `READSTACK_MIGRATION_USER` | Explicit PostgreSQL user identifier. |
+| `READSTACK_MIGRATION_PASSWORD` | Nonempty password, supplied securely. |
+| `READSTACK_MIGRATION_CONFIRM_LOCAL` | Exactly `I_APPROVE_LOCAL_DISPOSABLE_MIGRATIONS`. This is not a substitute for separate target approval. |
+
+Remove inherited `PG*` variables first; the CLI rejects them. It does not load dotenv files or use `DATABASE_URL` or `DATABASE_PATH`. From `backend/`, **only after approval**, `npm run migrate:local:ts` invokes the TypeScript CLI; `npm run build` followed by `npm run migrate:local` invokes the compiled CLI. Neither ordinary startup nor build runs migrations.
+
+Migrations are forward-only and tracked with checksums. Operational safeguards:
+
+- A disposable reset requires separate explicit approval, independently verified target identity, and confirmation that all target data is synthetic and disposable. The owner reports successful repeated DB-05 reset on one disposable PostgreSQL target; this is not a recovery procedure or authorization for another reset.
+- After a failed migration, stop, preserve evidence, and independently verify the ledger and schema. The runner attempts rollback, but rollback is not guaranteed in every failure.
+- On a checksum mismatch, never edit the ledger or an already applied migration to force compatibility. Prefer reviewed sequential forward-fix migrations over destructive down-migrations.
+- On lock contention, do not forcibly unlock or terminate unidentified sessions.
+- If COMMIT's outcome is uncertain, do not blindly retry. Verify the actual schema and ledger from an independent connection; stop if they are inconsistent. Live connection-loss recovery during COMMIT has not been validated.
+
+Application rollback is not database recovery: rolling code back does not restore data or reverse database writes. No tested backup, restore, recovery procedure, production readiness, or provider connectivity is implied by this CLI.
+
+### DB-06 hosted staging initialization — disconnected preparation
+
+The owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database, and approved invitation-controlled registration and synthetic-only access for the first staging deployment. `DB-06` and `TEST-05` have since received qualified acceptance within the scopes recorded in [PROGRESS.md](PROGRESS.md); `GOV-04` remains open. The procedure below is historical preparation, not authorization to repeat it, provision, configure, connect, migrate, deploy or restart anything. The existing public Beta must remain unchanged. No SQLite records are transferred by this procedure.
+
+The separate `migrate:staging-db06` adapter was prepared for a one-time initialization; prior hosted evidence is recorded in `PROGRESS.md` and does not authorize another execution. The local disposable CLI must not be used for Neon, even through a tunnel: it disables TLS. The staging adapter accepts only the identified direct endpoint and exact database and role, checks verified TLS, and under the runner's session advisory lock requires no public relations (including a ledger), routines or types, and exactly the packaged `0001_initial_schema.sql` SHA-256 `eebd5434f261f2974edccc1eb8cc6c91137f1f5567fbe2d5273a6810a05bb085`. This catalog check is not a comprehensive inventory of all PostgreSQL object kinds. It deliberately refuses a repeat after success or a partial ledger; this is not an automatic retry or repair command. The runner retains its ledger and checksum checks. Startup and deployment do not invoke it.
+
+Before any invocation, the owner must separately authorize read-only preflight, then immediately before the write explicitly approve **this exact project, branch, direct endpoint, database and action**. Recheck in the Neon Console that project `sparkling-cherry-00280862`, branch `br-crimson-block-bcr4joma` and endpoint `ep-still-hall-bcrtmjpj` belong together and that Connect supplies the exact direct, non-pooler hostname. The adapter accepts only the endpoint-derived `us-east-1.aws.neon.tech` hostname, optionally with a `c-<number>` segment; stop if the actual hostname differs. Independently confirm this target is separate from the actual Beta resources and configuration (the owner reports Beta uses SQLite), and that no application or other writer is using staging. Check the session database, role, public schema and ledger are still empty, direct-session advisory locks work, and the role has required privileges. Do not supply production credentials or configuration. The owner-observed Console binding, hostname, verified TLS and SQL identity are layered evidence, not cryptographic proof of project identity; SQL does not identify the Neon project. Locks coordinate cooperating migration runners, not arbitrary external writers.
+
+After review, required separate approvals, and a Node 22 backend build, configure the following in an isolated owner-controlled process environment, without shell history, process arguments, logs or repository files containing credentials:
+
+| Variable | Required value or handling |
+| --- | --- |
+| `DB06_PROJECT`, `DB06_BRANCH`, `DB06_ENDPOINT` | Exact project, branch and endpoint IDs above. |
+| `DB06_HOST` | The exact direct hostname independently observed in Console; must equal the URL host. |
+| `DB06_CONSOLE_VERIFIED`, `DB06_BETA_SEPARATION_VERIFIED` | `yes`, only after the respective checks above. |
+| `DB06_APPROVAL` | `I_APPROVE_DB06_INITIALIZE_sparkling-cherry-00280862_br-crimson-block-bcr4joma_ep-still-hall-bcrtmjpj`, only after fresh explicit owner approval. |
+| `DB06_DATABASE_URL` | Securely supplied direct PostgreSQL URL for `neondb_owner` and `neondb`, port 5432; no query or fragment. Never print it. |
+
+Remove inherited `PG*`, `DATABASE_URL`, `DATABASE_PATH`, `NODE_OPTIONS` and `NODE_TLS_REJECT_UNAUTHORIZED` variables; do not use `NODE_ENV=production` or `DATABASE_PROVIDER=sqlite`. The adapter uses Node's trusted CA configuration with certificate-chain and hostname verification. The owner must verify the CA trust source is appropriate (including any `NODE_EXTRA_CA_CERTS`) and that it trusts the provider certificate; do not bypass TLS failures. With the approved environment in place, from `backend/` run **only after the separate write approval**:
+
+```bash
+npm run migrate:staging-db06
+```
+
+Independent preflight and postflight checks require their own authorized access. Staging ledger creation is exclusive: a conflicting relation appearing after preflight causes failure, not reuse. Ledger creation itself precedes the migration transaction and may persist empty if a later step fails; rollback only attempts to undo the migration transaction. If any prerequisite is uncertain, stop; on failure or uncertain commit preserve evidence and independently investigate without retrying, removing or editing the ledger. This procedure does not establish production readiness.
+
+### DB-05 disposable PostgreSQL fixture procedure
+
+These experimental commands are **not authorization to connect or write**. The owner reports successful seed, repeated seed, separately authorized reset and repeated reset on one disposable PostgreSQL 17 target, with independent count and ledger checks; this live result was not independently verified by the agent in the documentation closeout. `DB-05` has qualified acceptance for that scope, not staging, hosted persistence, backup/restore or production readiness; see `PROGRESS.md`. Ordinary startup, build and tests never invoke these commands. The fixture has 2 users, 3 books and 2 reviews (7 rows); 2 favorite flags are fields on books, not separate rows. IDs and timestamps are fixed; intentionally invalid passwords cannot test login. No SQLite data is transferred.
+
+1. Obtain explicit owner approval for the exact disposable instance, database, container ID, image ID and port, and separately for each action: migration, seed and destructive reset. Do not reuse DB-04 resources without specific approval. Independently verify the image, container and actual PostgreSQL data directory use disposable tmpfs, no persistent mounts, restarts or other clients, and that the loopback port connects directly to that instance—not a tunnel, proxy, or different service. Confirm all data is synthetic and disposable. Container metadata and acknowledgement variables alone do **not** prove this. Stop if anything is uncertain; never target Render, Neon, staging or production. No broad privileges or production-role changes are authorized.
+2. Initialize the empty schema using the existing migration procedure above, only after its separate approval. The fixture commands **do not run migrations**; they require the unchanged `0001_initial_schema.sql`, its matching complete ledger and readiness checks. They require a role with adequate access to read, insert, delete and acquire access-exclusive locks on the three tables; if its existing permissions are insufficient, stop rather than granting broad access. Provide local verified TLS with a trusted certificate valid for `127.0.0.1`; do not disable verification.
+3. Set `DATABASE_PROVIDER=postgres`, `POSTGRES_TLS=verify-full`, and securely provide `DATABASE_URL` for host `127.0.0.1`, database `readstack_disposable_db05`, role `readstack_db05_runner` and the approved port. Do not put credentials in shell history, logs or the repository; inherited `PG*` variables are rejected. Set `DB05_PORT` to that explicit decimal port, `DB05_CONTAINER_ID` to the full 64-hex container ID, `DB05_IMAGE_ID` to its full `sha256:` image ID, and `DB05_INDEPENDENTLY_VERIFIED=yes` only after the independent checks. For a separately approved seed set `DB05_SEED_APPROVAL=I_APPROVE_DB05_SEED`; for a separately approved reset set `DB05_RESET_APPROVAL=I_APPROVE_DB05_RESET`. One approval never implies the other.
+4. From `backend/`, after `npm run build`, invoke **only the approved action**: `npm run synthetic:seed` or `npm run synthetic:reset`. Both verify container metadata, TLS, database and role, and the migration ledger. They lock the application tables, reject unexpected schema features and compare their complete contents against an empty state or the exact fixture. Seed inserts only into empty tables; a repeated exact seed is a no-op. Partial, modified or unrelated application data is rejected. Reset deletes only the exact fixture IDs, reviews first, then books and users; empty reset is a no-op. It refuses mixed or changed data and preserves the schema and `public.schema_migrations`. The reset's destructive scope is those 7 fixture rows only. Extra inbound foreign keys, user triggers, rules, inheritance or row-level security cause refusal. These checks are not a substitute for independent inspection.
+5. Before and after each separately approved operation, use an independent verified-TLS PostgreSQL session to confirm the database/role and expected state. For example, run `SELECT current_database(), current_user, session_user;`, `SELECT version, filename, checksum FROM public.schema_migrations ORDER BY version;` and `SELECT (SELECT count(*) FROM public.users) AS users, (SELECT count(*) FROM public.books) AS books, (SELECT count(*) FROM public.reviews) AS reviews, (SELECT count(*) FROM public.books WHERE is_favorite) AS favorites;`. Expected counts are `0,0,0,0` before first seed and after reset, and `2,3,2,2` after seed. Independently verify ownership with `SELECT count(*) FROM public.reviews r LEFT JOIN public.books b ON b.id = r.book_id AND b.user_id = r.user_id WHERE b.id IS NULL;` (expected 0), and check the complete fixture, not counts alone. Do not expose connection details or private data.
+
+Operations have five-second connection/query/server-statement timeouts and a 120-second process watchdog. On any failure, timeout, interrupted connection or uncertain COMMIT, stop and independently verify the target, rows and ledger; rollback/cleanup is attempted, not guaranteed. Do not blindly retry. `npm run test:synthetic` uses disconnected fakes and does not validate SQL, TLS, privilege behavior or real transaction outcomes.
+
+## Frontend setup
 
 In another terminal, from the repository root:
 
@@ -109,13 +220,13 @@ npm test
 npm run test:security
 ```
 
-Backend tests use synthetic data and isolated temporary SQLite databases. Local tests cover functionality and cross-user isolation, but CI and comprehensive browser validation remain pending.
+On Node 22.23.4 and npm 10.9.9, the last isolated regression at `e974af3` passed frontend 168/168, backend 172/172 and security 3/3. Frontend lint, `./node_modules/.bin/tsc --noEmit --incremental false`, frontend build and backend build also passed; lint reported two existing warnings. A separate bounded synthetic browser smoke passed 8/8 scenarios, including cross-user denial and desktop/narrow-mobile light and dark layouts. See [PROGRESS.md](PROGRESS.md) for commands, isolation, results and limits. These are historical results, not tests rerun for this documentation update. CI and comprehensive accessibility validation remain open.
 
 ## Project status
 
-ReadStack is being modernized. Its features and tests exist locally, but that is not production approval. Comprehensive browser validation, security and deployment gates, CI, and decisions about sessions and persistence remain outstanding.
+The owner reports manually deploying Vercel Preview and Render staging at `a09f0af`, then logging in, creating a synthetic book and seeing it persist on reload. This is owner-reported evidence, not an independently repeated check or proof of restart/redeploy durability. It is not approval to share the environment: no public recruiter demo or credentials are provided. Any interactive demo requires owner approval of its target and access model, target-specific security review and resolution of material risks.
 
-The current implementation uses SQLite. A PostgreSQL provider decision and the planned migration remain pending; no provider has been selected. A staging strategy has not been approved, and durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
+SQLite remains the default; the experimental PostgreSQL runtime has qualified validation, not comprehensive provider parity. A public Beta exists, but production persistence, backup and recovery are not verified; modernization is not approved as production-ready. Browser-readable JWTs, non-revoking logout, process-local rate limits, registration account enumeration and unverified hosted abuse controls are material limitations. Full-library CSV export is not implemented. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for evidence and outstanding decisions.
 
 ---
 

@@ -33,6 +33,7 @@ Module._load = function (request, parent, ...args) {
   return load.call(this, request, parent, ...args);
 };
 const Reviews = require('../components/reviews.tsx').default;
+const LoadingStatus = require('../components/loading-status.tsx').default;
 const ReviewCard = require('../components/review-card.tsx').default;
 const { formatReviewDate } = require('../utils/review-date.ts');
 const service = require('../services/review.service.ts');
@@ -47,6 +48,7 @@ function findAll(element, type) {
 function text(element) {
   if (typeof element === 'string') return element;
   if (!element || typeof element !== 'object') return '';
+  if (element.type === LoadingStatus) return text(LoadingStatus(element.props));
   return React.Children.toArray(element.props?.children).map(text).join(' ');
 }
 function button(tree, label) { return findAll(tree, Button).find((item) => text(item).includes(label)); }
@@ -73,6 +75,41 @@ function setup() {
 }
 function teardown() { Object.assign(React, originalHooks); global.window = originalWindow; global.sessionStorage = originalStorage; global.fetch = originalFetch; }
 const item = { id: 'review-a', comment: 'synthetic', rating: 4, createdAt: 'today' };
+
+test('review create and delete register synchronously and release after uncertain or rejected results', async () => {
+  const store = setup();
+  const active = new Set();
+  const beginOperation = () => {
+    const id = Symbol(); active.add(id);
+    return () => active.delete(id);
+  };
+  const create = deferred(), deletion = deferred();
+  services.getAllReviews = async () => [undefined, [item]];
+  services.postReview = () => create.promise;
+  services.deleteReview = () => deletion.promise;
+  try {
+    const h = harness({ beginOperation });
+    let tree = h.render(); await flush();
+    findAll(tree, TextArea)[0].props.onChange({ target: { value: 'draft' } });
+    tree = h.render(); findAll(tree, Rate)[0].props.onChange(4); tree = h.render();
+    const posting = button(tree, 'Publicar').props.onClick();
+    assert.equal(active.size, 1);
+    assert.equal(store.get('review-uncertain:user-a:book-a'), '1');
+    create.reject(new Error('offline')); await posting;
+    assert.equal(active.size, 0);
+    assert.equal(store.get('review-uncertain:user-a:book-a'), '1');
+    assert.match(store.get('review-draft:user-a:book-a'), /draft/);
+    tree = h.render(); button(tree, 'Actualizar reseñas').props.onClick(); await flush();
+    tree = h.render(); button(tree, 'Ya revisé').props.onClick();
+    tree = h.render(); const deleting = findAll(tree, Card)[0].props.onDelete();
+    assert.equal(active.size, 1);
+    deletion.resolve(['No autorizado', undefined]); await deleting;
+    assert.equal(active.size, 0);
+    assert.equal(store.has('review-uncertain:user-a:book-a'), false);
+    assert.match(store.get('review-draft:user-a:book-a'), /draft/);
+    h.unmount();
+  } finally { teardown(); }
+});
 
 test('published review groups rating, separator, date and delete before the comment', () => {
   for (const [createdAt, dateType] of [['today', 'p'], ['2026-11-09 12:34:56', 'time']]) {
@@ -300,6 +337,46 @@ test('creation blocks rapid duplicates, shows pending and preserves later edits'
   } finally { h.unmount(); teardown(); }
 });
 
+for (const kind of ['create', 'delete']) {
+  for (const outcome of ['success', 'failure', 'invalid']) {
+    test(`${kind} keeps reviews visible during refresh and handles ${outcome}`, async () => {
+      setup(); const refresh = deferred(); let loads = 0;
+      services.getAllReviews = () => ++loads === 1 ? Promise.resolve([undefined, [item]]) : refresh.promise;
+      const h = harness(); try {
+        h.render(); await flush(); let tree = h.render();
+        if (kind === 'create') {
+          findAll(tree, TextArea)[0].props.onChange({ target: { value: 'new review' } });
+          findAll(tree, Rate)[0].props.onChange(5);
+          await button(h.render(), 'Publicar').props.onClick();
+        } else {
+          await findAll(tree, Card)[0].props.onDelete();
+        }
+        tree = h.render();
+        assert.equal(loads, 2);
+        assert.equal(findAll(tree, Card)[0].props.id, item.id);
+        assert.equal(findAll(tree, LoadingStatus).length, 0);
+        assert.doesNotMatch(text(tree), /podrían no estar actualizadas|No se pudieron cargar/);
+        assert.equal(button(tree, 'Reintentar'), undefined);
+
+        if (outcome === 'success') {
+          const updated = kind === 'create' ? [{ ...item, id: 'review-new' }] : [];
+          refresh.resolve([undefined, updated]); await flush(); tree = h.render();
+          assert.deepEqual(findAll(tree, Card).map((card) => card.props.id), updated.map((review) => review.id));
+          assert.doesNotMatch(text(tree), /podrían no estar actualizadas|No se pudieron cargar/);
+          assert.equal(button(tree, 'Reintentar'), undefined);
+        } else {
+          if (outcome === 'failure') refresh.resolve(['offline', undefined]);
+          else refresh.reject(new Error('Invalid review list'));
+          await flush(); tree = h.render();
+          assert.equal(findAll(tree, Card)[0].props.id, item.id);
+          assert.match(text(tree), /podrían no estar actualizadas/);
+          assert.ok(button(tree, 'Reintentar'));
+        }
+      } finally { h.unmount(); teardown(); }
+    });
+  }
+}
+
 test('delete pending blocks duplicates and failed refresh marks stale with retry', async () => {
   setup(); const deletion = deferred(); let calls = 0, loads = 0, aggregateRefreshes = 0;
   services.getAllReviews = async () => { loads++; return loads === 2 ? ['error', undefined] : [undefined, [item]]; };
@@ -321,12 +398,15 @@ test('review list distinguishes initial loading, failure, and successful empty l
   services.getAllReviews = () => ++loads === 1 ? initial.promise : retry.promise;
   const h = harness(); try {
     let tree = h.render();
+    assert.equal(findAll(tree, LoadingStatus)[0].props.message, 'Cargando reseñas...');
+    assert.equal(LoadingStatus(findAll(tree, LoadingStatus)[0].props).props.role, 'status');
     assert.match(text(tree), /Cargando reseñas/);
     assert.doesNotMatch(text(tree), /No has reseñado/);
     initial.resolve(['offline', undefined]); await flush(); tree = h.render();
     assert.match(text(tree), /No se pudieron cargar/);
     assert.doesNotMatch(text(tree), /No has reseñado/);
     button(tree, 'Reintentar').props.onClick(); tree = h.render();
+    assert.equal(findAll(tree, LoadingStatus)[0].props.message, 'Cargando reseñas...');
     assert.match(text(tree), /Cargando reseñas/);
     retry.resolve([undefined, []]); await flush(); tree = h.render();
     assert.match(text(tree), /No has reseñado/);
@@ -447,8 +527,8 @@ test('uncertain creation has one guarded recovery action and keeps later draft e
 });
 
 test('uncertain initial load error has one recovery control and failed refresh cannot unlock it', async () => {
-  const store = setup(); let loads = 0;
-  services.getAllReviews = async () => { loads++; return ['offline', undefined]; };
+  const store = setup(); let loads = 0; const refresh = deferred();
+  services.getAllReviews = () => ++loads === 1 ? Promise.resolve(['offline', undefined]) : refresh.promise;
   services.postReview = async () => { throw new Error('offline'); };
   const h = harness(); try {
     h.render(); await flush(); let tree = h.render();
@@ -458,7 +538,10 @@ test('uncertain initial load error has one recovery control and failed refresh c
     assert.match(text(tree), /No se pudieron cargar/);
     assert.equal(button(tree, 'Reintentar'), undefined);
     assert.equal(findAll(tree, Button).filter((b) => text(b).includes('Actualizar reseñas')).length, 1);
-    button(tree, 'Actualizar reseñas').props.onClick(); await flush(); tree = h.render();
+    button(tree, 'Actualizar reseñas').props.onClick(); tree = h.render();
+    assert.equal(findAll(tree, LoadingStatus).length, 1);
+    assert.doesNotMatch(text(tree), /Actualizando reseñas/);
+    refresh.resolve(['offline', undefined]); await flush(); tree = h.render();
     assert.equal(loads, 2);
     assert.equal(button(tree, 'Ya revisé'), undefined);
     assert.equal(button(tree, 'Publicar').props.disabled, true);

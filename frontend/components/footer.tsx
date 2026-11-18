@@ -3,12 +3,12 @@ import Link from 'next/link';
 function Footer() {
   return (
     <footer>
-      <h3 className="text-center">
+      <p className="site-attribution">
         Hecho por{' '}
-        <Link href="https://github.com/JoseAMota11" className="text-blue-500">
+        <Link href="https://github.com/JoseAMota11">
           José Mota ♥️
         </Link>
-      </h3>
+      </p>
     </footer>
   );
 }

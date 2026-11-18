@@ -1,3 +1,4 @@
+import { asyncHandler } from '../middlewares/async-handler';
 import { Router } from 'express';
 import { BookController } from '../controllers/book.controller';
 import {
@@ -9,25 +10,25 @@ import {
 const bookRouter = Router();
 
 // Routes
-bookRouter.get('/books', authMiddleware, BookController.getAllBooks);
-bookRouter.get('/books/:id', authMiddleware, BookController.getOneBook);
+bookRouter.get('/books', authMiddleware, asyncHandler(BookController.getAllBooks));
+bookRouter.get('/books/:id', authMiddleware, asyncHandler(BookController.getOneBook));
 bookRouter.get(
   '/books/:id/export',
   authMiddleware,
-  BookController.exportBookToCSV
+  asyncHandler(BookController.exportBookToCSV)
 );
 bookRouter.post(
   '/books',
   authMiddleware,
   validateBooksData,
-  BookController.setBook
+  asyncHandler(BookController.setBook)
 );
 bookRouter.patch(
   '/books/:id',
   authMiddleware,
   validateBooksDataPartial,
-  BookController.updateBook
+  asyncHandler(BookController.updateBook)
 );
-bookRouter.delete('/books/:id', authMiddleware, BookController.deleteBook);
+bookRouter.delete('/books/:id', authMiddleware, asyncHandler(BookController.deleteBook));
 
 export default bookRouter;

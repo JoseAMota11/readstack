@@ -1,8 +1,9 @@
+import { ListedReview, ReviewDataAccess } from './data-access';
 import db from '../config/db';
 import { Review } from '../types/review.type';
 
 export class ReviewModel {
-  static findAll(bookId: string, userId: string) {
+  static async findAll(bookId: string, userId: string) {
     const book = db
       .prepare('SELECT 1 FROM Books WHERE id = ? AND userId = ?')
       .get(bookId, userId);
@@ -23,10 +24,10 @@ export class ReviewModel {
       ORDER BY r.createdAt DESC
     `);
 
-    return stmt.all(bookId, userId, userId) as Review[];
+    return stmt.all(bookId, userId, userId) as ListedReview[];
   }
 
-  static create(review: Review) {
+  static async create(review: Review) {
     const { bookId, userId, rating, comment } = review;
 
     const id = crypto.randomUUID();
@@ -51,7 +52,7 @@ export class ReviewModel {
     }
   }
 
-  static update(id: string, review: Review) {
+  static async update(id: string, review: Review) {
     const { bookId, userId, rating, comment } = review;
 
     const stmt = db.prepare(
@@ -75,7 +76,7 @@ export class ReviewModel {
     }
   }
 
-  static delete(id: string, userId: string) {
+  static async delete(id: string, userId: string) {
     const stmt = db.prepare(`
       DELETE FROM Reviews WHERE id = ? AND userId = ?
         AND EXISTS (
@@ -88,3 +89,5 @@ export class ReviewModel {
     return { changes: Boolean(info.changes) };
   }
 }
+
+ReviewModel satisfies ReviewDataAccess;
