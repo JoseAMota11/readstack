@@ -1,20 +1,26 @@
 # ReadStack
 
-ReadStack is a multiuser personal book catalog for organizing collections and recording reviews. Search and filter your library, keep track of favorites, and revisit your impressions of each book. It is a catalog, not an ebook reader.
+ReadStack is a Spanish-language, multiuser personal book catalog: organize a collection, keep favorites, and record reviews. It is a learning and portfolio project, not an ebook reader or a production-ready service for real users.
 
 ## Screenshots
 
-### Library
+Representative captures of the current **Archival Modern** interface rendered in an isolated local environment using synthetic demo data:
 
-![Desktop view of the ReadStack library and book collection](docs/screenshots/library-desktop.png)
+### Library — light and dark themes
+
+![Desktop view of the ReadStack library in light theme showing real book covers, search and filter controls, ratings, and favorite badges](docs/screenshots/library-desktop-light.png)
+
+![Desktop view of the ReadStack library in dark theme showing the same collection and consistent editorial styling](docs/screenshots/library-desktop-dark.png)
 
 ### Book detail
 
-![Desktop book detail with cover, information, actions, and reviews](docs/screenshots/book-detail-desktop.png)
+![Desktop book detail view with the shared navigation bar, cover artwork, publication metadata, genre tags, actions, and a synthetic review](docs/screenshots/book-detail-desktop.png)
 
-| Mobile library | Add a book | Sign in |
-| --- | --- | --- |
-| ![ReadStack library on a mobile screen](docs/screenshots/library-mobile.png) | ![Add-book form displayed over the library](docs/screenshots/add-book-modal.png) | ![ReadStack sign-in screen on desktop](docs/screenshots/login-desktop.png) |
+### Responsive mobile library and sign-in
+
+| Mobile library | Sign in |
+| --- | --- |
+| ![Responsive mobile view of the ReadStack library with collapsible secondary filters and a two-column cover grid](docs/screenshots/library-mobile.png) | ![Desktop sign-in screen featuring the ReadStack identity panel, circular theme switcher, and login form](docs/screenshots/login-desktop.png) |
 
 ## Features
 
@@ -23,7 +29,7 @@ ReadStack is a multiuser personal book catalog for organizing collections and re
 - Search by title, filter by author, year, and genre, and browse paginated results.
 - Mark favorites and manage reviews and ratings on each book's detail page.
 - Export an individual book to CSV; full-library export is not implemented.
-- Responsive interface with light and dark themes; the browser stores the selected preference.
+- Archival Modern interface: editorial typography, cover-first layouts, responsive navigation, light and dark themes, and missing-cover, loading, error and retry states. The browser stores the theme preference.
 
 ## Technology and architecture
 
@@ -35,7 +41,7 @@ ReadStack is a multiuser personal book catalog for organizing collections and re
 
 ## Design
 
-The approved **Archival Modern** direction combines a restrained editorial style with prominent book covers, generous space, and responsive layouts. Light and dark themes receive equal care. Implementation and visual and accessibility validation are ongoing; see [DESIGN.md](DESIGN.md) for the design principles and their limits.
+The approved **Archival Modern** direction combines restrained editorial styling with prominent book covers and responsive layouts. Representative local browser checks covered desktop and narrow mobile in both themes; owner sign-off and broader accessibility checks remain open. [DESIGN.md](DESIGN.md) is the initial design reference, not a current implementation or accessibility certification.
 
 ## Local setup
 
@@ -72,9 +78,13 @@ With `PORT` set to `4000`, the API is available at `http://localhost:4000/api/v1
 
 For a future separately approved staging deployment, set `CORS_ALLOWED_ORIGINS` to the exact established frontend origins, for example `https://frontend.example.com,http://localhost:3000`. Entries are trimmed and normalized (including hostname case and default ports); empty entries and paths, including a trailing slash, are invalid. Requests without an Origin continue normally. CORS is a browser policy, not authentication or staging access control: direct API requests remain possible. Do not change the existing Beta configuration or deploy it as part of staging preparation.
 
+## Operator and security reference
+
+The following procedures preserve operational detail, not permission to access or change any environment. Historical preparation below must be read alongside the newer staging evidence in [PROGRESS.md](PROGRESS.md).
+
 ### Staging registration and operator provisioning
 
-The owner approved invitation-controlled registration for the first synthetic-only staging deployment; configuration, deployment and account creation still require separate authorization. Once authorized, generate a unique invitation from 32 cryptographically secure random bytes, encoded as exactly 64 lowercase hexadecimal characters, independent of all JWT keys and other environments. Provision it only as the staging backend's protected `STAGING_REGISTRATION_SECRET`; never set it in the public Beta, frontend, repository or build artifacts. Empty, malformed and obvious low-diversity values fail startup. Format and diversity checks cannot prove randomness: secure generation and protection are essential. The variable's absence leaves registration unchanged, so verify its presence and behavior after separately approved deployment without displaying its value.
+The owner approved invitation-controlled registration for the first synthetic-only staging deployment; further configuration, deployment and account creation require separate authorization. Once authorized, generate a unique invitation from 32 cryptographically secure random bytes, encoded as exactly 64 lowercase hexadecimal characters, independent of all JWT keys and other environments. Provision it only as the staging backend's protected `STAGING_REGISTRATION_SECRET`; never set it in the public Beta, frontend, repository or build artifacts. Empty, malformed and obvious low-diversity values fail startup. Format and diversity checks cannot prove randomness: secure generation and protection are essential. The variable's absence leaves registration unchanged, so verify its presence and behavior after separately approved deployment without displaying its value.
 
 Only an authorized operator should provision synthetic accounts, after independently verifying the staging API endpoint and TLS and receiving specific authorization for the target and write. Use a trusted private HTTP client that keeps credentials in memory and does not record requests, headers or bodies. Send `POST /api/v1/register` with the existing JSON fields `username`, `email` and `password`, and supply the invitation in the `X-Staging-Registration-Secret` header. Use synthetic identities and independently generated passwords. Do not put the invitation, passwords or tokens in URLs, shell history, command-line arguments, logs, screenshots, repository files, browser frontend code or shared client collections; disable tracing and any client/proxy request-header logging. Protect and distribute credentials through an approved secret channel. Do not use browser developer tools or add an invitation UI. Confirm the response without recording secrets or private data. No account provisioning is authorized by this document.
 
@@ -135,9 +145,9 @@ Application rollback is not database recovery: rolling code back does not restor
 
 ### DB-06 hosted staging initialization — disconnected preparation
 
-The owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database, and approved invitation-controlled registration and synthetic-only access for the first staging deployment. This is not authorization to provision, configure, connect, migrate, deploy or restart anything. The existing public Beta must remain unchanged. `GOV-04` remains open pending the complete strategy, including validation scope and approximately $0 feasibility; `TEST-05` also remains open. No SQLite records will be transferred.
+The owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database, and approved invitation-controlled registration and synthetic-only access for the first staging deployment. `DB-06` and `TEST-05` have since received qualified acceptance within the scopes recorded in [PROGRESS.md](PROGRESS.md); `GOV-04` remains open. The procedure below is historical preparation, not authorization to repeat it, provision, configure, connect, migrate, deploy or restart anything. The existing public Beta must remain unchanged. No SQLite records are transferred by this procedure.
 
-The separate `migrate:staging-db06` adapter is prepared but **no hosted execution is authorized or validated**. The local disposable CLI must not be used for Neon, even through a tunnel: it disables TLS. The staging adapter accepts only the identified direct endpoint and exact database and role, checks verified TLS, and under the runner's session advisory lock requires no public relations (including a ledger), routines or types, and exactly the packaged `0001_initial_schema.sql` SHA-256 `eebd5434f261f2974edccc1eb8cc6c91137f1f5567fbe2d5273a6810a05bb085`. This catalog check is not a comprehensive inventory of all PostgreSQL object kinds. It deliberately refuses a repeat after success or a partial ledger; this is not an automatic retry or repair command. The runner retains its ledger and checksum checks. Startup and deployment do not invoke it.
+The separate `migrate:staging-db06` adapter was prepared for a one-time initialization; prior hosted evidence is recorded in `PROGRESS.md` and does not authorize another execution. The local disposable CLI must not be used for Neon, even through a tunnel: it disables TLS. The staging adapter accepts only the identified direct endpoint and exact database and role, checks verified TLS, and under the runner's session advisory lock requires no public relations (including a ledger), routines or types, and exactly the packaged `0001_initial_schema.sql` SHA-256 `eebd5434f261f2974edccc1eb8cc6c91137f1f5567fbe2d5273a6810a05bb085`. This catalog check is not a comprehensive inventory of all PostgreSQL object kinds. It deliberately refuses a repeat after success or a partial ledger; this is not an automatic retry or repair command. The runner retains its ledger and checksum checks. Startup and deployment do not invoke it.
 
 Before any invocation, the owner must separately authorize read-only preflight, then immediately before the write explicitly approve **this exact project, branch, direct endpoint, database and action**. Recheck in the Neon Console that project `sparkling-cherry-00280862`, branch `br-crimson-block-bcr4joma` and endpoint `ep-still-hall-bcrtmjpj` belong together and that Connect supplies the exact direct, non-pooler hostname. The adapter accepts only the endpoint-derived `us-east-1.aws.neon.tech` hostname, optionally with a `c-<number>` segment; stop if the actual hostname differs. Independently confirm this target is separate from the actual Beta resources and configuration (the owner reports Beta uses SQLite), and that no application or other writer is using staging. Check the session database, role, public schema and ledger are still empty, direct-session advisory locks work, and the role has required privileges. Do not supply production credentials or configuration. The owner-observed Console binding, hostname, verified TLS and SQL identity are layered evidence, not cryptographic proof of project identity; SQL does not identify the Neon project. Locks coordinate cooperating migration runners, not arbitrary external writers.
 
@@ -157,7 +167,7 @@ Remove inherited `PG*`, `DATABASE_URL`, `DATABASE_PATH`, `NODE_OPTIONS` and `NOD
 npm run migrate:staging-db06
 ```
 
-Independent preflight and postflight checks require their own authorized access. Staging ledger creation is exclusive: a conflicting relation appearing after preflight causes failure, not reuse. Ledger creation itself precedes the migration transaction and may persist empty if a later step fails; rollback only attempts to undo the migration transaction. If any prerequisite is uncertain, stop; on failure or uncertain commit preserve evidence and independently investigate without retrying, removing or editing the ledger. This disconnected preparation does not establish hosted connectivity, staging validation or production readiness.
+Independent preflight and postflight checks require their own authorized access. Staging ledger creation is exclusive: a conflicting relation appearing after preflight causes failure, not reuse. Ledger creation itself precedes the migration transaction and may persist empty if a later step fails; rollback only attempts to undo the migration transaction. If any prerequisite is uncertain, stop; on failure or uncertain commit preserve evidence and independently investigate without retrying, removing or editing the ledger. This procedure does not establish production readiness.
 
 ### DB-05 disposable PostgreSQL fixture procedure
 
@@ -171,7 +181,7 @@ These experimental commands are **not authorization to connect or write**. The o
 
 Operations have five-second connection/query/server-statement timeouts and a 120-second process watchdog. On any failure, timeout, interrupted connection or uncertain COMMIT, stop and independently verify the target, rows and ledger; rollback/cleanup is attempted, not guaranteed. Do not blindly retry. `npm run test:synthetic` uses disconnected fakes and does not validate SQL, TLS, privilege behavior or real transaction outcomes.
 
-### Frontend
+## Frontend setup
 
 In another terminal, from the repository root:
 
@@ -210,13 +220,13 @@ npm test
 npm run test:security
 ```
 
-Backend tests use synthetic data and isolated temporary SQLite databases. Local tests cover functionality and cross-user isolation, but CI and comprehensive browser validation remain pending.
+On Node 22.23.4 and npm 10.9.9, the last isolated regression at `e974af3` passed frontend 168/168, backend 172/172 and security 3/3. Frontend lint, `./node_modules/.bin/tsc --noEmit --incremental false`, frontend build and backend build also passed; lint reported two existing warnings. A separate bounded synthetic browser smoke passed 8/8 scenarios, including cross-user denial and desktop/narrow-mobile light and dark layouts. See [PROGRESS.md](PROGRESS.md) for commands, isolation, results and limits. These are historical results, not tests rerun for this documentation update. CI and comprehensive accessibility validation remain open.
 
 ## Project status
 
-ReadStack is being modernized. Its features and tests exist locally, but that is not production approval. Comprehensive browser validation, security and deployment gates, CI, and decisions about sessions and persistence remain outstanding.
+The owner reports manually deploying Vercel Preview and Render staging at `a09f0af`, then logging in, creating a synthetic book and seeing it persist on reload. This is owner-reported evidence, not an independently repeated check or proof of restart/redeploy durability. It is not approval to share the environment: no public recruiter demo or credentials are provided. Any interactive demo requires owner approval of its target and access model, target-specific security review and resolution of material risks.
 
-The default application uses SQLite; the experimental PostgreSQL runtime has limited owner-reported disposable-server validation, not comprehensive parity or production validation. Neon has been selected for eventual PostgreSQL deployment, but hosted-provider connectivity and the migration remain unverified. The owner selected a staging topology, but the complete staging strategy remains pending under `GOV-04`; durable production persistence and recovery have not been verified. The modernization changes are not claimed as deployed or production-ready. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for current status and pending decisions.
+SQLite remains the default; the experimental PostgreSQL runtime has qualified validation, not comprehensive provider parity. A public Beta exists, but production persistence, backup and recovery are not verified; modernization is not approved as production-ready. Browser-readable JWTs, non-revoking logout, process-local rate limits, registration account enumeration and unverified hosted abuse controls are material limitations. Full-library CSV export is not implemented. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for evidence and outstanding decisions.
 
 ---
 
