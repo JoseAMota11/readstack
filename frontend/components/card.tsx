@@ -29,7 +29,7 @@ function Card({ id, title, author, year, coverImage, reviewAverageRating, review
     <Link href={`/book/${id}`} className="library-card">
       <Cover key={coverImage} src={coverImage} />
       <div className="library-card-content">
-        <h2 className="library-card-title">{title}</h2>
+        <h3 className="library-card-title">{title}</h3>
         <p className="library-card-author">{author}</p>
         <p className="library-card-year">{year}</p>
           <div className="library-card-details">

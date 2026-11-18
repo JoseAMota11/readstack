@@ -121,12 +121,14 @@ test('detail unwraps promised params with the React server renderer', async () =
 test('loaded detail presents the full title, author, cover and review section', async () => {
   reset(); const h = harness(Detail, detailProps); h.render();
   const title = 'Título largo '.repeat(30);
-  requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', coverImage: 'https://example.test/cover.png' }]); await flush();
+  requests.shift().resolve([undefined, { ...book('a'), title, author: 'Autora de prueba', year: 2024, coverImage: 'https://example.test/cover.png' }]); await flush();
   const tree = h.render();
   const heading = byType(tree, 'h1');
   const cover = find(tree, (element) => element.props?.src === 'https://example.test/cover.png');
   assert.equal(heading.props.children, title);
   assert.match(JSON.stringify(tree), /Autora de prueba/);
+  assert.equal(tree.type, 'main');
+  assert.equal(find(tree, (element) => element.props?.className === 'book-detail-year').props.children, 2024);
   assert.equal(cover.props.src, 'https://example.test/cover.png');
   assert.equal(cover.props.title, title);
   assert.ok(find(tree, (element) => element.props?.bookId === 'a'));
@@ -167,9 +169,9 @@ test('detail provides a library link during loading, error, and success', async 
     assert.equal(arrow.props.children, '←');
     assert.equal(label.trim(), 'Volver a la biblioteca');
   }
-  let tree = h.render(); assert.ok(byRole(tree, 'status')); assertLink(tree);
+  let tree = h.render(); assert.ok(byRole(tree, 'status')); assert.match(byRole(tree, 'status').props.className, /library-state/); assert.equal(tree.type, 'main'); assertLink(tree);
   requests.shift().reject(new Error('network')); await flush();
-  tree = h.render(); assert.ok(byRole(tree, 'alert')); assertLink(tree);
+  tree = h.render(); assert.match(byRole(tree, 'alert').props.className, /library-state-error/); assert.equal(tree.type, 'main'); assertLink(tree);
   byType(tree, Button).props.onClick(); h.render();
   requests.shift().resolve([undefined, book('a')]); await flush();
   tree = h.render(); assert.ok(byType(tree, 'h1')); assertLink(tree);
@@ -192,12 +194,19 @@ test('detail cover handles missing and failed images and resets on URL changes',
     try { return element.type(element.props); } finally { React.useState = useState; }
   }
   const changeUrl = (url) => actionBar.props.setBook((previous) => ({ ...previous, coverImage: url }));
-  assert.equal(cover().props.children.props.children, 'Sin portada');
-  changeUrl(''); assert.equal(cover().props.children.props.children, 'Sin portada');
+  function assertFallback() {
+    const fallback = cover().props.children;
+    assert.match(fallback.props.className, /library-cover-placeholder/);
+    const [icon, label] = React.Children.toArray(fallback.props.children);
+    assert.equal(icon.props['aria-hidden'], 'true');
+    assert.equal(label.props.children, 'Sin portada');
+  }
+  assertFallback();
+  changeUrl(''); assertFallback();
   changeUrl('https://example.test/first.png');
   let image = cover().props.children;
   assert.equal(image.type, 'img'); assert.equal(image.props.alt, 'Book a');
-  image.props.onError(); assert.equal(cover().props.children.props.children, 'Sin portada');
+  image.props.onError(); assertFallback();
   changeUrl('https://example.test/second.png');
   image = cover().props.children;
   assert.equal(image.type, 'img'); assert.equal(image.props.src, 'https://example.test/second.png');

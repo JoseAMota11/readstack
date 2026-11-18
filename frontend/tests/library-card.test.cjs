@@ -30,10 +30,22 @@ test('card links to book detail and preserves long titles and metadata', () => {
   const html = render({ title, coverImage: 'https://example.test/cover.png' });
   assert.match(html, /href="\/book\/synthetic-id"/);
   assert.ok(html.includes(title));
+  assert.match(html, /<h3 class="library-card-title">/);
   assert.match(html, /Synthetic author/);
   assert.match(html, /2024/);
   assert.match(html, /alt=""/);
   assert.doesNotMatch(html, /Sin portada/);
+});
+
+test('footer attribution is non-heading text with a semantic-token link', () => {
+  const Footer = require('../components/footer.tsx').default;
+  const html = renderToStaticMarkup(React.createElement(Footer));
+  assert.match(html, /<footer><p class="site-attribution">/);
+  assert.match(html, /href="https:\/\/github\.com\/JoseAMota11"/);
+  assert.match(html, /José Mota/);
+  assert.doesNotMatch(html, /<h[1-6]|text-blue-500/);
+  const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  assert.match(css, /\.site-attribution a\s*\{[^}]*color:\s*var\(--accent\)/);
 });
 
 test('card uses review averages, including zero, and never the manual rating', () => {

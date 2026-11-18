@@ -21,3 +21,12 @@ test('mobile actions retain labels and icons in a responsive grid', () => {
   assert.match(css, /@media \(max-width: 47\.999rem\)[\s\S]*?\.book-detail-rating\s*\{[^}]*text-align:\s*center/);
   assert.match(css, /\.book-detail-actions \.book-detail-favorite-status,[\s\S]*?grid-column:\s*1 \/ -1/);
 });
+
+test('create-book validation text and keyboard focus use readable semantic styles', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  assert.match(css, /\.create-book-error\s*\{[^}]*font-size:\s*0\.875rem/);
+  assert.match(css, /\.create-book-modal \.ant-input:focus-visible/);
+  assert.match(css, /\.create-book-modal \.ant-input-number:has\(input:focus-visible\)/);
+  assert.match(css, /\.create-book-modal \.ant-select:has\(input:focus-visible\) \.ant-select-selector/);
+  assert.match(css, /\.create-book-modal \.ant-checkbox-input:focus-visible \+ \.ant-checkbox-inner\s*\{[^}]*outline:\s*2px solid var\(--focus\)/);
+});

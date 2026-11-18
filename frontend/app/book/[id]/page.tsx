@@ -8,6 +8,7 @@ import {
 } from '@/services/book.service';
 import { Book } from '@/types/book.type';
 import {
+  BookOutlined,
   DeleteOutlined,
   EditOutlined,
   FileExcelOutlined,
@@ -88,17 +89,18 @@ function BookDetails({ id }: { id: string }) {
   };
 
   return (
-    <>
+    <main>
       <div className="book-detail-navigation">
         <Link href="/" className="book-detail-return"><span aria-hidden="true">←</span> Volver a la biblioteca</Link>
       </div>
-      {loadError ? <div className="text-center" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div> : !book ? <LoadingStatus className="content-loading-status" message="Cargando libro..." /> : (
+      {loadError ? <div className="library-state library-state-error book-detail-state" role="alert"><p>No se pudo cargar el libro.</p><Button onClick={() => { setLoadError(false); setRetry((value) => value + 1); }}>Reintentar</Button></div> : !book ? <LoadingStatus className="library-state book-detail-state" message="Cargando libro..." /> : (
       <div className="book-detail">
         <DetailCover key={book.coverImage} src={book.coverImage} title={book.title} />
         <div className="book-detail-content">
           <div className="book-detail-heading">
             <h1>{book.title}</h1>
             <p>{book.author}</p>
+            <p className="book-detail-year">{book.year}</p>
           </div>
           <Genres genre={book.genre} />
           <div className="book-detail-rating" aria-live="polite">
@@ -110,7 +112,7 @@ function BookDetails({ id }: { id: string }) {
         </div>
       </div>
       )}
-    </>
+    </main>
   );
 }
 
@@ -124,7 +126,10 @@ function DetailCover({ src, title }: { src?: string; title: string }) {
       {src && !failed ? (
         <img src={src} alt={title} onError={() => setFailed(true)} />
       ) : (
-        <div className="book-detail-cover-placeholder">Sin portada</div>
+        <div className="book-detail-cover-placeholder library-cover-placeholder">
+          <BookOutlined aria-hidden="true" />
+          <span>Sin portada</span>
+        </div>
       )}
     </div>
   );
