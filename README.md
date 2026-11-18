@@ -2,9 +2,22 @@
 
 ReadStack is a Spanish-language, multiuser personal book catalog: organize a collection, keep favorites, and record reviews. It is a learning and portfolio project, not an ebook reader or a production-ready service for real users.
 
+## Live Demo
+
+**Application:** [read-group-challenge.vercel.app](https://read-group-challenge.vercel.app/)
+
+### Demo Access
+
+| | |
+| --- | --- |
+| Email | `demo@readstack.com` |
+| Password | Pending production security verification |
+
+The demo is a shared, editable account: visitors can change or delete its books and reviews. Do not add private or sensitive information. Its sample library is being populated and has not yet been verified as complete.
+
 ## Screenshots
 
-Representative captures of the current **Archival Modern** interface rendered in an isolated local environment using synthetic demo data:
+Representative captures of the **Archival Modern** interface rendered in an isolated local environment using synthetic demo data. They predate the removal of the beta badge and notice.
 
 ### Library — light and dark themes
 
@@ -36,7 +49,7 @@ Representative captures of the current **Archival Modern** interface rendered in
 - **Frontend:** Next.js 16.4.6 with App Router, React 19.3.1, and TypeScript. Ant Design 5.29.3 and Tailwind CSS 3 support the interface; client services communicate with the API.
 - **Backend:** Node.js, Express 4, and TypeScript. The REST API is organized into routes, middleware, controllers, and models, with Zod input validation.
 - **Health check:** Unauthenticated `GET /healthz` returns HTTP 200 with `{"status":"ok"}`. It is a liveness check and does not query the database; PostgreSQL startup readiness is separate.
-- **Data:** SQLite is the default, using `better-sqlite3` and creating its tables at startup. Experimental PostgreSQL repositories are composed into the application after read-only readiness succeeds. User, book, and review operations expose typed asynchronous contracts; SQLite and bcrypt still execute synchronously. The separate experimental PostgreSQL migration CLI is not part of application startup.
+- **Data:** The owner reports that production uses Neon PostgreSQL. SQLite remains the local default, using `better-sqlite3` and creating its tables at startup. PostgreSQL repositories are composed after read-only readiness succeeds. User, book, and review operations expose typed asynchronous contracts; SQLite and bcrypt still execute synchronously. The separate PostgreSQL migration CLI is not part of application startup.
 - **Authentication and authorization:** bcrypt password hashing and JWT authentication. The frontend stores the token in a JavaScript-readable cookie and sends it as a Bearer token. The API verifies the token and checks book and review ownership; frontend navigation protection does not replace those checks.
 
 ## Design
@@ -63,7 +76,7 @@ Configure the following environment variables for the backend process. The backe
 | --- | --- |
 | `SECRET_KEY` | Required. Use an independently generated local secret of exactly 64 hexadecimal characters. Do not publish it or store it in the repository. |
 | `DATABASE_PATH` | SQLite path. Use an isolated local path for synthetic data; otherwise it defaults to `library.db` relative to the working directory. Avoid modifying the tracked `backend/library.db`. |
-| `DATABASE_PROVIDER` | `sqlite` (default) or experimental `postgres`; all other values fail startup. Limited disposable PostgreSQL validation is owner-reported; comprehensive parity remains unverified. |
+| `DATABASE_PROVIDER` | `sqlite` (default) or `postgres`; all other values fail startup. The owner reports PostgreSQL in production; comprehensive provider parity remains unverified. |
 | `PORT` | API port; defaults to `3000`. Set it to `4000` for the frontend configuration below. |
 | `CORS_ALLOWED_ORIGINS` | Optional comma-separated HTTP/HTTPS origins, without paths, credentials or wildcards. When absent, CORS remains unrestricted; an empty or malformed value fails application startup. |
 | `STAGING_REGISTRATION_SECRET` | Optional staging-only registration invitation; absent preserves public registration. See the operator procedure below. Never configure it in the Beta or frontend. |
@@ -145,7 +158,7 @@ Application rollback is not database recovery: rolling code back does not restor
 
 ### DB-06 hosted staging initialization — disconnected preparation
 
-The owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database, and approved invitation-controlled registration and synthetic-only access for the first staging deployment. `DB-06` and `TEST-05` have since received qualified acceptance within the scopes recorded in [PROGRESS.md](PROGRESS.md); `GOV-04` remains open. The procedure below is historical preparation, not authorization to repeat it, provision, configure, connect, migrate, deploy or restart anything. The existing public Beta must remain unchanged. No SQLite records are transferred by this procedure.
+The owner selected Vercel Preview, a separate Render Free backend and a separate Neon Free PostgreSQL database, and approved invitation-controlled registration and synthetic-only access for the first staging deployment. `DB-06` and `TEST-05` have since received qualified acceptance within the scopes recorded in [PROGRESS.md](PROGRESS.md); `GOV-04` remains open. The procedure below is historical preparation, not authorization to repeat it, provision, configure, connect, migrate, deploy or restart anything. Its references to the former public Beta describe the historical environment, not the current production deployment. No SQLite records are transferred by this procedure.
 
 The separate `migrate:staging-db06` adapter was prepared for a one-time initialization; prior hosted evidence is recorded in `PROGRESS.md` and does not authorize another execution. The local disposable CLI must not be used for Neon, even through a tunnel: it disables TLS. The staging adapter accepts only the identified direct endpoint and exact database and role, checks verified TLS, and under the runner's session advisory lock requires no public relations (including a ledger), routines or types, and exactly the packaged `0001_initial_schema.sql` SHA-256 `eebd5434f261f2974edccc1eb8cc6c91137f1f5567fbe2d5273a6810a05bb085`. This catalog check is not a comprehensive inventory of all PostgreSQL object kinds. It deliberately refuses a repeat after success or a partial ledger; this is not an automatic retry or repair command. The runner retains its ledger and checksum checks. Startup and deployment do not invoke it.
 
@@ -224,9 +237,9 @@ On Node 22.23.4 and npm 10.9.9, the last isolated regression at `e974af3` passed
 
 ## Project status
 
-The owner reports manually deploying Vercel Preview and Render staging at `a09f0af`, then logging in, creating a synthetic book and seeing it persist on reload. This is owner-reported evidence, not an independently repeated check or proof of restart/redeploy durability. It is not approval to share the environment: no public recruiter demo or credentials are provided. Any interactive demo requires owner approval of its target and access model, target-specific security review and resolution of material risks.
+The owner reports that modernization was merged and pushed to `main`, Portfolio 1.0 was deployed to Vercel and Render with Neon PostgreSQL, and the production application is working. These reports were not independently verified in this update. The owner also previously reported staging login and synthetic book persistence on reload at `a09f0af`; that is not proof of restart/redeploy durability.
 
-SQLite remains the default; the experimental PostgreSQL runtime has qualified validation, not comprehensive provider parity. A public Beta exists, but production persistence, backup and recovery are not verified; modernization is not approved as production-ready. Browser-readable JWTs, non-revoking logout, process-local rate limits, registration account enumeration and unverified hosted abuse controls are material limitations. Full-library CSV export is not implemented. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for evidence and outstanding decisions.
+Production-specific isolation and demo-account privilege verification remain pending; the demo password is not published. PostgreSQL validation does not establish comprehensive provider parity, tested backups or recovery. Browser-readable JWTs, non-revoking logout, process-local rate limits, registration account enumeration and unverified hosted abuse controls are material limitations. Full-library CSV export is not implemented. See [PROGRESS.md](PROGRESS.md) and [PLAN.md](PLAN.md) for evidence and outstanding decisions.
 
 ---
 

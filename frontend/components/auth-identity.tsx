@@ -7,7 +7,6 @@ export default function AuthIdentity({ editorial = false }: { editorial?: boolea
       <div className="auth-identity-header">
         <div className="auth-brand">
           <BookOutlined aria-hidden="true" /> ReadStack
-          <span className="library-beta-badge">BETA</span>
         </div>
         <ThemeSwitcher />
       </div>

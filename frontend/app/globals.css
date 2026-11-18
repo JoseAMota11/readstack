@@ -558,14 +558,6 @@ body {
   font-size: 1.125rem;
 }
 
-.library-beta-badge {
-  padding: 0.125rem 0.5rem;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
 .library-nav-actions {
   display: flex;
   align-items: center;
@@ -755,14 +747,6 @@ body {
   font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.15;
   font-weight: 400;
-}
-
-.library-beta-notice {
-  padding: 1rem;
-  border-left: 3px solid var(--accent);
-  background: var(--accent-subtle);
-  color: var(--text-primary);
-  line-height: 1.5;
 }
 
 .library-filters {

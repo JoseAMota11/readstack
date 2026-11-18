@@ -1,11 +1,13 @@
 # Modernization Plan — Biblioteca Personal
 
 **Status:** Active
-**Last updated:** 2026-11-17
+**Last updated:** 2026-11-18
 **Owner:** Repository owner
 **Scope:** Finish the existing Next.js/Express modernization as ReadStack Portfolio 1.0.
 
 ## Portfolio 1.0 — finite completion scope
+
+**Current deployment and demo decision (2026-11-18):** The owner reports Portfolio 1.0 deployed successfully on Vercel and Render with Neon PostgreSQL and working in production. Local Git verifies that modernization commit `5df1aa47709724f03c782a73a727be19e1420aa9` is an ancestor of `main` at `2e6df35405ebde14959cc478d2e039f251d7257c`, matching the locally recorded `origin/main`; this does not independently verify a remote fetch, deployed revision or hosted functionality. The owner reports the merge was pushed. The owner approved a conditional `README.md`-only public demo credential exception under `AGENTS.md`: publication of the designated account password remains blocked until target-specific security and isolation verification is recorded. Demo-library population is in progress, not verified complete. Historical decisions and handoffs below reflect their dates and do not override this update.
 
 **Owner decision (2026-11-14):** ReadStack is a learning and portfolio project, not a commercial product or a service for real users. Finish the existing modernization, demonstrate technical competence, and move on to other projects. Portfolio completion is not production readiness or approval to deploy. The historical roadmap, task IDs, decisions, acceptance criteria and evidence below remain intact; its production-oriented goals and priorities do not create additional Portfolio 1.0 requirements.
 
@@ -258,7 +260,7 @@ The owner approved the book product scope in `D-021` and the technical decisions
 
 | ID | Task | P | Status | Depends on | Deliverable | Acceptance criteria |
 |---|---|---|---|---|---|---|
-| `DOC-02` | Rewrite README to match reality | P1 | `[ ]` | `GOV-01` | Accurate setup and architecture guide | Removes stale Vite and obsolete references; no credentials or secrets; commands verified; environment names documented; hosting topology described without sensitive values |
+| `DOC-02` | Rewrite README to match reality | P1 | `[ ]` | `GOV-01` | Accurate setup and architecture guide | Removes stale Vite and obsolete references; no secrets or credentials except the conditional README-only public demo exception in `AGENTS.md`; commands verified; environment names documented; hosting topology described without sensitive values |
 | `DOC-03` | Publish operations runbook | P1 | `[ ]` | `GOV-03`, `DB-07` | Deploy, rollback, backup, restore, and incident runbook | Procedures tested in non-production; owners and escalation paths defined; recovery verification included |
 | `DOC-04` | Add release checklist | P2 | `[ ]` | `TEST-05` | Release checklist tied to gates and evidence | References task IDs, required checks, backup/restore status, smoke results, and rollback readiness |
 
@@ -320,6 +322,8 @@ A push or merge to `main` is a production action because Vercel Production and R
 ### Approved
 
 **Owner decision (2026-11-14):** View Transitions are out of scope. The feasibility investigation reached its stop condition: bidirectional visual quality and safe data coordination could not be established at reasonable complexity. Remove the prototype and retain ordinary navigation; do not pursue alternative implementations, fetching rewrites or animation workarounds. Historical investigation evidence remains in `PROGRESS.md`.
+
+**Owner decision (2026-11-18):** Approve the conditional README-only public demo credential exception in `AGENTS.md`. The designated account password must not be published until target-specific verification establishes non-privileged access, cross-user isolation and synthetic disposable data; other secrets and credentials remain protected. This decision does not authorize hosted access or waive the remaining demo-security review.
 
 | ID | Decision | Status | Notes |
 |---|---|---|---|
