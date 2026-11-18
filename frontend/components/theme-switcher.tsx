@@ -13,7 +13,7 @@ function ThemeSwitcher() {
       type="text"
       className="theme-switcher"
       aria-label={theme === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'}
-      icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+      icon={theme === 'dark' ? <SunOutlined aria-hidden="true" /> : <MoonOutlined aria-hidden="true" />}
     />
   );
 }

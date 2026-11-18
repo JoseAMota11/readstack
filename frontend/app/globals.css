@@ -89,6 +89,40 @@ body {
   color: var(--text-primary);
 }
 
+.auth-identity-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.auth-identity-header .theme-switcher.ant-btn {
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-functional);
+  border-radius: 50%;
+}
+
+.auth-page .auth-identity-header .theme-switcher.ant-btn:not(:disabled):hover {
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border-color: var(--accent);
+}
+
+.auth-page .auth-identity-header .theme-switcher.ant-btn:not(:disabled):active {
+  color: var(--text-primary);
+  background: var(--surface-muted);
+  border-color: var(--accent-active);
+}
+
+.auth-page .auth-identity-header .theme-switcher.ant-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .auth-brand {
   display: flex;
   flex-wrap: wrap;
