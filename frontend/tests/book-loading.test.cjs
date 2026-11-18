@@ -43,6 +43,7 @@ Module._load = function (request, parent, ...args) {
   if (request === '@/services/book.service') return service;
   if (request === '@/context/filters.context') return { useFilters: () => ({ filters, refresh, handleSetFilters: (value) => filterUpdates.push(value) }) };
   if (request === '@/context/message.context') return { useMessage: () => ({ info() {}, success() {}, error() {} }) };
+  if (request === '@/context/theme.context') return { useTheme: () => ({ theme: 'light', toggleTheme() {} }) };
   if (request === 'next/navigation') return { useParams: () => ({ id }), usePathname: () => `/book/${id}`, useRouter: () => ({ push() {}, replace() {} }) };
   if (request === 'next/link') return { __esModule: true, default: Link };
   if (request === 'react-hook-form') return { Controller: () => null, useForm: () => ({ control: {}, handleSubmit: () => () => {}, formState: { errors: {} }, setValue }) };
@@ -56,6 +57,7 @@ const Main = require('../components/main.tsx').default;
 const LoadingStatus = require('../components/loading-status.tsx').default;
 const Detail = require('../app/book/[id]/page.tsx').default;
 const Edit = require('../app/book/[id]/edit/page.tsx').default;
+const Navbar = require('../components/navbar.tsx').default;
 after(() => { Object.assign(React, { use: original.use, useState: original.useState, useRef: original.useRef, useEffect: original.useEffect }); Module._load = original.load; Module._resolveFilename = resolve; });
 
 // Approximate keyed remounts and effect cleanup; this is not a React renderer.
@@ -127,7 +129,7 @@ test('loaded detail presents the full title, author, cover and review section', 
   const cover = find(tree, (element) => element.props?.src === 'https://example.test/cover.png');
   assert.equal(heading.props.children, title);
   assert.match(JSON.stringify(tree), /Autora de prueba/);
-  assert.equal(tree.type, 'main');
+  assert.ok(byType(tree, 'main'));
   assert.equal(find(tree, (element) => element.props?.className === 'book-detail-year').props.children, 2024);
   assert.equal(cover.props.src, 'https://example.test/cover.png');
   assert.equal(cover.props.title, title);
@@ -169,12 +171,46 @@ test('detail provides a library link during loading, error, and success', async 
     assert.equal(arrow.props.children, '←');
     assert.equal(label.trim(), 'Volver a la biblioteca');
   }
-  let tree = h.render(); assert.ok(byRole(tree, 'status')); assert.match(byRole(tree, 'status').props.className, /library-state/); assert.equal(tree.type, 'main'); assertLink(tree);
+  const assertShell = (tree) => {
+    const count = (element, type) => !element || typeof element !== 'object' ? 0 :
+      (element.type === type ? 1 : 0) + React.Children.toArray(element.props?.children).reduce((sum, child) => sum + count(child, type), 0);
+    assert.equal(count(tree, Navbar), 1);
+    assert.equal(count(tree, 'main'), 1);
+  };
+  let tree = h.render(); assert.ok(find(tree, (element) => element.type === LoadingStatus && /library-state/.test(element.props.className))); assertShell(tree); assertLink(tree);
   requests.shift().reject(new Error('network')); await flush();
-  tree = h.render(); assert.match(byRole(tree, 'alert').props.className, /library-state-error/); assert.equal(tree.type, 'main'); assertLink(tree);
+  tree = h.render(); assert.match(byRole(tree, 'alert').props.className, /library-state-error/); assertShell(tree); assertLink(tree);
   byType(tree, Button).props.onClick(); h.render();
   requests.shift().resolve([undefined, book('a')]); await flush();
-  tree = h.render(); assert.ok(byType(tree, 'h1')); assertLink(tree);
+  tree = h.render(); assert.ok(byType(tree, 'h1')); assertShell(tree); assertLink(tree);
+  h.unmount();
+});
+
+test('detail logout synchronously observes independent operations without queuing logout', async () => {
+  reset(); const h = harness(Detail, detailProps); h.render();
+  requests.shift().resolve([undefined, book('a')]); await flush();
+  const tree = h.render();
+  const navbar = byType(tree, Navbar);
+  const actionBar = find(tree, (element) => typeof element.props?.setBook === 'function');
+  const reviews = find(tree, (element) => element.props?.bookId === 'a');
+  let logouts = 0;
+  const logout = () => { logouts++; };
+  const status = (current) => find(current, (element) => element.props?.role === 'status' && element.props?.className === 'sr-only');
+  assert.equal(status(tree).props.children, false);
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 1);
+  const endBook = actionBar.props.beginOperation();
+  const endReview = reviews.props.beginOperation();
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 1);
+  let announcement = status(h.render()).props.children;
+  assert.match(announcement.props.children, /Espera a que terminen/);
+  const firstKey = announcement.key;
+  endBook(); endBook();
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 1);
+  announcement = status(h.render()).props.children;
+  assert.notEqual(announcement.key, firstKey);
+  endReview();
+  assert.equal(logouts, 1);
+  navbar.props.onLogoutRequest(logout); assert.equal(logouts, 2);
   h.unmount();
 });
 

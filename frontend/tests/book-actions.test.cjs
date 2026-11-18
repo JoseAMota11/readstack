@@ -54,8 +54,14 @@ function harness() {
   actionModule.paths = Module._nodeModulePaths(path.dirname(actionModule.filename));
   actionModule._compile(ts.transpileModule(detailSource + '\nexport { ActionBar };', { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX } }).outputText, actionModule.filename);
   const ActionBar = actionModule.exports.ActionBar;
+  const operations = new Set();
+  const beginOperation = () => {
+    const operation = Symbol(); operations.add(operation);
+    return () => operations.delete(operation);
+  };
   return {
-    render() { cursor = 0; const tree = ActionBar({ book, setBook: (v) => { book = typeof v === 'function' ? v(book) : v; } }); const pending = effects; effects = []; pending.forEach((f) => f()); return tree; },
+    render() { cursor = 0; const tree = ActionBar({ book, beginOperation, setBook: (v) => { book = typeof v === 'function' ? v(book) : v; } }); const pending = effects; effects = []; pending.forEach((f) => f()); return tree; },
+    get operationCount() { return operations.size; },
     unmount() { slots.forEach((s) => s?.cleanup?.()); },
   };
 }
@@ -87,7 +93,7 @@ test('delete opens a named modal, cancels without deleting, and supports dismiss
   assert.equal(a.confirm.props.open, true); assert.equal(a.confirm.props.title, '¿Borrar este libro?');
   assert.equal(a.confirm.props.cancelButtonProps.autoFocus, true);
   assert.equal(a.confirm.props.destroyOnHidden, true);
-  assert.equal(a.confirm.props.focusTriggerAfterClose, true);
+  assert.equal(a.confirm.props.focusTriggerAfterClose, false);
   assert.equal(calls.length, 0);
   // Ant Design routes Cancel, Escape and mask dismissal through onCancel.
   for (const dismissal of ['cancel', 'escape', 'mask']) {
@@ -103,13 +109,53 @@ test('delete opens a named modal, cancels without deleting, and supports dismiss
 test('delete requires confirmation, blocks duplicates, and navigates only on confirmed success', async () => {
   const h = harness(); actions(h.render()).delete.props.onClick(); let a = actions(h.render());
   const first = a.confirm.props.onOk(); await a.confirm.props.onOk();
+  assert.equal(h.operationCount, 1);
   assert.equal(calls.length, 1); assert.equal(actions(h.render()).delete.props.disabled, true);
   assert.equal(actions(h.render()).confirm.props.okButtonProps.disabled, true);
   assert.equal(actions(h.render()).confirm.props.focusTriggerAfterClose, false);
   finish.resolve([undefined, 'Deleted']); await first;
   assert.deepEqual(navigations, ['/']); assert.deepEqual(messages.at(-1), ['success', 'Deleted']);
+  assert.equal(h.operationCount, 1); // Held until the successful navigation unmounts the page.
   assert.equal(actions(h.render()).confirm.props.open, false);
   await actions(h.render()).confirm.props.onOk(); assert.equal(calls.length, 1); h.unmount();
+});
+
+test('delete dismissal restores focus only after close to a usable trigger', () => {
+  const originalStyle = global.getComputedStyle;
+  global.getComputedStyle = () => ({ visibility: 'visible' });
+  try {
+    for (const dismissal of ['cancel', 'escape']) {
+      const h = harness(); let focused = 0;
+      let a = actions(h.render());
+      a.delete.props.ref.current = { isConnected: true, closest: () => null, matches: () => false, getClientRects: () => [1], focus: () => focused++ };
+      a.delete.props.onClick(); a = actions(h.render());
+      a.confirm.props.onCancel({ type: dismissal });
+      assert.equal(focused, 0);
+      actions(h.render()).confirm.props.afterClose();
+      assert.equal(focused, 1); h.unmount();
+    }
+    for (const mode of ['disconnected', 'hidden', 'disabled', 'no-rect', 'invisible', 'unmounted']) {
+      const h = harness(); let focused = 0; let a = actions(h.render());
+      const target = { isConnected: mode !== 'disconnected', closest: () => mode === 'hidden' ? {} : null, matches: () => mode === 'disabled', getClientRects: () => mode === 'no-rect' ? [] : [1], focus: () => focused++ };
+      a.delete.props.ref.current = target;
+      global.getComputedStyle = () => ({ visibility: mode === 'invisible' ? 'hidden' : 'visible' });
+      a.delete.props.onClick(); a = actions(h.render()); a.confirm.props.onCancel();
+      if (mode === 'unmounted') h.unmount();
+      actions(h.render()).confirm.props.afterClose();
+      assert.equal(focused, 0, mode);
+      h.unmount();
+    }
+  } finally { global.getComputedStyle = originalStyle; }
+});
+
+test('delete dismissal during a pending request never restores focus', async () => {
+  const h = harness(); let focused = 0; let a = actions(h.render());
+  a.delete.props.ref.current = { isConnected: true, closest: () => null, matches: () => false, getClientRects: () => [1], focus: () => focused++ };
+  a.delete.props.onClick(); a = actions(h.render()); const deletion = a.confirm.props.onOk();
+  a.confirm.props.onCancel(); actions(h.render()).confirm.props.afterClose();
+  assert.equal(focused, 0);
+  finish.resolve([undefined, 'Deleted']); await deletion;
+  actions(h.render()).confirm.props.afterClose(); assert.equal(focused, 0); h.unmount();
 });
 
 test('delete reports HTTP, malformed and network uncertainty, and never redirects after departure', async () => {
@@ -117,8 +163,9 @@ test('delete reports HTTP, malformed and network uncertainty, and never redirect
   for (const value of [['error', undefined], [undefined, undefined], new Error('network')]) {
     actions(h.render()).delete.props.onClick();
     const p = actions(h.render()).confirm.props.onOk();
+    assert.equal(h.operationCount, 1);
     if (value instanceof Error) finish.reject(value); else finish.resolve(value);
-    await p; assert.match(messages.at(-1)[1], /No se pudo confirmar/); assert.deepEqual(navigations, []);
+    await p; assert.equal(h.operationCount, 0); assert.match(messages.at(-1)[1], /No se pudo confirmar/); assert.deepEqual(navigations, []);
     assert.equal(actions(h.render()).confirm.props.open, false);
   }
   actions(h.render()).delete.props.onClick();
@@ -143,8 +190,9 @@ test('pending dismissal does not abort deletion or close a later opening', async
 test('favorite toggles confirmed state, blocks concurrent actions and locks uncertain state', async () => {
   const h = harness(); let a = actions(h.render());
   const p = a.favorite.props.onClick(); await a.favorite.props.onClick();
+  assert.equal(h.operationCount, 1);
   assert.equal(calls.length, 1); assert.equal(actions(h.render()).favorite.props.disabled, true);
-  finish.resolve([undefined, 'ok']); await p; assert.equal(book.isFavorite, true);
+  finish.resolve([undefined, 'ok']); await p; assert.equal(h.operationCount, 0); assert.equal(book.isFavorite, true);
   assert.equal(actions(h.render()).favorite.props['aria-pressed'], true);
   assert.equal(favoriteStatus(h.render()), undefined);
   assert.equal(favoriteLabel(h.render()), 'Favorito');
@@ -186,10 +234,11 @@ test('favorite recovery retries only GET after failure and synchronizes confirme
   const mutation = actions(h.render()).favorite.props.onClick();
   finish.reject(new Error('network')); await mutation;
   let retry = recoveryButton(h.render()).props.onClick();
+  assert.equal(h.operationCount, 1);
   await recoveryButton(h.render()).props.onClick();
   assert.deepEqual(calls.map(([kind]) => kind), ['favorite', 'get']);
   assert.equal(recoveryButton(h.render()).props.disabled, true);
-  finish.reject(new Error('offline')); await retry;
+  finish.reject(new Error('offline')); await retry; assert.equal(h.operationCount, 0);
   assert.equal(book.isFavorite, false); assert.match(messages.at(-1)[1], /No se pudo recargar/);
   assert.equal(actions(h.render()).favorite.props.disabled, true);
 
@@ -220,7 +269,9 @@ test('late favorite recovery cannot update an abandoned detail view', async () =
 
 test('export handler reports failures and blocks duplicate actions', async () => {
   const h = harness(); const a = actions(h.render()); const p = a.export.props.onClick(); await a.export.props.onClick();
+  assert.equal(h.operationCount, 1);
   assert.equal(calls.length, 1); finish.reject(new Error('network')); await p;
+  assert.equal(h.operationCount, 0);
   assert.match(messages.at(-1)[1], /No se pudo/); h.unmount();
 });
 

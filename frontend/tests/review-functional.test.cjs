@@ -76,6 +76,41 @@ function setup() {
 function teardown() { Object.assign(React, originalHooks); global.window = originalWindow; global.sessionStorage = originalStorage; global.fetch = originalFetch; }
 const item = { id: 'review-a', comment: 'synthetic', rating: 4, createdAt: 'today' };
 
+test('review create and delete register synchronously and release after uncertain or rejected results', async () => {
+  const store = setup();
+  const active = new Set();
+  const beginOperation = () => {
+    const id = Symbol(); active.add(id);
+    return () => active.delete(id);
+  };
+  const create = deferred(), deletion = deferred();
+  services.getAllReviews = async () => [undefined, [item]];
+  services.postReview = () => create.promise;
+  services.deleteReview = () => deletion.promise;
+  try {
+    const h = harness({ beginOperation });
+    let tree = h.render(); await flush();
+    findAll(tree, TextArea)[0].props.onChange({ target: { value: 'draft' } });
+    tree = h.render(); findAll(tree, Rate)[0].props.onChange(4); tree = h.render();
+    const posting = button(tree, 'Publicar').props.onClick();
+    assert.equal(active.size, 1);
+    assert.equal(store.get('review-uncertain:user-a:book-a'), '1');
+    create.reject(new Error('offline')); await posting;
+    assert.equal(active.size, 0);
+    assert.equal(store.get('review-uncertain:user-a:book-a'), '1');
+    assert.match(store.get('review-draft:user-a:book-a'), /draft/);
+    tree = h.render(); button(tree, 'Actualizar reseñas').props.onClick(); await flush();
+    tree = h.render(); button(tree, 'Ya revisé').props.onClick();
+    tree = h.render(); const deleting = findAll(tree, Card)[0].props.onDelete();
+    assert.equal(active.size, 1);
+    deletion.resolve(['No autorizado', undefined]); await deleting;
+    assert.equal(active.size, 0);
+    assert.equal(store.has('review-uncertain:user-a:book-a'), false);
+    assert.match(store.get('review-draft:user-a:book-a'), /draft/);
+    h.unmount();
+  } finally { teardown(); }
+});
+
 test('published review groups rating, separator, date and delete before the comment', () => {
   for (const [createdAt, dateType] of [['today', 'p'], ['2026-11-09 12:34:56', 'time']]) {
     const tree = ReviewCard({ ...item, createdAt, onDelete() {}, pending: false, disabled: false });

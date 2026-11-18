@@ -24,6 +24,7 @@ import Reviews from '@/components/reviews';
 import Link from 'next/link';
 import ReviewAverage from '@/components/review-average';
 import LoadingStatus from '@/components/loading-status';
+import Navbar from '@/components/navbar';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -35,6 +36,22 @@ function DetailsBookPage({ params }: PageProps) {
 }
 
 function BookDetails({ id }: { id: string }) {
+  const messageApi = useMessage();
+  const [blockedLogoutCount, setBlockedLogoutCount] = useState(0);
+  const operations = useRef(new Set<symbol>());
+  const beginOperation = () => {
+    const operation = Symbol();
+    operations.current.add(operation);
+    return () => { operations.current.delete(operation); };
+  };
+  const requestLogout = (logout: () => void) => {
+    if (operations.current.size) {
+      setBlockedLogoutCount((count) => count + 1);
+      messageApi.info(<span aria-hidden="true">Espera a que terminen las operaciones antes de cerrar sesión.</span>);
+      return;
+    }
+    logout();
+  };
   const [book, setBook] = useState<Book>();
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -89,7 +106,12 @@ function BookDetails({ id }: { id: string }) {
   };
 
   return (
+    <>
+    <div className="edit-book-nav"><Navbar onLogoutRequest={requestLogout} /></div>
     <main>
+      <span className="sr-only" role="status" aria-atomic="true">
+        {blockedLogoutCount > 0 && <span key={blockedLogoutCount}>Espera a que terminen las operaciones antes de cerrar sesión.</span>}
+      </span>
       <div className="book-detail-navigation">
         <Link href="/" className="book-detail-return"><span aria-hidden="true">←</span> Volver a la biblioteca</Link>
       </div>
@@ -107,12 +129,13 @@ function BookDetails({ id }: { id: string }) {
             <p>Promedio de tus reseñas: {aggregateState === 'current' ? <ReviewAverage average={book.reviewAverageRating} count={book.reviewRatingCount} /> : aggregateState === 'loading' ? 'Actualizando promedio...' : 'Promedio sin actualizar.'}</p>
             {aggregateState === 'stale' && <Button onClick={() => void refreshAggregate()}>Reintentar promedio</Button>}
           </div>
-          <ActionBar book={book} setBook={updateLoadedBook} />
-          <Reviews bookId={book.id} onAggregateChange={() => void refreshAggregate()} onAggregateUncertain={invalidateAggregate} />
+          <ActionBar book={book} setBook={updateLoadedBook} beginOperation={beginOperation} />
+          <Reviews bookId={book.id} onAggregateChange={() => void refreshAggregate()} onAggregateUncertain={invalidateAggregate} beginOperation={beginOperation} />
         </div>
       </div>
       )}
     </main>
+    </>
   );
 }
 
@@ -158,9 +181,11 @@ function Genres({ genre }: { genre: string[] }) {
 function ActionBar({
   book,
   setBook,
+  beginOperation,
 }: {
   book: Book;
   setBook: Dispatch<SetStateAction<Book | undefined>>;
+  beginOperation: () => () => void;
 }) {
   const messageApi = useMessage();
   const router = useRouter();
@@ -170,6 +195,8 @@ function ActionBar({
   const favoriteBlocked = useRef(false);
   const deleteDialogOpen = useRef(false);
   const deleteDialogVersion = useRef(0);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreDeleteFocus = useRef(false);
   const [pending, setPending] = useState(false);
   const [favoriteUncertain, setFavoriteUncertain] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -188,12 +215,14 @@ function ActionBar({
   const handleDelete = async () => {
     if (busy.current) return;
     busy.current = true;
+    const endOperation = beginOperation();
     setPending(true);
     let navigating = false;
     try {
       const [error, message] = await deleteBook(book.id);
       if (!active()) return;
       if (error || typeof message !== 'string') throw new Error('Unconfirmed deletion');
+      restoreDeleteFocus.current = false;
       messageApi.success(message.trim() || 'Libro borrado exitosamente.');
       router.replace('/');
       navigating = true;
@@ -203,12 +232,14 @@ function ActionBar({
       if (!navigating) {
         busy.current = false;
         if (active()) setPending(false);
+        endOperation();
       }
     }
   };
 
   const openDeleteDialog = () => {
     if (!active() || busy.current || deleteDialogOpen.current) return;
+    restoreDeleteFocus.current = false;
     deleteDialogVersion.current++;
     deleteDialogOpen.current = true;
     setDeleteOpen(true);
@@ -216,6 +247,7 @@ function ActionBar({
 
   const closeDeleteDialog = () => {
     if (!active()) return;
+    restoreDeleteFocus.current = !busy.current;
     // Dismissal never aborts an in-flight deletion.
     deleteDialogVersion.current++;
     deleteDialogOpen.current = false;
@@ -235,6 +267,7 @@ function ActionBar({
   const handleFavorite = async () => {
     if (busy.current || favoriteBlocked.current) return;
     busy.current = true;
+    const endOperation = beginOperation();
     setPending(true);
     const isFavorite = !book.isFavorite;
     try {
@@ -254,12 +287,14 @@ function ActionBar({
     } finally {
       busy.current = false;
       if (active()) setPending(false);
+      endOperation();
     }
   };
 
   const handleFavoriteRecovery = async () => {
     if (busy.current || !favoriteBlocked.current) return;
     busy.current = true;
+    const endOperation = beginOperation();
     setPending(true);
     try {
       const [error, refreshed] = await getOneBook(book.id);
@@ -282,12 +317,14 @@ function ActionBar({
     } finally {
       busy.current = false;
       if (active()) setPending(false);
+      endOperation();
     }
   };
 
   const handleExportCSV = async () => {
     if (busy.current) return;
     busy.current = true;
+    const endOperation = beginOperation();
     setPending(true);
     try {
       await exportBookCSV(book.id);
@@ -296,6 +333,7 @@ function ActionBar({
     } finally {
       busy.current = false;
       if (active()) setPending(false);
+      endOperation();
     }
   };
 
@@ -318,6 +356,7 @@ function ActionBar({
           disabled={pending}
         ><span className="book-detail-action-label">Editar</span></Button>
         <Button
+          ref={deleteButtonRef}
           type="text"
           aria-label="Borrar libro"
           className="book-detail-action book-detail-action-delete"
@@ -334,7 +373,17 @@ function ActionBar({
         cancelText="Cancelar"
         okButtonProps={{ disabled: pending, danger: true }}
         cancelButtonProps={{ autoFocus: true }}
-        focusTriggerAfterClose={!pending}
+        focusTriggerAfterClose={false}
+        afterClose={() => {
+          const target = deleteButtonRef.current;
+          if (restoreDeleteFocus.current && active() && !busy.current && !deleteDialogOpen.current &&
+            target?.isConnected && !target.closest('[inert], [hidden], [aria-hidden="true"], [aria-disabled="true"]') &&
+            !target.matches(':disabled') && target.getClientRects().length > 0 &&
+            getComputedStyle(target).visibility === 'visible') {
+            target.focus();
+          }
+          restoreDeleteFocus.current = false;
+        }}
         destroyOnHidden
         closable={false}
       >

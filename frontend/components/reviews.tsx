@@ -10,7 +10,7 @@ import { deleteReview, getAllReviews, postReview } from '@/services/review.servi
 import { useMessage } from '@/context/message.context';
 import { readReviewDraft, writeReviewDraft } from '@/utils/review-draft';
 
-function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: string; onAggregateChange?: () => void; onAggregateUncertain?: () => void }) {
+function Reviews({ bookId, onAggregateChange, onAggregateUncertain, beginOperation }: { bookId: string; onAggregateChange?: () => void; onAggregateUncertain?: () => void; beginOperation?: () => () => void }) {
   const [token] = useState(getTokenDecoded);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [review, setReview] = useState({ rating: 0, comment: '' });
@@ -101,6 +101,7 @@ function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: 
   const mutate = async (kind: 'create' | string) => {
     if (busy.current || uncertain) return;
     busy.current = true;
+    const endOperation = beginOperation?.();
     setPending(kind);
     saveWarning(true);
     const submitted = reviewRef.current;
@@ -137,6 +138,7 @@ function Reviews({ bookId, onAggregateChange, onAggregateUncertain }: { bookId: 
     } finally {
       busy.current = false;
       if (active()) setPending(null);
+      endOperation?.();
     }
   };
 
