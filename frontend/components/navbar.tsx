@@ -5,7 +5,11 @@ import { removeToken } from '@/utils/cookies-handlers';
 import { useRouter } from 'next/navigation';
 import UserPanel from './user-panel';
 
-function Navbar() {
+function Navbar({ onLogoutRequest, suspendPanelDismiss = false, logoutButtonRef }: {
+  onLogoutRequest?: (logout: () => void) => void;
+  suspendPanelDismiss?: boolean;
+  logoutButtonRef?: React.Ref<HTMLButtonElement>;
+} = {}) {
   const router = useRouter();
   const messageApi = useMessage();
 
@@ -23,7 +27,11 @@ function Navbar() {
         <span className="library-beta-badge">BETA</span>
       </div>
       <div className="library-nav-actions">
-        <UserPanel onLogout={handleLogout} />
+        <UserPanel
+          onLogout={onLogoutRequest ? () => onLogoutRequest(handleLogout) : handleLogout}
+          suspendDismiss={suspendPanelDismiss}
+          logoutButtonRef={logoutButtonRef}
+        />
       </div>
     </nav>
   );

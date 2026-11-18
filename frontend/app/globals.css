@@ -179,6 +179,10 @@ body {
   background: var(--surface);
 }
 
+.edit-book-nav {
+  padding-inline: clamp(1rem, 4vw, 3rem);
+}
+
 .edit-book-page {
   width: min(100%, 42rem);
   margin: 0 auto;

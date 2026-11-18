@@ -48,10 +48,10 @@ function harness() {
   React.useId = () => 'panel-id';
   React.useEffect = (callback) => { effects.push(callback); };
   return {
-    render() {
+    render(suspendDismiss = false, logoutButtonRef) {
       cursor = 0; effects = [];
       refs = [{ current: { contains: (target) => target === inside } }, { current: { focus: () => focused++ } }];
-      return UserPanel({ onLogout: () => logout++ });
+      return UserPanel({ onLogout: () => logout++, suspendDismiss, logoutButtonRef });
     },
     installEffect() { cleanup?.(); cleanup = effects[0](); },
     installCloseEffect() { return effects[1](); },
@@ -118,6 +118,22 @@ test('outside pointer dismisses and Escape dismisses with trigger focus', () => 
   h.cleanup();
 });
 
+test('suspended dismissal keeps the logout trigger available for dialog focus return', () => {
+  const h = harness();
+  const logoutButtonRef = { current: null };
+  parts(h.render()).trigger.props.onClick();
+  h.render(); h.installEffect();
+  h.render(true); h.installEffect();
+  h.event('pointerdown', { target: new global.Node() });
+  h.event('keydown', { key: 'Escape' });
+  const p = parts(h.render(true, logoutButtonRef));
+  assert.equal(p.trigger.props['aria-expanded'], true);
+  assert.equal(p.panel.props.inert, false);
+  assert.equal(p.logout.props.ref, logoutButtonRef);
+  assert.equal(h.focused, 0);
+  h.cleanup();
+});
+
 test('reopening while closing ignores a stale exit transition', () => {
   const h = harness();
   parts(h.render()).trigger.props.onClick();
@@ -168,4 +184,7 @@ test('navbar logout retains cookie removal, navigation and feedback order', () =
   const navbar = Navbar();
   navbar.props.children[1].props.children.props.onLogout();
   assert.deepEqual(calls, [['remove'], ['navigate', '/login'], ['message', 'Cierre de sesión satisfactorio.']]);
+  const ref = { current: null };
+  const withRef = Navbar({ logoutButtonRef: ref });
+  assert.equal(withRef.props.children[1].props.children.props.logoutButtonRef, ref);
 });

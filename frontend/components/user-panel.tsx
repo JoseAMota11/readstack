@@ -5,7 +5,11 @@ import { DownOutlined, LogoutOutlined, MoonOutlined, SunOutlined, UserOutlined }
 import { Button } from 'antd';
 import { useEffect, useId, useRef, useState } from 'react';
 
-function UserPanel({ onLogout }: { onLogout: () => void }) {
+function UserPanel({ onLogout, suspendDismiss = false, logoutButtonRef }: {
+  onLogout: () => void;
+  suspendDismiss?: boolean;
+  logoutButtonRef?: React.Ref<HTMLButtonElement>;
+}) {
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -14,7 +18,7 @@ function UserPanel({ onLogout }: { onLogout: () => void }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || suspendDismiss) return;
     const dismissOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && !containerRef.current?.contains(event.target)) setOpen(false);
     };
@@ -30,7 +34,7 @@ function UserPanel({ onLogout }: { onLogout: () => void }) {
       document.removeEventListener('pointerdown', dismissOutside);
       document.removeEventListener('keydown', dismissEscape);
     };
-  }, [open]);
+  }, [open, suspendDismiss]);
 
   useEffect(() => {
     if (open || !rendered) return;
@@ -86,7 +90,7 @@ function UserPanel({ onLogout }: { onLogout: () => void }) {
               <span className="user-panel-switch-thumb" aria-hidden="true" />
             </button>
           </div>
-          <Button type="text" className="user-panel-logout" onClick={onLogout}>
+          <Button ref={logoutButtonRef} type="text" className="user-panel-logout" onClick={onLogout}>
             <LogoutOutlined aria-hidden="true" />
             Cerrar sesión
           </Button>

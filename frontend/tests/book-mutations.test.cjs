@@ -8,7 +8,7 @@ const React = require('react');
 const reactHookForm = require('react-hook-form');
 
 const root = path.resolve(__dirname, '..');
-const original = { resolve: Module._resolveFilename, load: Module._load, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, fetch: global.fetch };
+const original = { resolve: Module._resolveFilename, load: Module._load, useState: React.useState, useRef: React.useRef, useEffect: React.useEffect, fetch: global.fetch, getComputedStyle: global.getComputedStyle };
 Module._resolveFilename = function (request, ...args) {
   return original.resolve.call(this, request.startsWith('@/') ? path.join(root, request.slice(2)) : request, ...args);
 };
@@ -38,6 +38,7 @@ let refreshed;
 let navigated;
 let pushed;
 let replaced;
+let removed = 0;
 let submitFactoryCalls = 0;
 let invalidSubmission = false;
 let validateSubmission = false;
@@ -49,7 +50,7 @@ Module._load = function (request, parent, ...args) {
   if (request === 'next/link') return { __esModule: true, default: Link };
   if (request === '@/context/message.context') return { useMessage: () => ({ error: (text) => messages.push(['error', text]), success: (text) => messages.push(['success', text]), info: (text) => messages.push(['info', text]) }) };
   if (request === '@/context/filters.context') return { useFilters: () => ({ refreshData: () => refreshed++ }) };
-  if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() {} };
+  if (request === '@/utils/cookies-handlers') return { getTokenDecoded: () => null, getToken: () => 'synthetic', getSessionVersion: () => 0, removeToken() { removed++; } };
   if (request === 'next/navigation') return { useParams: () => ({ id: 'book-a' }), useRouter: () => ({ replace: (url) => { navigated++; replaced = url; }, push: (url) => { pushed = url; } }) };
   if (request === 'react-hook-form') return { ...reactHookForm, Controller, useForm: (options) => { formOptions = options; return { control: {}, formState: { errors: formErrors }, handleSubmit: (valid, invalid) => { submitFactoryCalls++; return async (event) => { submittedEvent = event; if (validateSubmission) { const result = await options.resolver(values, {}, {}); formErrors = result.errors; return Object.keys(result.errors).length ? invalid(result.errors) : valid(result.values); } return invalidSubmission ? invalid({ title: 'invalid' }) : valid({ ...values }); }; }, reset: () => { resets++; values = {}; }, setValue, getValues: () => values }; } };
   if (request === '@hookform/resolvers/zod') return { zodResolver: (schema) => original.load.call(Module, '@hookform/resolvers/zod', module).zodResolver(schema) };
@@ -63,6 +64,7 @@ after(() => {
   Module._resolveFilename = original.resolve; Module._load = original.load;
   Object.assign(React, { useState: original.useState, useRef: original.useRef, useEffect: original.useEffect });
   global.fetch = original.fetch;
+  global.getComputedStyle = original.getComputedStyle;
 });
 
 // Lightweight hook/handler harness, not a DOM or browser renderer.
@@ -99,6 +101,18 @@ function find(element, type, predicate = () => true) {
     const result = find(child, type, predicate); if (result) return result;
   }
   return null;
+}
+function count(element, predicate) {
+  if (!element || typeof element !== 'object') return 0;
+  return (predicate(element) ? 1 : 0) + React.Children.toArray(element.props?.children).reduce((sum, child) => sum + count(child, predicate), 0);
+}
+function editNavbar(tree) {
+  return find(tree, require('../components/navbar.tsx').default);
+}
+function requestEditLogout(tree) {
+  const navbar = editNavbar(tree);
+  const rendered = navbar.type(navbar.props);
+  find(rendered, require('../components/user-panel.tsx').default).props.onLogout();
 }
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const response = (body, status = 200) => new Response(body, { status, headers: { 'Content-Type': 'application/json' } });
@@ -435,12 +449,194 @@ test('edit: return guards changed fields and preserves the form on cancellation'
     modal.props.onCancel(); tree = h.render();
     assert.deepEqual(values[key], changed);
     assert.equal(find(tree, Modal).props.open, false);
+    find(tree, Modal).props.afterClose(); tree = h.render();
     values[key] = old;
   }
   navigate(); assert.equal(prevented, false);
   values.title = 'Changed'; navigate(); tree = h.render();
   find(tree, Modal).props.onOk();
   assert.equal(replaced, '/book/book-a'); assert.equal(pushed, undefined);
+  h.unmount();
+});
+
+test('edit: one shared navbar outside one main is present while loading, on error and after retry', async () => {
+  values = {}; removed = 0;
+  let finish;
+  global.fetch = () => new Promise((resolve) => { finish = resolve; });
+  const h = harness('edit');
+  const check = (tree) => {
+    const navbar = editNavbar(tree);
+    assert.ok(navbar);
+    assert.equal(count(tree, (node) => node.type === navbar.type), 1);
+    assert.equal(count(tree, (node) => node.type === 'main'), 1);
+    assert.equal(find(find(tree, 'main'), navbar.type), null);
+  };
+  check(h.render());
+  finish(response('{"error":"failed"}', 400)); await flush();
+  let tree = h.render(); check(tree);
+  find(tree, Button).props.onClick(); check(h.render());
+  finish(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false }))); await flush();
+  tree = h.render(); check(tree);
+  assert.equal(removed, 0);
+  h.unmount();
+});
+
+test('edit: clean logout uses the existing navbar logout path', async () => {
+  values = {}; removed = 0; pushed = undefined; messages.length = 0;
+  global.fetch = () => Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })));
+  const h = harness('edit'); h.render(); await flush();
+  const tree = h.render();
+  requestEditLogout(tree);
+  assert.equal(removed, 1);
+  assert.equal(pushed, '/login');
+  assert.deepEqual(messages.at(-1), ['info', 'Cierre de sesión satisfactorio.']);
+  assert.equal(find(h.render(), Modal).props.open, false);
+  h.unmount();
+});
+
+test('edit: dirty logout preserves session and draft on cancel and removes token only on confirmation', async () => {
+  values = {}; removed = 0; pushed = undefined;
+  global.fetch = () => Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })));
+  const h = harness('edit'); h.render(); await flush();
+  values.title = 'Changed';
+  requestEditLogout(h.render());
+  let tree = h.render();
+  let modal = find(tree, Modal);
+  assert.equal(modal.props.open, true);
+  assert.equal(modal.props.title, '¿Cerrar sesión?');
+  assert.equal(modal.props.cancelButtonProps.autoFocus, true);
+  assert.equal(modal.props.focusTriggerAfterClose, false);
+  assert.equal(editNavbar(tree).props.suspendPanelDismiss, true);
+  assert.equal(removed, 0); assert.equal(pushed, undefined);
+  modal.props.onCancel();
+  tree = h.render();
+  assert.equal(find(tree, Modal).props.open, false);
+  assert.equal(editNavbar(tree).props.suspendPanelDismiss, true);
+  assert.equal(values.title, 'Changed');
+  assert.equal(removed, 0); assert.equal(pushed, undefined);
+  find(tree, Modal).props.afterClose();
+  tree = h.render();
+  assert.equal(editNavbar(tree).props.suspendPanelDismiss, false);
+  requestEditLogout(tree);
+  modal = find(h.render(), Modal);
+  assert.equal(removed, 0);
+  modal.props.onOk();
+  assert.equal(removed, 1); assert.equal(pushed, '/login');
+  h.unmount();
+});
+
+test('edit: canceled confirmations restore focus only after close, to the corresponding usable trigger', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  for (const kind of ['return', 'logout']) {
+    for (const dismissal of ['cancel button', 'Escape']) {
+      values = {}; removed = 0; pushed = undefined; replaced = undefined;
+      global.fetch = () => Promise.resolve(response(JSON.stringify(stored)));
+      global.getComputedStyle = () => ({ visibility: 'visible' });
+      const h = harness('edit'); h.render(); await flush();
+      values.title = 'Changed';
+      let tree = h.render();
+      let focused = 0;
+      const target = { isConnected: true, closest: () => null, matches: () => false, getClientRects: () => [1], focus: () => focused++ };
+      if (kind === 'return') {
+        find(tree, Link).props.ref.current = target;
+        find(tree, Link).props.onNavigate({ preventDefault() {} });
+      } else {
+        editNavbar(tree).props.logoutButtonRef.current = target;
+        requestEditLogout(tree);
+      }
+      tree = h.render();
+      const modal = find(tree, Modal);
+      assert.equal(modal.props.cancelButtonProps.autoFocus, true);
+      assert.equal(modal.props.focusTriggerAfterClose, false);
+      // Both Cancel and Escape invoke Ant Design's onCancel callback.
+      modal.props.onCancel({ type: dismissal });
+      tree = h.render();
+      assert.equal(find(tree, Modal).props.open, false);
+      assert.equal(focused, 0);
+      if (kind === 'logout') assert.equal(editNavbar(tree).props.suspendPanelDismiss, true);
+      find(tree, Modal).props.afterClose();
+      assert.equal(focused, 1);
+      tree = h.render();
+      assert.equal(editNavbar(tree).props.suspendPanelDismiss, false);
+      assert.equal(values.title, 'Changed'); assert.equal(removed, 0);
+      assert.equal(pushed, undefined); assert.equal(replaced, undefined);
+      h.unmount();
+    }
+  }
+});
+
+test('edit: closing does not focus hidden, inert, disabled or disconnected triggers or an unmounted page', async () => {
+  const stored = { title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false };
+  for (const unavailable of ['disconnected', 'inert', 'disabled', 'hidden', 'visibility', 'unmounted']) {
+    values = {};
+    global.fetch = () => Promise.resolve(response(JSON.stringify(stored)));
+    global.getComputedStyle = () => ({ visibility: unavailable === 'visibility' ? 'hidden' : 'visible' });
+    const h = harness('edit'); h.render(); await flush();
+    values.title = 'Changed';
+    const tree = h.render();
+    let focused = 0;
+    find(tree, Link).props.ref.current = {
+      isConnected: unavailable !== 'disconnected',
+      closest: () => unavailable === 'inert' ? {} : null,
+      matches: () => unavailable === 'disabled',
+      getClientRects: () => unavailable === 'hidden' ? [] : [1],
+      focus: () => focused++,
+    };
+    find(tree, Link).props.onNavigate({ preventDefault() {} });
+    find(h.render(), Modal).props.onCancel();
+    const closing = find(h.render(), Modal);
+    if (unavailable === 'unmounted') h.unmount();
+    closing.props.afterClose();
+    assert.equal(focused, 0, unavailable);
+    if (unavailable !== 'unmounted') h.unmount();
+  }
+});
+
+test('edit: accepting either confirmation never restores focus on close', async () => {
+  for (const kind of ['return', 'logout']) {
+    values = {}; removed = 0; pushed = undefined; replaced = undefined;
+    global.fetch = () => Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })));
+    const h = harness('edit'); h.render(); await flush();
+    values.title = 'Changed';
+    const tree = h.render();
+    let focused = 0;
+    const target = { isConnected: true, closest: () => null, matches: () => false, getClientRects: () => [1], focus: () => focused++ };
+    if (kind === 'return') {
+      find(tree, Link).props.ref.current = target;
+      find(tree, Link).props.onNavigate({ preventDefault() {} });
+    } else {
+      editNavbar(tree).props.logoutButtonRef.current = target;
+      requestEditLogout(tree);
+    }
+    const modal = find(h.render(), Modal);
+    modal.props.onOk();
+    modal.props.afterClose();
+    assert.equal(focused, 0);
+    assert.equal(kind === 'return' ? replaced : pushed, kind === 'return' ? '/book/book-a' : '/login');
+    h.unmount();
+  }
+});
+
+test('edit: logout is denied during a pending update, including from an already-open confirmation', async () => {
+  values = {}; removed = 0; pushed = undefined; messages.length = 0;
+  let reject;
+  global.fetch = (_url, init) => init.method === 'GET'
+    ? Promise.resolve(response(JSON.stringify({ title: 'Synthetic', author: 'Author', year: 2000, genre: ['A'], isFavorite: false })))
+    : new Promise((_, fail) => { reject = fail; });
+  const h = harness('edit'); h.render(); await flush();
+  values.title = 'Changed';
+  requestEditLogout(h.render());
+  const beforePending = h.render();
+  const request = find(beforePending, 'form').props.onSubmit();
+  requestEditLogout(beforePending);
+  find(beforePending, Modal).props.onOk();
+  assert.equal(removed, 0); assert.equal(pushed, undefined);
+  assert.match(messages.at(-1)[1], /Espera a que termine/);
+  reject(new Error('network')); await request;
+  assert.equal(values.title, 'Changed');
+  assert.match(messages.at(-1)[1], /No se pudo confirmar/);
+  find(h.render(), Modal).props.onCancel();
+  assert.equal(removed, 0);
   h.unmount();
 });
 

@@ -334,9 +334,10 @@ for (const [label, Component, props] of [['detail', Detail, detailProps], ['edit
     assert.equal(LoadingStatus(loading.props).props.role, 'status');
     if (label === 'edit') {
       const tree = h.render();
-      assert.equal(tree.type, 'main');
-      assert.match(tree.props.className, /\bedit-book-page\b/);
-      assert.match(tree.props.className, /\bedit-book-loading\b/);
+      const main = byType(tree, 'main');
+      assert.ok(main);
+      assert.match(main.props.className, /\bedit-book-page\b/);
+      assert.match(main.props.className, /\bedit-book-loading\b/);
     }
     const a = requests.shift();
     id = 'b'; assert.ok(byRole(h.render(), 'status')); const b = requests.shift();
