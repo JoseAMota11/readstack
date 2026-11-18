@@ -34,12 +34,11 @@ const HomePage = require('../components/home.tsx').default;
 const Navbar = require('../components/navbar.tsx').default;
 Module._load = load;
 
-test('navigation keeps the beta badge alongside the application name and actions', () => {
+test('navigation keeps the application name and actions without a beta badge', () => {
   const nav = Navbar();
   const [brand, actions] = nav.props.children;
   assert.equal(nav.type, 'nav');
-  assert.equal(brand.props.children[0].props.children, 'ReadStack');
-  assert.equal(brand.props.children[1].props.children, 'BETA');
+  assert.equal(brand.props.children.props.children, 'ReadStack');
   assert.equal(actions.props.className, 'library-nav-actions');
 });
 
@@ -59,25 +58,22 @@ test('root metadata uses the ReadStack name and description', () => {
   assert.equal(values.description, 'ReadStack es una aplicación para catalogar, organizar y reseñar tus libros. Construye tu biblioteca personal y lleva un registro de tus lecturas.');
 });
 
-test('library notice is persistent, non-interactive and precedes the filters', () => {
+test('library heading precedes the filters without the obsolete beta notice', () => {
   const original = React.useState;
   React.useState = () => [false, () => {}];
   try {
     const main = HomePage().props.children.props.children[1];
-    const [heading, notice, filters] = main.props.children;
+    const [heading, filters, collection] = main.props.children;
     assert.equal(heading.type, 'h1');
-    assert.equal(notice.type, 'p');
-    assert.match(notice.props.children, /libros y las reseñas guardados podrían perderse/);
-    assert.equal(notice.props.className, 'library-beta-notice');
     assert.equal(filters.type, './filters');
+    assert.equal(collection.type, 'section');
   } finally {
     React.useState = original;
   }
 });
 
-test('beta presentation uses theme tokens and allows the brand to wrap', () => {
+test('navigation branding continues to wrap', () => {
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(css, /\.library-brand\s*\{[^}]*flex-wrap:\s*wrap/);
-  assert.match(css, /\.library-beta-badge\s*\{[^}]*color:\s*var\(--text-secondary\)/);
-  assert.match(css, /\.library-beta-notice\s*\{[^}]*background:\s*var\(--accent-subtle\);[^}]*color:\s*var\(--text-primary\)/);
+  assert.doesNotMatch(css, /\.library-beta-(?:badge|notice)\s*\{/);
 });

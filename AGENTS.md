@@ -100,7 +100,7 @@ Do not run installs, builds, migrations, or deployments merely to orient yoursel
 
 These are required invariants. Current code does not satisfy all of them.
 
-- Never expose secrets, tokens, cookies, passwords, connection strings, or private user data in code, logs, docs, issues, tests, or responses.
+- Never expose secrets, tokens, cookies, passwords, connection strings, or private user data in code, logs, docs, issues, tests, or responses. **Exception:** The owner may explicitly approve publishing the login email and password of a designated public demonstration account in `README.md` only, after target-specific verification that it is non-privileged, cannot access other users' data, and contains only synthetic, disposable data. Treat those credentials as public and do not reuse them elsewhere. This exception does not cover personal or administrative credentials, tokens, cookies, environment variables, database credentials or connection strings, infrastructure credentials, or any other secret.
 - Require an explicitly configured JWT secret. Do not rely on or reproduce a hardcoded fallback.
 - Preserve multiuser registration, login, and per-user isolation. A change that weakens either is a release blocker.
 - Public self-registration remains enabled until `PUB-01` records an approved policy change.
