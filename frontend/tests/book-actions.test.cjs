@@ -238,3 +238,16 @@ test('CSV service accepts nonempty CSV only and cleans up the download', async (
   response = new Response(header + '\r\n' + valid + '\r\n', { headers: { 'content-type': 'text/csv; charset=utf-8' } });
   await actualService.exportBookCSV('a'); assert.equal(clicked, 1); assert.equal(revoked, 1);
 });
+
+test('CSV download preserves apostrophe-prefixed Unicode blob contents', async () => {
+  let downloaded;
+  let clicked = 0;
+  global.window.URL = { createObjectURL: (blob) => { downloaded = blob; return 'blob:test'; }, revokeObjectURL() {} };
+  global.document = { body: { appendChild() {} }, createElement: () => ({ click: () => clicked++, remove() {} }) };
+  const header = '"id","title","author","year","genre","coverImage","rating","isFavorite","userId","createdAt","updatedAt"';
+  const csv = header + '\n"a","\'=Café 📚, ""quoted""\n次","Niño",2000,"Ficción, =二","",0,"No","user-a","2024-01-01","2024-01-02"';
+  response = new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8' } });
+  await actualService.exportBookCSV('a');
+  assert.equal(clicked, 1);
+  assert.equal(await downloaded.text(), csv);
+});

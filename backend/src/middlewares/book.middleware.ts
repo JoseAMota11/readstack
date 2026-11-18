@@ -73,6 +73,11 @@ export const validateBooksDataPartial = (
   }
   try {
     bookSchemaPartial.parse(req.body);
+    const mutableFields = ['title', 'author', 'year', 'genre', 'coverImage', 'rating', 'isFavorite'];
+    if (!mutableFields.some((field) => Object.prototype.hasOwnProperty.call(req.body, field))) {
+      res.status(400).json({ message: 'No se proporcionaron campos para actualizar.' });
+      return;
+    }
     next();
   } catch (error) {
     if (error instanceof Error && 'errors' in error) {

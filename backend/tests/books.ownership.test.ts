@@ -116,6 +116,49 @@ test('uses the token identity when creating a book with a foreign userId', async
   assert.equal(bobList.body.pagination.total, 0);
 });
 
+test('rejects PATCH bodies without mutable fields independently of ownership', async () => {
+  const alice = await registerUser('empty-patch-a');
+  const bob = await registerUser('empty-patch-b');
+  const book = await createBook(alice.token, alice.userId, { title: 'Unchanged' });
+  const missingId = '00000000-0000-4000-8000-000000000002';
+  const bodies = [{}, { userId: alice.userId }, { unknown: 'ignored' }];
+  let expected: unknown;
+  for (const id of [book.id, missingId]) {
+    for (const token of [alice.token, bob.token]) {
+      for (const body of bodies) {
+        const result = await request(app).patch(`/api/v1/books/${id}`).set(auth(token)).send(body).expect(400);
+        expected ??= result.body;
+        assert.equal(result.body.message, 'No se proporcionaron campos para actualizar.');
+        assert.deepEqual(result.body, expected);
+      }
+    }
+  }
+  await request(app).patch(`/api/v1/books/${book.id}`).send({}).expect(401);
+  const unchanged = await request(app).get(`/api/v1/books/${book.id}`).set(auth(alice.token)).expect(200);
+  assert.equal(unchanged.body.title, 'Unchanged');
+});
+
+test('PATCH preserves falsy values and ignores spoofed ownership', async () => {
+  const alice = await registerUser('patch-spoof-a');
+  const bob = await registerUser('patch-spoof-b');
+  const book = await createBook(alice.token, alice.userId, { title: 'Original', isFavorite: true, rating: 3 });
+
+  await request(app).patch(`/api/v1/books/${book.id}`).set(auth(bob.token))
+    .send({ title: 'Hijacked', userId: alice.userId }).expect(400);
+  const unchanged = await request(app).get(`/api/v1/books/${book.id}`).set(auth(alice.token)).expect(200);
+  assert.equal(unchanged.body.title, 'Original');
+  assert.equal(unchanged.body.userId, alice.userId);
+
+  await request(app).patch(`/api/v1/books/${book.id}`).set(auth(alice.token))
+    .send({ title: 'Updated', rating: 0, isFavorite: false, userId: bob.userId, unknown: 'ignored' }).expect(200);
+  const updated = await request(app).get(`/api/v1/books/${book.id}`).set(auth(alice.token)).expect(200);
+  assert.equal(updated.body.title, 'Updated');
+  assert.equal(updated.body.rating, 0);
+  assert.equal(updated.body.isFavorite, false);
+  assert.equal(updated.body.userId, alice.userId);
+  await request(app).get(`/api/v1/books/${book.id}`).set(auth(bob.token)).expect(404);
+});
+
 test('persists favorite toggles and denies another user changing them', async () => {
   const alice = await registerUser('favorite-a');
   const bob = await registerUser('favorite-b');
